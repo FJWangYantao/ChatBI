@@ -1,0 +1,102 @@
+我{
+  "test_info": {
+    "timestamp": "2026-02-24T00:53:10.980033",
+    "total_queries": 10,
+    "api_base_url": "http://localhost:8080/api",
+    "test_type": "sql_generation_only"
+  },
+  "analysis": {
+    "total_queries": 10,
+    "successful": 0,
+    "failed": 10,
+    "success_rate": 0.0,
+    "avg_response_time": 60.02184147834778,
+    "p50_response_time": 60.02874827384949,
+    "p95_response_time": 60.03953528404236,
+    "p99_response_time": 60.03953528404236,
+    "min_response_time": 60.00117230415344,
+    "max_response_time": 60.03953528404236
+  },
+  "results": [
+    {
+      "query_id": 1,
+      "query": "2024年4月所有产品的出货量一共多少？",
+      "success": false,
+      "error": "HTTPConnectionPool(host='localhost', port=8080): Read timed out. (read timeout=60)",
+      "response_time": 60.01089429855347,
+      "timestamp": "2026-02-24T00:44:06.264874"
+    },
+    {
+      "query_id": 2,
+      "query": "23年消费NB 一共出了多少货？",
+      "success": false,
+      "error": "HTTPConnectionPool(host='localhost', port=8080): Read timed out. (read timeout=60)",
+      "response_time": 60.00117230415344,
+      "timestamp": "2026-02-24T00:45:06.767047"
+    },
+    {
+      "query_id": 3,
+      "query": "S3在23财年一共出了多少货？",
+      "success": false,
+      "error": "HTTPConnectionPool(host='localhost', port=8080): Read timed out. (read timeout=60)",
+      "response_time": 60.01238703727722,
+      "timestamp": "2026-02-24T00:46:07.279916"
+    },
+    {
+      "query_id": 4,
+      "query": "2024年4月产品IPS5 16IRL8的出货量一共多少？",
+      "success": false,
+      "error": "HTTPConnectionPool(host='localhost', port=8080): Read timed out. (read timeout=60)",
+      "response_time": 60.032991886138916,
+      "timestamp": "2026-02-24T00:47:07.813901"
+    },
+    {
+      "query_id": 5,
+      "query": "Yoga产品FY23全年的总出货量多少?",
+      "success": false,
+      "error": "HTTPConnectionPool(host='localhost', port=8080): Read timed out. (read timeout=60)",
+      "response_time": 60.02874827384949,
+      "timestamp": "2026-02-24T00:48:08.343773"
+    },
+    {
+      "query_id": 6,
+      "query": "EMEA 在2024年CQ1的出货情况如何",
+      "success": false,
+      "error": "HTTPConnectionPool(host='localhost', port=8080): Read timed out. (read timeout=60)",
+      "response_time": 60.00982427597046,
+      "timestamp": "2026-02-24T00:49:08.854102"
+    },
+    {
+      "query_id": 7,
+      "query": "2024年4月LCFC 的出货了多少？",
+      "success": false,
+      "error": "HTTPConnectionPool(host='localhost', port=8080): Read timed out. (read timeout=60)",
+      "response_time": 60.03810691833496,
+      "timestamp": "2026-02-24T00:50:09.392865"
+    },
+    {
+      "query_id": 8,
+      "query": "FY23 消费NB 出货与FY22年相比如何？",
+      "success": false,
+      "error": "HTTPConnectionPool(host='localhost', port=8080): Read timed out. (read timeout=60)",
+      "response_time": 60.03541398048401,
+      "timestamp": "2026-02-24T00:51:09.929417"
+    },
+    {
+      "query_id": 9,
+      "query": "FY21~FY23年出货的变化趋势",
+      "success": false,
+      "error": "HTTPConnectionPool(host='localhost', port=8080): Read timed out. (read timeout=60)",
+      "response_time": 60.03953528404236,
+      "timestamp": "2026-02-24T00:52:10.470109"
+    },
+    {
+      "query_id": 10,
+      "query": "FY23/24年Q3各个FF的出货量和占比",
+      "success": false,
+      "error": "HTTPConnectionPool(host='localhost', port=8080): Read timed out. (read timeout=60)",
+      "response_time": 60.00934052467346,
+      "timestamp": "2026-02-24T00:53:10.980033"
+    }
+  ]
+}

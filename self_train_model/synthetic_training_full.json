@@ -1,0 +1,6842 @@
+[
+  {
+    "text": "输出用户数据到文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户的数量总共有多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜一下电子产品",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询客单价最高的3个订单",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "能做什么～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看客户C003详情",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询用户信息并做成可视化",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "把这个产品删了",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "把用户的数量数据查出来并发送邮件",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看地区按营收的分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "销售额的分布特征",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "检索食品的地区信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "不太懂～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析产品的利润趋势并预测下个月",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "行",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "删除ID为123的订单",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "多谢",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示订单及其对应的产品",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "你好，帮我查一下部门的成本",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜一下电脑",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收在用户中的分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "支持哪些操作",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "算一下今年订单的利润总计",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "帮我看看产品的情况",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计用户的平均客单价",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "输出订单数据到文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "列出客户的所有列",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看用户表的字段",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看全部部门",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "数一下地区有多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品表包含什么列",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "按利润排名前3",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品的销售额最低是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "计算去年地区的满意度总额",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "添加部门到系统",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "明白～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "比较地区和部门的转化率",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "成本排名前20的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "算一下地区的数量平均数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "今年部门的营收总计是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "比较上个月和本周的数量差异",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜一下食品",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "解释一下",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询客户对应的订单列表",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "操作指南～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度的趋势分析",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜索手机",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜索包含服装的客户",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计部门的数量然后用柱状图显示",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "OK",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "清空客户",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成客户的CSV文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品与订单的关系",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "把部门的满意度改成50%",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询产品数据并导出Excel",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示客单价的上升下降趋势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "电子产品的客户有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价的分布特征",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询用户的数量平均水平",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜一下食品",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "怎么说～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "输出产品数据到文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示成本的上升下降趋势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "求助～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润都分布在哪些范围",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "懂了～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "把地区都列出来",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "在线咨询～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率异常的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "感谢～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜索包含配件的客户",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "支持哪些操作！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "备份客户数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "按满意度排名前3",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收的同比环比",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询用户和客户的关联数据",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品的转化率分布图",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计下个月用户的利润总和",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析2024年销售额的变化趋势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询营收最高的10个客户",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "算一下产品的客单价平均数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看满意度的变化曲线",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "多谢",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润大于50%的用户有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户比客户的成本怎么样",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出含有电子产品的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示数量超过80分的客户",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "先列出地区再排名",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "比较用户和订单的利润",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看全部部门",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看全部地区",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "更新用户状态",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户的销售额分布图",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价什么～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "成本在今年的趋势如何",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度在今年的趋势如何",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "去年地区的客单价总计是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品编号A001的具体信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单总共多少个",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度的最大最小值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润最高的10名",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "麻烦查一下最近7天客户的数据，谢谢",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "更新部门状态",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "怎么说",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门一共有多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收大于50%的客户有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出数量减少的根源",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度在本月的趋势如何",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "请帮我显示客户的利润分布图",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "检索配件的产品信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区的利润最高和最低",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户的满意度最低是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品比客户的成本怎么样",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门与客户的关系",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "成本增长的主要因素",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "录入订单信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询部门和产品的关联数据",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询地区表的列名",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成订单的成本分布图",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单的个数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询订单列表",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度的对比分析",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "你好，帮我查一下客户的成本",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润top3的部门是哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计本周产品的销售额总和",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询部门数据并导出Excel",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "筛选成本高于平均值的地区",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区的满意度总共有多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户的满意度为什么减少",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "插入部门数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "添加用户到系统",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询用户ID为C003的详细信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户的客单价最低是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "求助",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示订单的字段信息",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品比订单的销售额怎么样",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "联系方式！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品什么",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询订单和部门的关联数据",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "数量top5的部门是哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度大于1000的用户有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "数一下用户有多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门的营收分布如何",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "本周用户的满意度最小值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "电脑的订单有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单编号456的具体信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单的个数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "好的好的",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示地区清单",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "看看订单表的列",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "把地区的转化率数据查出来并发送邮件",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "添加订单到系统",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单的数量均值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户456的信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区编号A001的具体信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户的销售额分布图",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询订单的表结构",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示用户清单",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润超过10000的用户",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "上周和本周营收差多少",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "计算今年产品的转化率总额",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询产品的总数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出利润排名前50%的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出数量排名前50%的部门",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度的趋势分析",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "这是什么",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品表的列信息",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "把产品保存为Excel",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查找客单价在指定范围的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "编辑一下产品",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润下降的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "备份部门数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品编号B002的具体信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户的利润最高是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜索服装",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "算一下今年地区的成本总计",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "筛选利润高于平均值的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计订单的数量",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查找电子产品",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品编号B002的具体信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析地区的转化率分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "删除地区信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成客户报告文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品关联客户的信息",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看成本的变化曲线",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "非常感谢",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计利润的分布情况",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "清除产品数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看地区的schema",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户456的详细资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "查找配件",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户编号C003的具体信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "销售额在本月的趋势如何",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "数据什么～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "你好，帮我查一下客户的销售额",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "本周客户的转化率一共多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询产品的数量最大值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计部门的平均数量",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收在客户中的分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户编号A001的具体信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "筛选销售额高于平均值的地区",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "上个月有多少个地区",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "数一下客户有多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "数据什么～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "了解",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查找食品",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户什么～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "清除产品数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "比较地区和客户的客单价",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户表有哪些属性",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户的个数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "增加用户",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润大于80分的地区有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出满意度的极值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润的变化情况",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "把部门的营收数据查出来并发送邮件",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计客单价的分布情况",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "计算本月产品的满意度总额",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "上个季度用户的成本平均值是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "对比上个月和本周的数量",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "求助～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "您好～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "按成本排名前20",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "把产品的数量改成5000",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析营收波动的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询地区列表",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "联合查询用户和客户",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查查用户然后做个总结",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜索手机",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户A001的详细资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单的销售额分布如何",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "清空产品",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "OK～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看客户的全部信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示营收排行榜前20",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单的转化率平均是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询利润最高的50个部门",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "录入用户信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示部门清单",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户B002的详细资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区的成本最高是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询地区表的列名",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单的转化率均值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户B002的详细资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品的数量最低是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "把地区都列出来",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询用户数据并导出Excel",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计用户的平均营收",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "用饼图展示产品的客单价分布",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "把客户都列出来",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看客户关联的客户",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "备份产品数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品什么～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "创建订单条目",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户的字段定义",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看部门关联的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示地区的详细信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "行～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查找转化率在指定范围的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看订单表的字段",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示本月地区的客单价趋势图",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "对比去年和本月的转化率",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户的数量分布如何",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询产品信息并做成可视化",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询地区ID为123的详细信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户总共多少个",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "help！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看产品分布情况并给出建议",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "成本在订单中的分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度变化的主要驱动因素",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询客户表的列名",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "修改地区资料",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示部门及其对应的产品",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区的销售额最高是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "对比上周和本季度的销售额",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单456的信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计订单的各项指标并用仪表盘展示",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区的转化率最高是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "删除客户记录",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "计算2024年产品的数量总额",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询客户数据并导出Excel",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成客户报告文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "成本前20名",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计利润的分布情况",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出销售额异常的根源",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "调整地区参数",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "计算本月地区的客单价总额",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户总共多少个",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "把订单数据导出来",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析上个月满意度的变化趋势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润在用户中的分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "更改地区配置",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润在今年的趋势如何",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "怎么回事～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门表有哪些属性",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户的数量分布如何",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率下降的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "帮助",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "列出营收最大的20个地区",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门的成本分布如何",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "把客户保存为Excel",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计最近7天客户的数量总和",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "需要帮助",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出数量减少的根源",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析用户的成本趋势并预测下个月",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看地区的schema",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示满意度的上升下降趋势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "操作指南！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "将订单导出为PDF",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门B002的信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "编辑用户数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计客户的数量",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单123的信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析客单价变化趋势的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率下降的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看地区按转化率的分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析数量增长的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "把这个用户删了",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率排名靠前的产品",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "展示所有产品的资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看订单表的字段",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析满意度变化的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率在用户中的分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "增加一个客户",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出满意度的极值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看客户分布情况并给出建议",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率都分布在哪些范围",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品的转化率平均是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "删除产品记录",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "您好",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "筛选满意度高于平均值的客户",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜索服装",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询地区的总数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "先列出客户再排名",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "计算下个月地区的数量总额",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "什么意思",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "为什么",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示订单的详细信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜索服装",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "比较地区和产品的利润",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "算一下用户的客单价平均数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "算一下订单的成本平均数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度波动的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区表的字段列表",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询产品的转化率平均水平",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "按数量排名前3",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "添加地区到系统",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "图表什么～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "删除客户记录",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "导出客户数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询客户数据并导出Excel",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计下个月用户的客单价总和",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单的字段定义",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询部门和订单的关联数据",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收的分布特征",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "输出地区数据到文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "按客单价排名前10",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "按转化率排名前3",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "修改产品资料",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收排名靠前的产品",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看地区表的字段",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "联系方式",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示产品B002的资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "比较用户和客户的转化率",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "好的～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "汇总今年客户的客单价",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "成本的对比分析",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析地区的销售额分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "增加用户",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查找销售额在指定范围的产品",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示部门A001的资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "导出用户数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品的客单价最高和最低",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "把地区的满意度改成50%",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询地区的客单价平均水平",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "数量为什么增长",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "帮我看看用户的情况",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "比较地区和客户的满意度",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看全部订单",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计上个季度订单的数量总和",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计客户的平均成本",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "2024年产品的客单价一共多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "删除客户信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示地区及其对应的产品",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示客单价超过50%的客户",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "算一下2024年用户的转化率总计",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询订单ID为B002的详细信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看产品456详情",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "筛选营收高于平均值的部门",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "比较产品和客户的转化率",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "求助！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户的成本为什么下跌",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "比较上个季度和今年的客单价差异",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门表字段有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "支持哪些操作～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品456的详细资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析满意度变化的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "谢谢你的帮助～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区编号123的具体信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "销售额top3的地区是哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率最高的3名",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区与订单的关系",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看全部客户",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "删除产品记录",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "建一个地区",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "建一个用户",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "更新用户状态",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品表有哪些属性",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门表包含什么列",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示产品清单",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户表有哪些属性",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "比较地区和客户的数量",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价变化归因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看订单按利润的分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成部门的满意度分布图",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示客单价的上升下降趋势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "今年客户的客单价最小值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计地区的数量",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询客户的利润平均水平",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示客户及其对应的客户",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出客单价排名前10%的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析上个季度成本的变化趋势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "去掉这个订单",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "修改客户资料",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "销毁用户记录",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品的销售额最高和最低",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品比部门的数量怎么样",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "对比前一季度和本周的数量",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "介绍一下功能",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计本周产品的客单价总和",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门的转化率最低是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计地区的平均营收",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询部门对应的订单列表",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "注册新的产品",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "联系方式",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品的满意度均值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "怎么说",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品的客单价最低是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "新增客户记录",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "列出成本最大的3个订单",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "能做什么",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询客单价大于50%的产品",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "数量下降的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "数量排名前5的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区的转化率为什么下跌",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品的个数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价在部门中的分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出利润排名前10%的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品什么",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "帮我看一下订单的数据然后生成报表",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析客单价变化的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "更新用户的详细信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查一下用户C003",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "技术支持！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "更新部门状态",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出销售额的极值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "支持哪些操作",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单与产品的关系",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区比部门的成本怎么样",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计产品的各项指标并用仪表盘展示",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "嗨～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示订单123的资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户关联客户的信息",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单的销售额均值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "在吗！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度的分布特征",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示客单价的上升下降趋势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品的字段定义",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "联合查询客户和部门",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析产品的数量趋势并预测下个月",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价的变化情况",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户与订单的关系",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询用户和订单的关联数据",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查一下用户123",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品的转化率分布图",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润为什么下降",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "编辑一下部门",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "数量变化的主要驱动因素",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示数量超过5000的地区",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品表的字段列表",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查找数量在指定范围的用户",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "服装的产品有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜一下服装",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率大于50%的客户有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单表的列信息",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "操作指南～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询订单表的列名",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成产品报告文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "列出所有订单",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "更新客户的详细信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "求助～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "比较地区和订单的数量",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率排名靠前的客户",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品B002的信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看全部产品",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "查一下订单123",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户的营收最低是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成订单的CSV文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "插入客户数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "成本的同比环比",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收前10名",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润在上个季度的趋势如何",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "按成本排名前10",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "对比地区和部门的差异并生成对比图",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门的成本平均是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示部门及其对应的部门",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单与部门的销售额对比",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "筛选利润高于平均值的客户",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "编辑订单数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "先列出部门再排名",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计产品的各项指标并用仪表盘展示",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析满意度变化趋势的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "销毁地区记录",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看地区按客单价的分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "对比前一季度和本季度的成本",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "你好，帮我查一下产品的满意度",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "计算产品的平均客单价",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户的利润最高和最低",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示客户清单",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度超过5000的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品的数量为什么下降",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "多谢！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "编辑客户数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出满意度的极值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "麻烦查一下最近7天部门的数据，谢谢",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "了解！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "用饼图展示地区的转化率分布",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "今年有多少个地区",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "移除这个订单",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润最高的5名",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "使用教程～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "数量排名前10的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价的同比环比",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "销售额减少归因分析",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "有什么问题～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示部门清单",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询营收大于1000的产品",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计地区的利润然后用柱状图显示",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计本周用户的总数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "添加客户到系统",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "了解",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "非常感谢",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看地区C003详情",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示部门清单",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度的分布特征",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "销售额前20名",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询客单价最高的10个部门",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查一下客户A001",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "计算本月产品的转化率总额",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询地区信息同时对比前一季度和本季度",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "麻烦查一下2024年产品的数据，谢谢",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价走势怎么样",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "数量的趋势分析",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度在本月的趋势如何",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门的数量最高是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "展示客单价的走势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "有什么问题～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "把这个地区删了",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润什么",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收前5名",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "上个月和本周数量差多少",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "更改地区记录",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度什么！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价排名前10的地区",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "本周有多少个客户",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "删除ID为456的订单",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出转化率排名前10%的客户",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看客户的全部信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "增加一个产品",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计今年客户的总数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询客户信息并做成可视化",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "帮我看看订单的情况",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出客单价排名前20%的产品",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门什么",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户比部门的成本怎么样",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计今年用户的销售额总和",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率的趋势分析",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户的个数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "使用教程",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "更新部门状态",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区对应的订单有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "在线咨询",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "更改部门记录",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询部门的总数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户表的字段列表",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查找食品相关的用户",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "查一下用户C003",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出客单价排名前20%的产品",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询产品对应的订单列表",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单与部门的关系",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "什么情况！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询用户营收的峰值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "将产品导出为PDF",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "销毁地区记录",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "筛选转化率高于平均值的用户",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品一共有多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询产品的成本最大值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润的对比分析",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "移除这个客户",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "明白～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "再见",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询营收最高的10个部门",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查找电脑",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "下载客户报表",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户关联订单的信息",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "插入部门数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询地区成本的峰值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "查找客单价在指定范围的部门",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出营收的极值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "成本走势怎么样",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "修改客户的满意度",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "GMV什么～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "收到～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "把部门数据导出来",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区什么",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "怎么用～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "不明白～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品一共有多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "修改客户资料",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门的数量最低是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "把用户都列出来",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示客户及其对应的客户",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "导出地区列表并保存",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "看看部门有哪些列",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收走势怎么样",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "求助～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "图表什么！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成客户的满意度分布图",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收变化的主要驱动因素",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门与产品的销售额对比",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出客单价的极值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "画出去年营收的变化曲线",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收的对比分析",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析2024年利润的变化趋势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "计算本月产品的成本总额",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门表的列信息",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询订单的利润平均水平",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "查一下地区A001",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率的趋势分析",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计去年部门的总数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看订单分布情况并给出建议",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看地区的全部信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "更新用户状态",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "汇总今年客户的营收",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "不太懂～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "备份地区数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "在线咨询～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "谢谢！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出含有电脑的客户",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "展示满意度的走势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "下载客户报表",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "上个季度有多少个产品",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成部门报告文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户的利润平均是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "先列出用户再排名",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "把地区保存为Excel",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "你好，帮我查一下用户的数量",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看订单表的字段",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "展示所有地区的资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示客单价超过80分的用户",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "数量异常的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价下降的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询地区的销售额最大值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "2024年用户的销售额总计是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "谢谢～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价的同比环比",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "知道了～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "将订单导出为PDF",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析客户的销售额下跌原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "OK",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜索包含食品的地区",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "下载客户报表",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "销售额的趋势分析",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收波动归因分析",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出客单价排名前20%的部门",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "列出所有地区",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "展示营收的走势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "成本下降的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "联合查询部门和部门",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "创建产品条目",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜索包含配件的用户",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户表的字段列表",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询数量最高的10个地区",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门的字段定义",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "销售额的同比环比",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "修改订单资料",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成用户的CSV文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查找手机相关的用户",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "电子产品的产品有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "配件的部门有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区的客单价平均是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出销售额上升的根源",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "更改产品配置",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "移除这个部门",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价走势怎么样",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计客户的数量",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "展示成本的走势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "OK",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "拜拜！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "更新客户的详细信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "录入部门信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "更改订单记录",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "新建部门档案",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "行～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "食品的产品有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单的数量最高是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出含有手机的地区",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "增加地区",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "展示所有产品的资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计上个月客单价并生成PDF报告",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "更新部门的信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计上个月客户的客单价总和",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "列出利润最大的3个订单",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收在地区中的分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计今年订单的转化率总和",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析客单价上升的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "成本排名靠前的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成订单报告文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门的客单价为什么异常",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "更新客户的详细信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "算一下下个月用户的客单价总计",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析用户的满意度分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区的销售额最高是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜索包含手机的地区",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "拜拜～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门的客单价分布图",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收的最大最小值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询客户和部门的关联数据",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成用户报告文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "有什么功能～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "清除用户档案",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示成本的上升下降趋势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "去掉这个产品",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析满意度变化的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "谢谢你～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "不太懂",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "导出用户列表",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度上升的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "删除地区信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "去掉这个客户",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "去掉这个部门",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询部门成本的峰值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出成本的极值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "数量的趋势分析",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成地区的客单价分布图",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单与客户的关系",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "下午好",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户总共多少个",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "销售额在用户中的分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询订单ID为123的详细信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示地区清单",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询产品表的列名",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示用户123的资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "算一下产品的营收平均数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "去年用户的满意度最小值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "数据什么",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "移除这个客户",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "编辑客户数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "把订单保存为Excel",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "成本前50名",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计去年用户的总数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查一下地区A001",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "收到",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "展示所有产品的资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "数量大于1000的订单有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "手机的产品有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "本周订单的营收总计是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门的成本最高是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单123的详细资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示成本的上升下降趋势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜索包含电子产品的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率都分布在哪些范围",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门对应的产品有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "销售额走势怎么样",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询客单价最高的3个部门",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "这是什么～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "按转化率排名前10",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "您好",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单的客单价为什么下跌",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查查订单然后做个总结",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询2024年地区的总客单价",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询客户和产品的关联数据",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "新建客户档案",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "help",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "下午好～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "看看订单有哪些列",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "列出所有部门",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "将地区导出为PDF",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询部门的成本平均水平",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看客单价的变化曲线",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "先列出产品再排名",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "上个月有多少个地区",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计产品的数量",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "列出满意度最大的20个客户",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "添加地区信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "数量的同比环比",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收在部门中的分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查找服装",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询地区表的列名",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "感谢～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "销售额超过50%的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "不明白",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "筛选转化率高于平均值的用户",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "汇总最近7天用户的销售额",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率的最大最小值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "列出客单价最大的10个部门",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "备份产品数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "报错了～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门的成本最高是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询客户列表",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析本月数量的变化趋势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "清楚了～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "比较用户和产品的转化率",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户的字段定义",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示数量的上升下降趋势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户的满意度总共有多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "为什么",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "对比上周和本月的满意度",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析销售额变化趋势的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价的对比分析",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户关联客户的信息",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户的数量最高和最低",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "数一下地区有多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示客单价排行榜前10",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询下个月用户的总数量",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门的客单价均值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜一下配件",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "报表什么～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询地区的转化率平均水平",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "用饼图展示订单的数量分布",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示数量排行榜前20",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区有哪些列",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "添加部门到系统",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "数一下产品有多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "最近7天用户的数量总计是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "把这个订单删了",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "创建部门条目",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看部门B002详情",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率大于10000的地区有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区与订单的关系",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "清空地区",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门表字段有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价排名靠前的地区",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "更改用户配置",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "为什么",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "对比上周和本季度的营收",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "录入订单信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示用户的详细信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "去掉这个地区",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看部门的全部信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示本周部门的营收趋势图",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "感谢～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "移除用户条目",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询今年部门的总营收",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "计算客户的平均数量",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户的成本均值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析产品的客单价趋势并预测下个月",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "如何使用～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "计算产品的平均转化率",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度排名前20的产品",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计本月用户的总数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单456的详细资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门对应的部门有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "先查询客户列表再统计转化率",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看客户关联的产品",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "知道了",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "比较地区和客户的成本",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询最近7天订单的总利润",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单的销售额最高是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "将产品导出为PDF",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询部门ID为123的详细信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜索包含电子产品的用户",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "看看订单有哪些列",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区一共有多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度在客户中的分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价的对比分析",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "展示成本的走势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户编号456的具体信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "下午好～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "今年有多少个部门",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户的营收最高和最低",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润什么！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "更改客户记录",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "注册新的产品",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看全部订单",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "算一下下个月地区的营收总计",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收超过5000的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析客单价变化趋势的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析客单价变化的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "新建地区档案",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "怎么回事！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析成本变化的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "用饼图展示客户的销售额分布",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "再见～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计上个季度部门的总数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "今年地区的转化率平均值是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "更改地区记录",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品编号B002的具体信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "列出成本最大的50个用户",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜一下服装",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示转化率排行榜前50",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示产品清单",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "清除产品数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "帮助～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度在客户中的分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "图表什么",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "回见",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "手机的地区有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询营收最高的10个地区",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "成本top20的地区是哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "使用教程",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "计算客户的平均利润",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "谢谢！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户的销售额均值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门与客户的关系",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看订单分布情况并给出建议",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成产品报表并发送",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品的客单价平均是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "展示所有产品的资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "移除这个客户",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "把客户都列出来",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询订单ID为A001的详细信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润排名前5的产品",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "检索电子产品的部门信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜索电子产品",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "数量什么",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "新增订单记录",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "谢谢你的帮助",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "上个月和今年数量差多少",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析产品的销售额趋势并预测下个月",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "报错了",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "编辑一下订单",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询产品ID为123的详细信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "有什么问题",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看全部用户",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询订单的营收平均水平",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询用户表的列名",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "上个月和本月营收差多少",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户的个数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单与部门的关系",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "筛选满意度高于平均值的产品",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计订单的数量",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品比部门的成本怎么样",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "建一个产品",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品表字段有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "计算订单的平均数量",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析部门的客单价分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计本月产品的总数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询用户和订单的关联数据",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户一共有多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示部门详情并计算销售额",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "按客单价排名前3",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价的变化情况",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "移除产品",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出客单价减少的根源",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "比较地区和产品的数量",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润都分布在哪些范围",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "插入产品数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "移除客户条目",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门什么",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "移除这个地区",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询本月客户的总销售额",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计下个月产品的总数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户编号C003的具体信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度变化的主要驱动因素",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询订单的客单价平均水平",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "上个月有多少个客户",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单的利润分布如何",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "对比去年和本季度的营收",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看客户的全部信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率都分布在哪些范围",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "拜拜",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "去年订单的成本平均值是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "食品的部门有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品的成本为什么异常",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "请帮我显示用户的利润分布图",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "添加用户信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看成本的变化曲线",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询产品的表结构",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计下个月数量并生成PDF报告",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "计算今年用户的营收总额",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "电子产品的用户有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成产品的CSV文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "汇总最近7天产品的满意度",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "调整订单参数",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "能做什么～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "录入用户信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门表有哪些属性",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "展示满意度的走势",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "联合查询地区和客户",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "展示所有客户的资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "汇总今年用户的满意度",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "比较产品和客户的数量",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成地区报告文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门的客单价总共有多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出数量的极值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品编号456的具体信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "hi～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析用户的营收趋势并预测下个月",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "联合查询订单和客户",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "删除订单记录",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "画出本月转化率的变化曲线",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看全部部门",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "请帮我显示部门的销售额分布图",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "把地区的满意度数据查出来并发送邮件",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "成本都分布在哪些范围",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "谢谢你的帮助",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收排名靠前的用户",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "hi～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率top3的订单是哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "把部门都列出来",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润大于10000的订单有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计地区的各项指标并用仪表盘展示",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查找配件",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看用户的详情并导出报表",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询产品对应的部门列表",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查一下地区C003",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看地区的全部信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "销售额的趋势分析",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计本周产品的转化率总和",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区什么",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户与订单的关系",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计去年部门的总数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "订单包含哪些字段",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "数量排名靠前的地区",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区对应的客户有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "下载产品信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计地区的平均客单价",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "对比地区和客户的差异并生成对比图",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "hi～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "销售额最高的5名",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "销售额的趋势分析",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询产品的营收平均水平",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "报表什么～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "明白～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "先列出用户再排名",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出利润的极值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示产品及其对应的客户",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区表包含什么列",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "注册新的用户",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计成本的分布情况",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门包含哪些字段",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "列出销售额最大的3个客户",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "添加用户到系统",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门的个数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "利润走势怎么样",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "电脑的部门有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "画出下个月利润的变化曲线",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价下降的主要因素",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成地区报告文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计上个季度地区的总数",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "嗨",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "非常感谢！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "本月有多少个订单",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "算一下最近7天产品的利润总计",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "谢谢你的帮助～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收top10的订单是哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "展示所有客户的资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "列出所有部门",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析客户的转化率分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出含有配件的订单",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成产品的转化率分布图",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "感谢！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "出错了～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计用户的平均数量",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度波动的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "怎么操作～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "清除用户数据",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价什么",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "去年地区的数量最小值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "满意度的分布特征",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "最近7天产品的营收平均值是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门关联客户的信息",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "更改地区记录",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "看看部门有哪些列",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "去年有多少个订单",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "列出所有产品",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示产品及其对应的部门",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查一下订单B002",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计地区的转化率然后用柱状图显示",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "搜索食品",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看部门按满意度的分布",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "多谢",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "晚上好",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析利润变化的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "成本什么！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "电脑的地区有哪些",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "本周订单的成本一共多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示用户B002的资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计上个月产品的利润总和",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "展示所有部门的资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "营收的变化情况",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "查找成本在指定范围的客户",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计部门的平均销售额",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "删除客户信息",
+    "category": "DATA_OPERATION",
+    "sub_type": "DELETE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看地区的全部信息",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_LIST",
+    "confidence": 1.0
+  },
+  {
+    "text": "调整产品参数",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区的销售额最低是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品的转化率分布如何",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "计算用户的平均转化率",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "客单价排名前5的用户",
+    "category": "DATA_QUERY",
+    "sub_type": "RANKING_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "调整部门参数",
+    "category": "DATA_OPERATION",
+    "sub_type": "UPDATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "筛选成本高于平均值的地区",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计产品的平均成本",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "导出产品列表并保存",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "用户表包含什么列",
+    "category": "DATA_QUERY",
+    "sub_type": "METADATA_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "再见～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查找手机",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "前一季度和今年转化率差多少",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "下午好～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出利润的极值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示营收超过1000的地区",
+    "category": "DATA_QUERY",
+    "sub_type": "SUB_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询部门营收的峰值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "客户关联客户的信息",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "查找配件相关的用户",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SEARCH",
+    "confidence": 1.0
+  },
+  {
+    "text": "可以～！",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "没问题",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "找出客单价的极值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_MAX_MIN",
+    "confidence": 1.0
+  },
+  {
+    "text": "画出本月营收的变化曲线",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "新建订单档案",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "建一个地区",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "产品什么～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查询地区对应的客户列表",
+    "category": "DATA_QUERY",
+    "sub_type": "JOIN_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "走了",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "查看订单的详情并导出报表",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计用户的平均数量",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "今年有多少个订单",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_COUNT",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区比客户的营收怎么样",
+    "category": "DATA_QUERY",
+    "sub_type": "COMPARISON_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "统计客单价的分布情况",
+    "category": "DATA_QUERY",
+    "sub_type": "DISTRIBUTION_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "下个月产品的营收一共多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "部门的转化率平均是多少",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "汇总去年产品的营收",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_SUM",
+    "confidence": 1.0
+  },
+  {
+    "text": "地区的满意度均值",
+    "category": "DATA_QUERY",
+    "sub_type": "AGGREGATION_AVG",
+    "confidence": 1.0
+  },
+  {
+    "text": "输出用户数据到文件",
+    "category": "DATA_OPERATION",
+    "sub_type": "EXPORT_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "转化率在下个月的趋势如何",
+    "category": "DATA_QUERY",
+    "sub_type": "TREND_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "谢谢你～",
+    "category": "GENERAL_CHAT",
+    "sub_type": "CHAT",
+    "confidence": 1.0
+  },
+  {
+    "text": "分析满意度变化趋势的原因",
+    "category": "DATA_QUERY",
+    "sub_type": "ROOT_CAUSE_ANALYSIS",
+    "confidence": 1.0
+  },
+  {
+    "text": "增加一个客户",
+    "category": "DATA_OPERATION",
+    "sub_type": "CREATE_OPERATION",
+    "confidence": 1.0
+  },
+  {
+    "text": "生成产品报表并发送",
+    "category": "HYBRID",
+    "sub_type": "HYBRID_QUERY",
+    "confidence": 1.0
+  },
+  {
+    "text": "显示用户456的资料",
+    "category": "DATA_QUERY",
+    "sub_type": "DETAIL_SINGLE",
+    "confidence": 1.0
+  }
+]

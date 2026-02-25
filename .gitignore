@@ -1,0 +1,48 @@
+# Claude Code settings
+.claude/
+
+# Node modules
+node_modules/
+
+# Next.js
+.next/
+out/
+build/
+
+# Production
+dist/
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local env files
+.env
+.env*.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+
+# Windows reserved names
+nul
+
+# Python Sandbox
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Java
+target/
+*.class
+
+# Model files
+*.pt

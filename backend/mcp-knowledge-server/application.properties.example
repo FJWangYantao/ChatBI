@@ -1,0 +1,8 @@
+# MCP 知识库服务配置
+# 将以下配置添加到 backend/src/main/resources/application.properties
+
+# MCP 知识库服务器地址
+mcp.knowledge.server.url=http://localhost:8004
+
+# 是否启用 MCP 知识库服务
+mcp.knowledge.enabled=true

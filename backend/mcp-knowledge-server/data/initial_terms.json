@@ -1,0 +1,893 @@
+{
+  "business_terms": [
+    {
+      "term": "出货额",
+      "category": "指标",
+      "definition": "产品出货的金额总和，通常指已发货但可能未收款的销售金额",
+      "aliases": ["出货金额", "发货额", "shipment_amount", "发货金额"],
+      "examples": ["2024年的出货额是多少", "按产品统计出货额", "出货额前10的产品"]
+    },
+    {
+      "term": "出货量",
+      "category": "指标",
+      "definition": "产品出货的数量（台数），衡量产品发货规模的核心指标",
+      "aliases": ["shipment", "ship", "发货量", "出货数量", "出了多少货"],
+      "examples": ["2024年4月所有产品的出货量一共多少", "FY23全年的出货量", "查询2024年4月所有产品的shipment"]
+    },
+    {
+      "term": "销售额",
+      "category": "指标",
+      "definition": "产品销售的金额总和，通常指已确认收入的金额",
+      "aliases": ["销售金额", "sales_amount", "营收"],
+      "examples": ["2024年销售额", "各地区销售额对比"]
+    },
+    {
+      "term": "Vol",
+      "category": "指标",
+      "definition": "Volume的缩写，即出货量/销量",
+      "aliases": ["Volume", "量", "vol"],
+      "examples": ["EOL之后出货的by Q vol", "各产品的vol"]
+    },
+    {
+      "term": "Mix",
+      "category": "指标",
+      "definition": "某项数据在总量中的占比/比例",
+      "aliases": ["占比", "比例", "份额", "mix"],
+      "examples": ["FY23出货的Intel/AMD/Qualcomm的占比情况", "各个Gen的mix"]
+    },
+    {
+      "term": "Vol Mix",
+      "category": "指标",
+      "definition": "出货量在总出货量中的占比",
+      "aliases": ["出货占比", "volume mix"],
+      "examples": ["Yoga C 产品G70-G90 SS 1Q-2Q的出货及在当季度的vol mix by GEN"]
+    },
+    {
+      "term": "Forecast",
+      "category": "指标",
+      "definition": "出货量或订单量的预测值",
+      "aliases": ["预测", "FC", "forecast"],
+      "examples": ["各个月份出货量和forecast的对比", "每周forecast的变化趋势"]
+    },
+    {
+      "term": "Order",
+      "category": "指标",
+      "definition": "客户下单的数量",
+      "aliases": ["订单", "订单量", "order"],
+      "examples": ["各个月份order和forecast的对比", "每周order的变化趋势"]
+    },
+    {
+      "term": "MWD",
+      "category": "指标",
+      "definition": "Market Weighted Distribution，市场加权分销指标",
+      "aliases": ["Market Weighted Distribution"],
+      "examples": ["NA出货量与MWD的走势"]
+    },
+    {
+      "term": "FY",
+      "category": "时间",
+      "definition": "Fiscal Year，财年。联想财年从每年4月1日开始到次年3月31日结束。如FY23指2023年4月1日至2024年3月31日",
+      "aliases": ["财年", "Fiscal Year", "FY20", "FY21", "FY22", "FY23", "FY24", "FY25", "FY2023", "FY2024", "FY2025", "FY2324", "FY23/24"],
+      "examples": ["FY23全年的出货量", "FY24上半年所有产品的出货量", "FY23/24年Q3的出货"]
+    },
+    {
+      "term": "FQ",
+      "category": "时间",
+      "definition": "Fiscal Quarter，财务季度。FQ1=4-6月，FQ2=7-9月，FQ3=10-12月，FQ4=1-3月",
+      "aliases": ["财季", "Fiscal Quarter", "FQ1", "FQ2", "FQ3", "FQ4"],
+      "examples": ["23年FQ1和24年FQ1出货对比", "24年FQ2和FQ3出货对比", "去年FQ1和FQ2 YG9xx 出货情况"]
+    },
+    {
+      "term": "CQ",
+      "category": "时间",
+      "definition": "Calendar Quarter，自然季度。CQ1=1-3月，CQ2=4-6月，CQ3=7-9月，CQ4=10-12月",
+      "aliases": ["自然季度", "Calendar Quarter", "CQ1", "CQ2", "CQ3", "CQ4"],
+      "examples": ["24年 CQ3 YGPro 系列出货量"]
+    },
+    {
+      "term": "Q1",
+      "category": "时间",
+      "definition": "第一季度。需根据上下文判断是财务季度(FQ1: 4-6月)还是自然季度(CQ1: 1-3月)",
+      "aliases": ["一季度", "第一季度", "1Q"],
+      "examples": ["2024 Q1", "FY24 Q1", "2024年第一季度"]
+    },
+    {
+      "term": "Q2",
+      "category": "时间",
+      "definition": "第二季度。需根据上下文判断是财务季度还是自然季度",
+      "aliases": ["二季度", "第二季度", "2Q"],
+      "examples": ["2024 Q2", "FY23 Q2"]
+    },
+    {
+      "term": "Q3",
+      "category": "时间",
+      "definition": "第三季度。需根据上下文判断是财务季度还是自然季度",
+      "aliases": ["三季度", "第三季度", "3Q"],
+      "examples": ["2024 Q3", "FY23 Q3", "2023年第三季度"]
+    },
+    {
+      "term": "Q4",
+      "category": "时间",
+      "definition": "第四季度。需根据上下文判断是财务季度还是自然季度",
+      "aliases": ["四季度", "第四季度", "4Q"],
+      "examples": ["2024 Q4", "FY23 Q4"]
+    },
+    {
+      "term": "上半年",
+      "category": "时间",
+      "definition": "财年或自然年的前两个季度。财年上半年=FQ1+FQ2(4-9月)，自然年上半年=1-6月",
+      "aliases": ["1H", "H1", "前半年", "上半年"],
+      "examples": ["FY24上半年所有产品的出货量", "2024年上半年出货情况"]
+    },
+    {
+      "term": "下半年",
+      "category": "时间",
+      "definition": "财年或自然年的后两个季度。财年下半年=FQ3+FQ4(10-3月)，自然年下半年=7-12月",
+      "aliases": ["2H", "H2", "后半年"],
+      "examples": ["FY23下半年有多少CTO形式的出货", "23财年消费NB后半年一共出了多少货"]
+    },
+    {
+      "term": "SS",
+      "category": "时间",
+      "definition": "Start Ship，产品首次出货日期，标志产品正式上市",
+      "aliases": ["Start Ship", "开始出货", "首次出货"],
+      "examples": ["IPS5 16IRL8 SS的前三个月一共出了多少", "YG Pro 7 Gen90 SS后到现在的出货量", "从SS开始各月份出货情况"]
+    },
+    {
+      "term": "EOL",
+      "category": "时间",
+      "definition": "End of Life，产品生命周期结束，停止生产和出货",
+      "aliases": ["End of Life", "停产", "生命周期结束"],
+      "examples": ["EOL之后还有出货产品list", "EOL之后出货的by Q vol"]
+    },
+    {
+      "term": "Lifecycle",
+      "category": "时间",
+      "definition": "产品生命周期，从SS(首次出货)到EOL(停产)的完整时间段",
+      "aliases": ["生命周期", "整个生命周期", "lifecycle", "整个lifecycle"],
+      "examples": ["IPS5 16IRL8 整个lifecycle一共出了多少", "LOQ 15寸 70代整个lifecycle一共出了多少"]
+    },
+    {
+      "term": "NB",
+      "category": "产品",
+      "definition": "Notebook，笔记本电脑",
+      "aliases": ["Notebook", "笔记本", "笔记本电脑"],
+      "examples": ["2024年第一季度所有NB产品的出货量多少", "消费NB一共出了多少货"]
+    },
+    {
+      "term": "消费NB",
+      "category": "产品",
+      "definition": "Consumer Notebook，面向消费者的笔记本电脑产品线",
+      "aliases": ["Consumer NB", "消费笔记本", "消费类笔记本"],
+      "examples": ["23年消费NB一共出了多少货", "FY23消费NB出货与FY22年相比如何"]
+    },
+    {
+      "term": "Gen",
+      "category": "产品",
+      "definition": "Generation，产品代次。如Gen70/G70=70代，Gen80/G80=80代，Gen90/G90=90代，Gen10/X10=10代",
+      "aliases": ["代", "Generation", "G70", "G80", "G90", "X10", "Gen70", "Gen80", "Gen90", "Gen10", "70代", "80代", "90代"],
+      "examples": ["FY23/24年Q3的Gen90的出货", "IP Pro5 14的Gen70/Gen80/Gen90分别出货量"]
+    },
+    {
+      "term": "MTM",
+      "category": "产品",
+      "definition": "Machine Type Model，机型编号，产品的唯一标识符",
+      "aliases": ["Machine Type Model", "机型编号", "机型"],
+      "examples": ["如下20个MTM的出货量", "如下20个MTM中出过货的mtm有什么"]
+    },
+    {
+      "term": "FF",
+      "category": "产品",
+      "definition": "Form Factor，产品形态/外形因素",
+      "aliases": ["Form Factor", "产品形态", "外形因素"],
+      "examples": ["FY23/24年Q3各个FF的出货量和占比"]
+    },
+    {
+      "term": "Yoga",
+      "category": "品牌系列",
+      "definition": "联想Yoga品牌，高端消费笔记本系列",
+      "aliases": ["YG", "yoga"],
+      "examples": ["Yoga产品FY23全年的总出货量多少"]
+    },
+    {
+      "term": "Yoga Slim",
+      "category": "品牌系列",
+      "definition": "Yoga Slim系列，轻薄笔记本产品线",
+      "aliases": ["YGS", "Yoga S", "YG Slim", "Yoga Slim 7"],
+      "examples": ["FY23 yoga S7系列出货了多少", "Yoga S FY23全年出货多少"]
+    },
+    {
+      "term": "Yoga C",
+      "category": "品牌系列",
+      "definition": "Yoga Convertible系列，翻转笔记本产品线",
+      "aliases": ["YG C", "Yoga Convertible"],
+      "examples": ["FY23/24年Q3的Yoga C的出货"]
+    },
+    {
+      "term": "Yoga Book",
+      "category": "品牌系列",
+      "definition": "Yoga Book系列，创新形态笔记本",
+      "aliases": ["YGBook", "YGBOOK", "yoga book", "Yogabook"],
+      "examples": ["Yogabook在2023年和2024年的出货数量"]
+    },
+    {
+      "term": "Yoga Pro",
+      "category": "品牌系列",
+      "definition": "Yoga Pro系列，高性能轻薄笔记本",
+      "aliases": ["YG Pro", "YOGA PRO", "YGPro"],
+      "examples": ["YOGA PRO7 产品在SS后每个季度一共出了多少"]
+    },
+    {
+      "term": "Legion",
+      "category": "品牌系列",
+      "definition": "联想Legion品牌，游戏笔记本系列（拯救者）",
+      "aliases": ["拯救者", "legion"],
+      "examples": ["FY23全年Legion品牌的总出货量是多少"]
+    },
+    {
+      "term": "Legion Pro",
+      "category": "品牌系列",
+      "definition": "Legion Pro系列，高端游戏笔记本",
+      "aliases": ["Legionpro", "Legion pro"],
+      "examples": ["Legion Pro系列FY23 FQ2和FQ3出货量"]
+    },
+    {
+      "term": "LOQ",
+      "category": "品牌系列",
+      "definition": "LOQ系列，入门级游戏笔记本",
+      "aliases": ["loq"],
+      "examples": ["LOQ在FY23全年的出货量"]
+    },
+    {
+      "term": "IdeaPad",
+      "category": "品牌系列",
+      "definition": "联想IdeaPad品牌，主流消费笔记本系列（小新）",
+      "aliases": ["IP", "小新", "Ideapad", "ideapad"],
+      "examples": ["Ideapad在22、23、24年的出货数量"]
+    },
+    {
+      "term": "IPS3",
+      "category": "品牌系列",
+      "definition": "IdeaPad Slim 3系列，入门级轻薄笔记本",
+      "aliases": ["IdeaPad Slim 3", "IP S3", "S3", "IP3", "IdeaPad 3"],
+      "examples": ["IPS3 15IAH8 平均每个季度的出货量"]
+    },
+    {
+      "term": "IPS5",
+      "category": "品牌系列",
+      "definition": "IdeaPad Slim 5系列，中端轻薄笔记本",
+      "aliases": ["IdeaPad Slim 5", "IP S5", "S5", "IdeaPad 5"],
+      "examples": ["IPS5 16IRL8在FY24 Q1一共出了多少"]
+    },
+    {
+      "term": "IPPro5",
+      "category": "品牌系列",
+      "definition": "IdeaPad Pro 5系列，高性能消费笔记本",
+      "aliases": ["IdeaPad Pro 5", "IP Pro5", "IP Pro 5"],
+      "examples": ["2024年第一季度产品IPPro5 14IRH8的出货"]
+    },
+    {
+      "term": "IdeaPad 1",
+      "category": "品牌系列",
+      "definition": "IdeaPad 1系列，入门级笔记本",
+      "aliases": ["IP1", "IdeaPad1"],
+      "examples": ["FY23年第四季度产品IdeaPad 1 15IGL7的出货量一共多少"]
+    },
+    {
+      "term": "Flex",
+      "category": "品牌系列",
+      "definition": "Flex系列，可翻转笔记本",
+      "aliases": ["flex"],
+      "examples": ["Flex 5 G70 14寸的出货量总量以及每个Q的情况"]
+    },
+    {
+      "term": "Duet",
+      "category": "品牌系列",
+      "definition": "Duet系列，可拆卸平板笔记本",
+      "aliases": ["duet"],
+      "examples": ["Duet 580产品commercial最近几个季度出货多少"]
+    },
+    {
+      "term": "Legion Go",
+      "category": "品牌系列",
+      "definition": "Legion Go，联想掌上游戏机",
+      "aliases": ["legion go"],
+      "examples": ["FY23下半年legion go在NA的出货量"]
+    },
+    {
+      "term": "Ultraslim",
+      "category": "产品分类",
+      "definition": "超轻薄笔记本品类，包含Yoga、IdeaPad Slim等轻薄产品",
+      "aliases": ["超轻薄", "ulstralim", "ultraslim"],
+      "examples": ["Ultraslim的1系列和3系列在FY23年出货比例"]
+    },
+    {
+      "term": "Gaming",
+      "category": "产品分类",
+      "definition": "游戏笔记本品类，包含Legion、LOQ等游戏产品",
+      "aliases": ["游戏本", "gaming", "游戏"],
+      "examples": ["2024年上半年Gaming在PRC出货情况"]
+    },
+    {
+      "term": "Light Gaming",
+      "category": "产品分类",
+      "definition": "轻薄游戏笔记本品类，介于传统游戏本和轻薄本之间",
+      "aliases": ["轻薄游戏本", "light gaming"],
+      "examples": ["Light Gaming在22,23,24财年的出货总量"]
+    },
+    {
+      "term": "Convertible",
+      "category": "产品分类",
+      "definition": "可翻转笔记本品类，屏幕可360度翻转",
+      "aliases": ["翻转本", "convertible"],
+      "examples": ["FY23 convertible产品出货量"]
+    },
+    {
+      "term": "Detachable",
+      "category": "产品分类",
+      "definition": "可拆卸品类，键盘可与屏幕分离",
+      "aliases": ["可拆卸", "detachable"],
+      "examples": ["FY23Q1到FY24Q1 Detachable产品每个季度的出货量"]
+    },
+    {
+      "term": "2-in-1",
+      "category": "产品分类",
+      "definition": "二合一设备品类，兼具笔记本和平板功能",
+      "aliases": ["二合一", "2in1"],
+      "examples": ["FY2324 2-in-1在各个geo出货比例如何"]
+    },
+    {
+      "term": "Commercial",
+      "category": "产品分类",
+      "definition": "商用产品线，面向企业客户",
+      "aliases": ["商用", "commercial"],
+      "examples": ["Duet 580产品commercial最近几个季度出货多少"]
+    },
+    {
+      "term": "Consumer",
+      "category": "产品分类",
+      "definition": "消费产品线，面向个人消费者",
+      "aliases": ["消费", "consumer"],
+      "examples": ["FY23消费NB出货与FY22年相比如何"]
+    },
+    {
+      "term": "GEO",
+      "category": "地理区域",
+      "definition": "Geographic Region，地理销售区域，联想按GEO划分全球市场",
+      "aliases": ["地区", "区域", "Geo", "geo"],
+      "examples": ["FY23各个Geo的出货情况"]
+    },
+    {
+      "term": "NA",
+      "category": "地理区域",
+      "definition": "North America，北美区域，包含美国、加拿大等",
+      "aliases": ["North America", "北美"],
+      "examples": ["FY22&23 NA出货量"]
+    },
+    {
+      "term": "EMEA",
+      "category": "地理区域",
+      "definition": "Europe, Middle East and Africa，欧洲、中东和非洲区域",
+      "aliases": ["Europe Middle East Africa", "欧洲中东非洲"],
+      "examples": ["EMEA在2024年CQ1的出货情况如何"]
+    },
+    {
+      "term": "AP",
+      "category": "地理区域",
+      "definition": "Asia Pacific，亚太区域，包含日本、韩国、印度、东南亚等",
+      "aliases": ["Asia Pacific", "亚太"],
+      "examples": ["AP地区FY23全年的出货多少"]
+    },
+    {
+      "term": "PRC",
+      "category": "地理区域",
+      "definition": "People's Republic of China，中国大陆区域",
+      "aliases": ["中国", "中国大陆", "中国区", "China"],
+      "examples": ["PRC在FY23 Q4有哪些产品出货"]
+    },
+    {
+      "term": "LAS",
+      "category": "地理区域",
+      "definition": "Latin America South，拉丁美洲南部区域",
+      "aliases": ["Latin America South", "拉美南"],
+      "examples": ["2023年IP3在LAS的出货情况"]
+    },
+    {
+      "term": "US",
+      "category": "地理区域",
+      "definition": "United States，美国",
+      "aliases": ["USA", "美国", "United States"],
+      "examples": ["FY23 NA美国的出货量有多少"]
+    },
+    {
+      "term": "JP",
+      "category": "地理区域",
+      "definition": "Japan，日本",
+      "aliases": ["Japan", "日本"],
+      "examples": ["FY24Q1在日本的出货情况"]
+    },
+    {
+      "term": "KR",
+      "category": "地理区域",
+      "definition": "Korea，韩国",
+      "aliases": ["Korea", "韩国"],
+      "examples": ["AP地区KR的FY23全年的出货多少"]
+    },
+    {
+      "term": "UAE",
+      "category": "地理区域",
+      "definition": "United Arab Emirates，阿联酋",
+      "aliases": ["阿联酋", "United Arab Emirates"],
+      "examples": ["FY23Q3 proX的出多少货到uae"]
+    },
+    {
+      "term": "ODM",
+      "category": "代工厂",
+      "definition": "Original Design Manufacturer，原始设计制造商，负责产品的设计和生产",
+      "aliases": ["Original Design Manufacturer", "代工厂", "odm"],
+      "examples": ["FY23财年各家ODM的出货量及排名情况"]
+    },
+    {
+      "term": "LCFC",
+      "category": "代工厂",
+      "definition": "联宝电子（合肥），联想主要的自有生产基地",
+      "aliases": ["联宝", "lcfc"],
+      "examples": ["2024年4月LCFC的出货了多少"]
+    },
+    {
+      "term": "Compal",
+      "category": "代工厂",
+      "definition": "仁宝电脑，台湾ODM厂商",
+      "aliases": ["仁宝", "compal"],
+      "examples": ["2023年Compal的总出货量是多少"]
+    },
+    {
+      "term": "Huaqin",
+      "category": "代工厂",
+      "definition": "华勤通讯，中国ODM厂商",
+      "aliases": ["华勤", "HQ", "huaqin", "Huain"],
+      "examples": ["FY23 Huaqin到各个Geo的出货情况"]
+    },
+    {
+      "term": "闻泰",
+      "category": "代工厂",
+      "definition": "闻泰科技，中国ODM厂商",
+      "aliases": ["Wingtech", "wingtech"],
+      "examples": ["闻泰FY23年Q3&Q4出货量是多少"]
+    },
+    {
+      "term": "天津厂",
+      "category": "代工厂",
+      "definition": "联想天津生产工厂",
+      "aliases": ["天津工厂", "天津"],
+      "examples": ["FY24 5月天津厂出了多少货给PRC"]
+    },
+    {
+      "term": "Intel",
+      "category": "CPU平台",
+      "definition": "Intel CPU平台，联想笔记本主要的处理器供应商之一",
+      "aliases": ["英特尔", "intel"],
+      "examples": ["FY23 Intel CPU的出货量", "FY23/24年Q3 intel的出货量"]
+    },
+    {
+      "term": "AMD",
+      "category": "CPU平台",
+      "definition": "AMD CPU平台，联想笔记本主要的处理器供应商之一",
+      "aliases": ["amd"],
+      "examples": ["2024年前两个Q一共出了多少AMD的产品", "FY24 Yoga 7 amd出货是多少"]
+    },
+    {
+      "term": "Qualcomm",
+      "category": "CPU平台",
+      "definition": "高通CPU平台，用于ARM架构笔记本",
+      "aliases": ["高通", "qualcomm"],
+      "examples": ["FY23全年高通CPU的产品出货量", "FY23出货的Intel/AMD/Qualcomm的占比情况"]
+    },
+    {
+      "term": "RPL",
+      "category": "CPU平台",
+      "definition": "Raptor Lake，Intel第13代酷睿处理器平台代号",
+      "aliases": ["Raptor Lake", "raptor lake", "Rapotor Lake"],
+      "examples": ["RPL在2024年上半年有多少shipment", "FY23 Raptor lake的出货量"]
+    },
+    {
+      "term": "RPL HX",
+      "category": "CPU平台",
+      "definition": "Raptor Lake HX，Intel第13代高性能移动工作站处理器",
+      "aliases": ["Raptor Lake HX"],
+      "examples": ["FY23/24年Q3 RPL HX的出货量"]
+    },
+    {
+      "term": "Meteor Lake",
+      "category": "CPU平台",
+      "definition": "Meteor Lake，Intel Core Ultra第一代处理器平台代号",
+      "aliases": ["MTL", "meteor lake"],
+      "examples": ["FY23 Meteor Lake-H每个月的出货量"]
+    },
+    {
+      "term": "Meteor Lake-H",
+      "category": "CPU平台",
+      "definition": "Meteor Lake H系列，高性能版Intel Core Ultra处理器",
+      "aliases": ["MTL-H"],
+      "examples": ["FY23 Meteor Lake-H每个月的出货量"]
+    },
+    {
+      "term": "Alder Lake",
+      "category": "CPU平台",
+      "definition": "Alder Lake，Intel第12代酷睿处理器平台代号",
+      "aliases": ["ADL", "alder lake", "iader lake"],
+      "examples": ["iader lake截止到目前total出货量"]
+    },
+    {
+      "term": "Jasper Lake",
+      "category": "CPU平台",
+      "definition": "Jasper Lake，Intel低功耗处理器平台，用于入门级产品",
+      "aliases": ["JSL", "Jasperlake", "jasper lake"],
+      "examples": ["FY23到FY24 Jasperlake的出货量"]
+    },
+    {
+      "term": "Hawk Point",
+      "category": "CPU平台",
+      "definition": "Hawk Point，AMD Ryzen 8040系列处理器平台代号",
+      "aliases": ["hawk point"],
+      "examples": ["FY23 Hawk Point每个季度的出货量"]
+    },
+    {
+      "term": "Phoenix",
+      "category": "CPU平台",
+      "definition": "Phoenix，AMD Ryzen 7040系列处理器平台代号",
+      "aliases": ["pheonix", "phoenix"],
+      "examples": ["去年pheonix的出货量"]
+    },
+    {
+      "term": "RMB+",
+      "category": "CPU平台",
+      "definition": "RMB+平台，特定CPU平台代号",
+      "aliases": ["RMB+平台"],
+      "examples": ["RMB+平台出货多少，都在哪些产品上"]
+    },
+    {
+      "term": "H45",
+      "category": "CPU平台",
+      "definition": "45W TDP的高性能移动处理器功耗等级",
+      "aliases": ["h45"],
+      "examples": ["2024年上半年有多少H45的产品shipment", "IPS5 16IRL H45出货量一共是多少"]
+    },
+    {
+      "term": "HX",
+      "category": "CPU平台",
+      "definition": "高性能移动工作站级处理器功耗等级，TDP通常55W以上",
+      "aliases": ["hx"],
+      "examples": ["FY23/24年Q3 RPL HX的出货量"]
+    },
+    {
+      "term": "CPU等级",
+      "category": "CPU平台",
+      "definition": "Intel处理器的性能等级划分：i3(入门)、i5(主流)、i7(高性能)、i9(旗舰)",
+      "aliases": ["i3", "i5", "i7", "i9", "I3", "I5", "I7", "I9"],
+      "examples": ["S3 intel平台I3、I5、I7 23财年的出货量分别是多少", "FY23年I3一共出了多少"]
+    },
+    {
+      "term": "DIS",
+      "category": "硬件配置",
+      "definition": "Discrete GPU，独立显卡",
+      "aliases": ["Discrete GPU", "独显", "discrete", "discreate GPU"],
+      "examples": ["FY23 Yoga Pro 7 DIS出货多少", "FY23年X90带discreate GPU产品出了多少量"]
+    },
+    {
+      "term": "UMA",
+      "category": "硬件配置",
+      "definition": "Unified Memory Architecture，集成显卡/核显，无独立显卡",
+      "aliases": ["集显", "Integrated", "核显", "uma"],
+      "examples": ["Yoga Pro 9 Gen 90 UMA的出货量以及在总出货量的占比是多少"]
+    },
+    {
+      "term": "OLED",
+      "category": "硬件配置",
+      "definition": "OLED显示屏技术",
+      "aliases": ["oled"],
+      "examples": ["FY23全年OLED的每个季度的出货量", "IPS5 16IRL OLED出货量一共是多少"]
+    },
+    {
+      "term": "MiniLED",
+      "category": "硬件配置",
+      "definition": "MiniLED背光显示屏技术",
+      "aliases": ["Mini LED", "miniled"],
+      "examples": ["Yoga Pro 9 Gen 90 MiniLED Touch和Non Touch的出货数量以及比例"]
+    },
+    {
+      "term": "Touch",
+      "category": "硬件配置",
+      "definition": "触控屏，支持触摸操作的显示屏",
+      "aliases": ["触屏", "触控", "touch"],
+      "examples": ["MiniLED Touch和Non Touch的出货数量以及比例"]
+    },
+    {
+      "term": "Non-Touch",
+      "category": "硬件配置",
+      "definition": "非触控屏，不支持触摸操作的显示屏",
+      "aliases": ["非触屏", "Non Touch", "non-touch"],
+      "examples": ["MiniLED Touch和Non Touch的出货数量以及比例"]
+    },
+    {
+      "term": "UFS",
+      "category": "硬件配置",
+      "definition": "Universal Flash Storage，通用闪存存储",
+      "aliases": ["ufs"],
+      "examples": ["FY23到FY24 128GB UFS每个季度的出货量"]
+    },
+    {
+      "term": "UMIS",
+      "category": "硬件配置",
+      "definition": "UMIS，内存/存储供应商",
+      "aliases": ["umis"],
+      "examples": ["UMIS memory都在哪些产品上enable"]
+    },
+    {
+      "term": "EDO",
+      "category": "硬件配置",
+      "definition": "EDO，面板/显示屏供应商",
+      "aliases": ["edo"],
+      "examples": ["EDO panel每月出货量，分别在哪几个ODM"]
+    },
+    {
+      "term": "CTO",
+      "category": "业务模式",
+      "definition": "Configure to Order，按订单配置，客户可自定义硬件配置的出货方式",
+      "aliases": ["Configure to Order", "定制", "cto"],
+      "examples": ["2024年上半年出通过CTO方式出货的量有多少", "FY23年有多少CTO形式的出货"]
+    },
+    {
+      "term": "屏幕尺寸",
+      "category": "硬件配置",
+      "definition": "笔记本屏幕的对角线尺寸，常见有11寸、13寸、14寸、14.5寸、15寸、16寸",
+      "aliases": ["11寸", "13寸", "14寸", "14.5寸", "15寸", "16寸", "11\"", "13\"", "14\"", "14.5\"", "15\"", "16\"", "11英寸", "13英寸", "14英寸", "15英寸", "16英寸"],
+      "examples": ["2024年前两个Q一共出了多少13寸的量", "FY24 15寸产品出了多少货", "FY23共有多少14.5寸的产品出货"]
+    },
+    {
+      "term": "屏幕分辨率",
+      "category": "硬件配置",
+      "definition": "显示屏的分辨率规格，如2.8K、4K等",
+      "aliases": ["2.8K", "4K", "分辨率"],
+      "examples": ["C990 2024.2-2025.1 2.8K/4K屏配置出货总量分别是多少"]
+    },
+    {
+      "term": "配件",
+      "category": "硬件配置",
+      "definition": "产品附带的配件，如手写笔、键盘等",
+      "aliases": ["Accessories", "accessories"],
+      "examples": ["FY24 Yoga所有带配件的产品的出货量"]
+    },
+    {
+      "term": "同比",
+      "category": "分析",
+      "definition": "与去年同期相比的增长率，Year-over-Year (YoY)",
+      "aliases": ["YoY", "year over year", "去年同期", "年比年"],
+      "examples": ["FY23Q1 legion出货量年比年状态", "中国FY23出货量年比年情况"]
+    },
+    {
+      "term": "环比",
+      "category": "分析",
+      "definition": "与上一个周期相比的增长率，Month-over-Month (MoM) 或 Quarter-over-Quarter (QoQ)",
+      "aliases": ["MoM", "QoQ", "上期"],
+      "examples": ["环比增长5%", "销售额环比"]
+    },
+    {
+      "term": "趋势",
+      "category": "分析",
+      "definition": "数据随时间的变化走势",
+      "aliases": ["Trend", "trend", "变化趋势"],
+      "examples": ["FY21~FY23年出货的变化趋势", "2023年各季度的出货量趋势如何"]
+    },
+    {
+      "term": "对比",
+      "category": "分析",
+      "definition": "两组或多组数据的比较分析",
+      "aliases": ["Comparison", "比较", "comparison", "对比"],
+      "examples": ["22/23/24财年消费NB出货量对比", "FY23年与FY24年第一季度的出货量对比如何"]
+    },
+    {
+      "term": "分布",
+      "category": "分析",
+      "definition": "数据在不同维度上的分布情况",
+      "aliases": ["Distribution", "distribution"],
+      "examples": ["FY24年Q1的ODM出货量分布如何", "FY23年全年的ODM出货量分布如何"]
+    },
+    {
+      "term": "排名",
+      "category": "分析",
+      "definition": "按指定指标排序的名次",
+      "aliases": ["Ranking", "ranking", "排第几"],
+      "examples": ["2023年出货量排前3的ODM是哪些", "仁宝FY23年出货在ODM中排第几"]
+    },
+    {
+      "term": "前10",
+      "category": "排序",
+      "definition": "按指定指标排序后取前10条记录，通常用于排名分析",
+      "aliases": ["TOP10", "前十", "前10名", "top 10"],
+      "examples": ["销售额前10的产品", "出货量前10的客户"]
+    },
+    {
+      "term": "by月",
+      "category": "分析",
+      "definition": "按月维度拆分数据",
+      "aliases": ["by month", "按月", "每月", "月度", "by 月"],
+      "examples": ["Yoga Pro 7 by月的出货量", "FY23每个月所有消费ODM的出货量"]
+    },
+    {
+      "term": "by GEO",
+      "category": "分析",
+      "definition": "按地理区域维度拆分数据",
+      "aliases": ["按地区", "按区域", "by Geo", "by geo"],
+      "examples": ["XX产品by GEO的shipment是多少", "YGS7 14IMH9截止目前byGeo出货总量"]
+    },
+    {
+      "term": "by Q",
+      "category": "分析",
+      "definition": "按季度维度拆分数据",
+      "aliases": ["按季度", "分季度", "每个季度"],
+      "examples": ["EOL之后出货的by Q vol", "FY23 PRC分季度的出货量"]
+    }
+  ],
+  "column_mappings": [
+    {
+      "term": "出货额",
+      "table_name": "product_shipment",
+      "column_name": "shipment_amount",
+      "data_type": "DECIMAL(15,2)",
+      "description": "产品出货金额，单位：元",
+      "sample_values": ["1500.00", "2300.50", "890.00"]
+    },
+    {
+      "term": "出货量",
+      "table_name": "product_shipment",
+      "column_name": "shipment_quantity",
+      "data_type": "INT",
+      "description": "产品出货数量，单位：台",
+      "sample_values": ["1000", "5000", "200"]
+    },
+    {
+      "term": "销售额",
+      "table_name": "sales_records",
+      "column_name": "sales_amount",
+      "data_type": "DECIMAL(15,2)",
+      "description": "销售金额，单位：元",
+      "sample_values": ["5000.00", "12300.00", "3450.00"]
+    },
+    {
+      "term": "产品名称",
+      "table_name": "products",
+      "column_name": "product_name",
+      "data_type": "VARCHAR(200)",
+      "description": "产品的名称",
+      "sample_values": ["IPS5 16IRL8", "LOQ 15IRX9", "Yoga Pro 9 Gen 90"]
+    },
+    {
+      "term": "客户名称",
+      "table_name": "customers",
+      "column_name": "customer_name",
+      "data_type": "VARCHAR(200)",
+      "description": "客户的名称",
+      "sample_values": ["Walmart", "Best Buy", "JD.com"]
+    }
+  ],
+  "time_expressions": [
+    {
+      "pattern": "FY\\d{2}",
+      "expression_type": "财年",
+      "parse_rule": {
+        "type": "fiscal_year",
+        "start_month": 4,
+        "format": "FY{yy}",
+        "description": "两位数年份的财年表达式，财年从4月开始"
+      },
+      "examples": ["FY23", "FY24", "FY25"]
+    },
+    {
+      "pattern": "FY\\d{4}",
+      "expression_type": "财年",
+      "parse_rule": {
+        "type": "fiscal_year",
+        "start_month": 4,
+        "format": "FY{yyyy}",
+        "description": "四位数年份的财年表达式，财年从4月开始"
+      },
+      "examples": ["FY2023", "FY2024"]
+    },
+    {
+      "pattern": "FY\\d{2}/\\d{2}",
+      "expression_type": "跨财年",
+      "parse_rule": {
+        "type": "cross_fiscal_year",
+        "start_month": 4,
+        "format": "FY{yy}/{yy}",
+        "description": "跨财年表达式，如FY23/24表示FY23和FY24"
+      },
+      "examples": ["FY23/24", "FY22/23"]
+    },
+    {
+      "pattern": "FQ[1-4]",
+      "expression_type": "财务季度",
+      "parse_rule": {
+        "type": "fiscal_quarter",
+        "start_month": 4,
+        "description": "财务季度表达式，FQ1=4-6月，FQ2=7-9月，FQ3=10-12月，FQ4=1-3月"
+      },
+      "examples": ["FQ1", "FQ2", "FQ3", "FQ4"]
+    },
+    {
+      "pattern": "CQ[1-4]",
+      "expression_type": "自然季度",
+      "parse_rule": {
+        "type": "calendar_quarter",
+        "description": "自然季度表达式，CQ1=1-3月，CQ2=4-6月，CQ3=7-9月，CQ4=10-12月"
+      },
+      "examples": ["CQ1", "CQ2", "CQ3", "CQ4"]
+    },
+    {
+      "pattern": "Q[1-4]",
+      "expression_type": "季度",
+      "parse_rule": {
+        "type": "quarter",
+        "description": "季度表达式，需根据上下文判断是财务季度还是自然季度"
+      },
+      "examples": ["Q1", "Q2", "Q3", "Q4"]
+    },
+    {
+      "pattern": "\\d{4}年Q[1-4]",
+      "expression_type": "年度季度",
+      "parse_rule": {
+        "type": "year_quarter",
+        "description": "自然年+季度表达式"
+      },
+      "examples": ["2024年Q1", "2023年Q4"]
+    },
+    {
+      "pattern": "\\d{2,4}年FQ[1-4]",
+      "expression_type": "财年季度",
+      "parse_rule": {
+        "type": "fiscal_year_quarter",
+        "start_month": 4,
+        "description": "财年+财务季度表达式"
+      },
+      "examples": ["23FQ1", "24FQ1", "FY23 FQ2"]
+    },
+    {
+      "pattern": "\\d{2,4}财年",
+      "expression_type": "财年",
+      "parse_rule": {
+        "type": "fiscal_year",
+        "start_month": 4,
+        "description": "中文财年表达式"
+      },
+      "examples": ["23财年", "24财年", "2023财年"]
+    },
+    {
+      "pattern": "上半年|下半年|1H|2H",
+      "expression_type": "半年",
+      "parse_rule": {
+        "type": "half_year",
+        "description": "半年表达式，需结合财年或自然年上下文"
+      },
+      "examples": ["FY24上半年", "2024年上半年", "FY23下半年"]
+    },
+    {
+      "pattern": "上个月|过去\\d+个月|近\\d+个月|最近\\d+个月",
+      "expression_type": "相对时间",
+      "parse_rule": {
+        "type": "relative_time",
+        "description": "相对当前时间的月份表达式"
+      },
+      "examples": ["上个月总出货量", "过去三年", "近五个月", "过去6个月"]
+    },
+    {
+      "pattern": "过去\\d+年|近\\d+年",
+      "expression_type": "相对时间",
+      "parse_rule": {
+        "type": "relative_years",
+        "description": "相对当前时间的年份表达式"
+      },
+      "examples": ["过去两年", "过去三年", "近五年"]
+    }
+  ]
+}

@@ -1,0 +1,180 @@
+spring:
+  application:
+    name: chatbi-backend
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+  # AI 配置 - DeepSeek Official API
+  ai:
+    openai:
+      api-key: ${DEEPSEEK_API_KEY}
+      # DeepSeek 官方 API 端点（Spring AI 会自动追加 /v1/chat/completions）
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      chat:
+        options:
+          # DeepSeek 官方模型名称（不需要 deepseek/ 前缀）
+          model: deepseek-chat
+          temperature: 0.1
+          
+  # NER 服务专用配置
+  ner-service:
+    # NER 使用的模型（留空则使用主配置）
+    model-name: deepseek-chat
+    # NER 使用的 API Key（留空则使用主配置）
+    api-key: ${NER_API_KEY:${DEEPSEEK_API_KEY}}
+    # NER 温度（通常使用更低温度确保更稳定的输出）
+    temperature: 0.1
+    # 是否启用 NER 服务
+    enabled: true
+
+  # 数据库配置（用于 Text2SQL）
+  datasource:
+    # 主数据源 - 销售数据
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:sale_datas}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # 对话数据库配置
+  conversation:
+    datasource:
+      url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${CONV_DB_NAME:chatbi_conversations}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      username: ${DB_USERNAME:root}
+      password: ${DB_PASSWORD:123456}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # 配置数据库配置（用于存储应用级配置，如数据源配置等）
+  config:
+    datasource:
+      url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${CONFIG_DB_NAME:chatbi_config}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      username: ${DB_USERNAME:root}
+      password: ${DB_PASSWORD:123456}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+
+# ChatBI 模型配置（可覆盖 spring.ai.openai.chat.options）
+# 各 Agent 可选覆盖，不配置则用 default
+chatbi:
+  model:
+    default: deepseek-chat
+    temperature: 0.1
+    agents:
+      clarification:      # 澄清 Agent
+      planning:           # 规划 Agent
+      code: deepseek-chat              # 代码生成 Agent
+      forecast:           # 预测 Agent
+      report:             # 报告 Agent
+      suggestion:         # 推荐问题 Agent
+      sql-correction:     # SQL 纠错 Agent（不配置则用 sql-correction.model-name）
+      text2sql:           # Text2SQL Agent
+      ner:                # NER 降级 LLM（不配置则用 spring.ner-service.model-name）
+      chat:               # ChatService 主流程
+      diagnostic:         # 归因分析 Agent
+
+# 服务器配置
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+# NER 模型服务配置 (BERT+CRF 本地模型)
+ner-model-service:
+  # Python NER 微服务地址
+  base-url: ${NER_SERVICE_URL:http://localhost:8002}
+  # NER 预测端点
+  endpoint: /ner/predict
+  # 请求超时时间（毫秒）
+  timeout: ${NER_SERVICE_TIMEOUT:1000}
+  # 是否启用 NER 模型服务
+  enabled: ${NER_MODEL_SERVICE_ENABLED:true}
+  # 模型服务不可用时是否降级到 LLM NER
+  fallback-to-llm: ${NER_MODEL_FALLBACK_TO_LLM:true}
+  # 是否启用实体链接（将实体映射到数据库 Schema 字段）
+  entity-linking: ${NER_ENTITY_LINKING_ENABLED:true}
+
+# SQL 纠错 Agent 配置
+sql-correction:
+  enabled: ${SQL_CORRECTION_ENABLED:true}
+  model-name: deepseek-chat
+  temperature: 0.1
+  max-tokens: 2000
+  correction-confidence-threshold: 0.8
+  enable-rule-based-correction: true
+  enable-ai-correction: true
+
+# 实体验证服务配置 (使用 MCP 知识库)
+entity-disambiguation:
+  enabled: ${ENTITY_DISAMBIGUATION_ENABLED:true}
+  confidence-threshold: 0.7
+
+# MCP 知识库服务配置
+mcp:
+  knowledge:
+    server:
+      url: ${MCP_KNOWLEDGE_SERVER_URL:http://localhost:8004}
+    enabled: ${MCP_KNOWLEDGE_ENABLED:true}
+    # 连接超时（毫秒）
+    timeout: ${MCP_KNOWLEDGE_TIMEOUT:2000}
+  sandbox:
+    server:
+      url: ${MCP_SANDBOX_SERVER_URL:http://localhost:8003}
+    enabled: ${MCP_SANDBOX_ENABLED:true}
+    timeout: ${MCP_SANDBOX_TIMEOUT:35000}
+
+# 意图识别服务配置
+intent-service:
+  # Python 微服务地址
+  base-url: ${INTENT_SERVICE_URL:http://localhost:8001}
+  # 请求超时时间（毫秒）
+  timeout: ${INTENT_SERVICE_TIMEOUT:3000}
+  # 是否启用意图识别服务
+  enabled: ${INTENT_SERVICE_ENABLED:true}
+  # 服务不可用时是否降级到 AI 识别
+  fallback-to-ai: ${INTENT_SERVICE_FALLBACK:true}
+
+# Prompt 增强功能配置
+prompt-enhancement:
+  # 是否启用 Prompt 增强功能
+  enabled: ${PROMPT_ENHANCEMENT_ENABLED:true}
+  # 最大历史消息数量（用于上下文增强）
+  max-history-messages: ${PROMPT_ENHANCEMENT_MAX_HISTORY:5}
+  # 各增强策略配置
+  strategies:
+    data-query:
+      # Schema 增强
+      schema-enhancement: ${PROMPT_ENHANCEMENT_SCHEMA:true}
+      # 时间范围增强
+      time-range-enhancement: ${PROMPT_ENHANCEMENT_TIME:true}
+      # 聚合方式增强
+      aggregation-enhancement: ${PROMPT_ENHANCEMENT_AGGREGATION:true}
+      # 历史上下文增强
+      history-context: ${PROMPT_ENHANCEMENT_HISTORY:true}
+    diagnostic:
+      # 归因分析框架增强
+      framework-enhancement: ${PROMPT_ENHANCEMENT_FRAMEWORK:true}
+      # 对比维度增强
+      comparison-enhancement: ${PROMPT_ENHANCEMENT_COMPARISON:true}
+    general-chat:
+      # 上下文增强
+      context-enhancement: ${PROMPT_ENHANCEMENT_CHAT_CONTEXT:true}
+    hybrid:
+      # 混合模式增强
+      hybrid-enhancement: ${PROMPT_ENHANCEMENT_HYBRID:true}
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.chatbi: INFO
+    org.springframework.ai: WARN
+    org.springframework.web: INFO
+    org.springframework.http: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] %-5level %logger{36} - %msg%n"

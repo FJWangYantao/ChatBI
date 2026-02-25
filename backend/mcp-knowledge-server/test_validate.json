@@ -1,0 +1,6 @@
+{
+  "entities": [
+    {"text": "COMPAL", "type": "ORG"},
+    {"text": "华东", "type": "LOC"}
+  ]
+}
