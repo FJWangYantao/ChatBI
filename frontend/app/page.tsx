@@ -32,6 +32,13 @@ export interface IntentInfo {
   subtypeCn: string;          // 意图子类型中文
 }
 
+// 推理步骤类型
+export interface ReasoningStep {
+  step: "thought" | "observation";
+  content: string;
+  stepIndex: number;
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
@@ -40,6 +47,7 @@ export interface Message {
   tags?: MessageTag[];     // 标签化内容
   intentInfo?: IntentInfo; // 意图识别信息
   suggestions?: string[];  // 推荐后续问题
+  reasoningSteps?: ReasoningStep[]; // 推理步骤
   isStreaming?: boolean;           // 是否正在流式输出
   streamingStage?: string;         // 当前流式阶段
   streamingMessage?: string;       // 当前阶段描述
@@ -242,6 +250,21 @@ export default function Home() {
                   ? { ...msg, suggestions: data.items }
                   : msg
               )
+            );
+          },
+
+          onReasoning: (data) => {
+            setMessages((prev) =>
+              prev.map((msg) => {
+                if (msg.id !== assistantId) return msg;
+                const existing = msg.reasoningSteps || [];
+                return {
+                  ...msg,
+                  reasoningSteps: [...existing, { step: data.step as "thought" | "observation", content: data.content, stepIndex: data.stepIndex }],
+                  streamingStage: "reasoning",
+                  streamingMessage: data.step === "thought" ? "正在思考..." : "正在分析结果...",
+                };
+              })
             );
           },
 

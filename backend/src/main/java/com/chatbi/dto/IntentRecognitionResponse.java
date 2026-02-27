@@ -1,11 +1,14 @@
 package com.chatbi.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.Map;
 
 /**
  * 意图识别响应 DTO
  */
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class IntentRecognitionResponse {
     /**
      * 原始文本

@@ -13,6 +13,8 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Service
@@ -259,9 +261,26 @@ public class ChatStreamService {
             return errorMsg;
         }
 
-        // 发送 LLM 回复文本
+        // 解析推理链：提取 <!-- REASONING_START --> 和 <!-- REASONING_END --> 之间的内容
+        String reasoning = null;
+        String conclusion = toolResult;
+        Pattern reasoningPattern = Pattern.compile("<!--\\s*REASONING_START\\s*-->(.*?)<!--\\s*REASONING_END\\s*-->", Pattern.DOTALL);
+        Matcher reasoningMatcher = reasoningPattern.matcher(toolResult);
+        if (reasoningMatcher.find()) {
+            reasoning = reasoningMatcher.group(1).trim();
+            // 从最终回复中移除推理部分
+            conclusion = toolResult.substring(0, reasoningMatcher.start()) + toolResult.substring(reasoningMatcher.end());
+            conclusion = conclusion.trim();
+        }
+
+        // 推送推理步骤
+        if (reasoning != null && !reasoning.isEmpty()) {
+            emitReasoningSteps(emitter, reasoning);
+        }
+
+        // 发送最终结论文本
         try {
-            emitTextDeltaFull(emitter, toolResult);
+            emitTextDeltaFull(emitter, conclusion);
         } catch (Exception e) {
             log.warn("[planWithTools] SSE 发送失败（连接可能已超时）: {}", e.getMessage());
         }
@@ -280,7 +299,7 @@ public class ChatStreamService {
             log.warn("建议生成失败", e);
         }
 
-        return toolResult;
+        return conclusion;
     }
 
     // ─── DIAGNOSTIC_ANALYSIS ──────────────────────────────────
@@ -317,6 +336,7 @@ public class ChatStreamService {
             fallback.setCategoryCn("日常对话");
             fallback.setCategoryConfidence(0.5);
             fallback.setSubtype("UNKNOWN_QUERY");
+            fallback.setSubtypeCn("未知查询");
             fallback.setSubtypeConfidence(0.5);
             return fallback;
         }
@@ -331,12 +351,12 @@ public class ChatStreamService {
 
     private void emitIntent(SseEmitter emitter, IntentRecognitionResponse intent) throws IOException {
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("category", intent.getCategory());
-        data.put("categoryCn", intent.getCategoryCn());
+        data.put("category", intent.getCategory() != null ? intent.getCategory() : "GENERAL_CHAT");
+        data.put("categoryCn", intent.getCategoryCn() != null ? intent.getCategoryCn() : "普通对话");
         data.put("categoryConfidence", intent.getCategoryConfidence());
-        data.put("subtype", intent.getSubtype());
+        data.put("subtype", intent.getSubtype() != null ? intent.getSubtype() : "UNKNOWN_QUERY");
         data.put("subtypeConfidence", intent.getSubtypeConfidence());
-        data.put("subtypeCn", intent.getSubtypeCn());
+        data.put("subtypeCn", intent.getSubtypeCn() != null ? intent.getSubtypeCn() : "未知查询");
         emitter.send(SseEmitter.event().name("intent").data(objectMapper.writeValueAsString(data)));
     }
 
@@ -379,6 +399,56 @@ public class ChatStreamService {
             StreamEventData.ErrorEventData data = new StreamEventData.ErrorEventData(code, message, stage);
             emitter.send(SseEmitter.event().name("error").data(objectMapper.writeValueAsString(data)));
         } catch (IOException ignored) {
+        }
+    }
+
+    private void emitReasoning(SseEmitter emitter, String step, String content, int stepIndex) throws IOException {
+        StreamEventData.ReasoningEventData data = new StreamEventData.ReasoningEventData(step, content, stepIndex);
+        emitter.send(SseEmitter.event().name("reasoning").data(objectMapper.writeValueAsString(data)));
+    }
+
+    /**
+     * 解析推理文本中的【思考】和【观察】步骤，逐步推送 reasoning 事件
+     */
+    private void emitReasoningSteps(SseEmitter emitter, String reasoningText) {
+        // 按【思考】和【观察】分割
+        Pattern stepPattern = Pattern.compile("【(思考|观察)】");
+        Matcher matcher = stepPattern.matcher(reasoningText);
+
+        List<String[]> steps = new ArrayList<>(); // [stepType, content]
+        int lastEnd = 0;
+        String lastType = null;
+
+        while (matcher.find()) {
+            if (lastType != null) {
+                String content = reasoningText.substring(lastEnd, matcher.start()).trim();
+                if (!content.isEmpty()) {
+                    steps.add(new String[]{lastType, content});
+                }
+            }
+            lastType = matcher.group(1).equals("思考") ? "thought" : "observation";
+            lastEnd = matcher.end();
+        }
+        // 最后一段
+        if (lastType != null && lastEnd < reasoningText.length()) {
+            String content = reasoningText.substring(lastEnd).trim();
+            if (!content.isEmpty()) {
+                steps.add(new String[]{lastType, content});
+            }
+        }
+
+        // 如果没有解析到步骤，整体作为一个 thought 推送
+        if (steps.isEmpty() && !reasoningText.trim().isEmpty()) {
+            steps.add(new String[]{"thought", reasoningText.trim()});
+        }
+
+        for (int i = 0; i < steps.size(); i++) {
+            try {
+                emitReasoning(emitter, steps.get(i)[0], steps.get(i)[1], i);
+            } catch (IOException e) {
+                log.warn("推送推理步骤失败: {}", e.getMessage());
+                break;
+            }
         }
     }
 

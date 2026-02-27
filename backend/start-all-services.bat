@@ -4,7 +4,7 @@ echo ========================================
 echo ChatBI 后端服务启动脚本
 echo ========================================
 echo.
-echo 正在启动后端及三个 Python 服务...
+echo 正在启动后端及四个 Python 服务...
 echo.
 
 cd /d "%~dp0"
@@ -30,7 +30,11 @@ REM 沙箱服务使用虚拟环境，首次运行自动创建并安装依赖
 start "沙箱服务 - 8003" cmd /k "cd /d %~dp0sandbox-service && set PYTHONIOENCODING=utf-8 && (if not exist venv python -m venv venv && call venv\Scripts\activate && pip install -r requirements.txt) && call venv\Scripts\activate && python main.py"
 ping 127.0.0.1 -n 3 >nul
 
-echo [4/4] 启动后端服务 (端口 8080)...
+echo [4/5] 启动 MCP 知识库服务 (端口 8004)...
+start "MCP知识库服务 - 8004" cmd /k "cd /d %~dp0mcp-knowledge-server && set PYTHONIOENCODING=utf-8 && (if not exist venv python -m venv venv && call venv\Scripts\activate && pip install -r requirements.txt) && call venv\Scripts\activate && python server.py"
+ping 127.0.0.1 -n 3 >nul
+
+echo [5/5] 启动后端服务 (端口 8080)...
 start "后端服务 - 8080" cmd /k "chcp 65001 >nul && cd /d %~dp0 && mvn spring-boot:run"
 
 echo.
@@ -40,6 +44,7 @@ echo ========================================
 echo 意图识别: http://localhost:8001
 echo 实体识别: http://localhost:8002
 echo 沙箱服务: http://localhost:8003
+echo 知识库:   http://localhost:8004
 echo 后端 API:  http://localhost:8080/api
 echo ========================================
 echo.

@@ -9,6 +9,7 @@ export interface StreamCallbacks {
   onTextDelta?: (data: { delta: string }) => void;
   onTag?: (data: { type: string; content: any; title?: string; metadata?: any }) => void;
   onSuggestions?: (data: { items: string[] }) => void;
+  onReasoning?: (data: { step: string; content: string; stepIndex: number }) => void;
   onCodeExecution?: (data: {
     executionId: string;
     stage: string;
@@ -43,6 +44,9 @@ function processSSELine(eventType: string, dataStr: string, callbacks: StreamCal
         break;
       case 'suggestions':
         callbacks.onSuggestions?.(data);
+        break;
+      case 'reasoning':
+        callbacks.onReasoning?.(data);
         break;
       case 'code_execution':
         console.log('[SSE] code_execution 事件到达:', data);

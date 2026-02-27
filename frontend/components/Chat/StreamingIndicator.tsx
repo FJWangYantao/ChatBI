@@ -11,6 +11,7 @@ const stageIcons: Record<string, string> = {
   llm_generation: "💬",
   clarification: "❓",
   planning: "📋",
+  reasoning: "🧠",
   code_execution: "⚙️",
   summary: "📝",
   suggestions: "💡",

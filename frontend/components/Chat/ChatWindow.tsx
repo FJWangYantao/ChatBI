@@ -2,6 +2,7 @@ import { Message, MessageTag } from "@/app/page";
 import { useState, useEffect, useRef } from "react";
 import LoadingSpinner from "./LoadingSpinner";
 import StreamingIndicator from "./StreamingIndicator";
+import ReasoningChain from "./ReasoningChain";
 import { AutoChart } from "@/components/Charts";
 import IntentBadge from "./IntentBadge";
 import ReactMarkdown from "react-markdown";
@@ -573,6 +574,14 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
                     message={message.streamingMessage}
                     progress={message.streamingProgress}
                     totalSteps={message.streamingTotalSteps}
+                  />
+                )}
+
+                {/* 推理过程展示 */}
+                {message.role === "assistant" && message.reasoningSteps && message.reasoningSteps.length > 0 && (
+                  <ReasoningChain
+                    steps={message.reasoningSteps}
+                    isStreaming={message.isStreaming && message.streamingStage === "reasoning"}
                   />
                 )}
 

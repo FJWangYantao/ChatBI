@@ -44,6 +44,42 @@ public class IntentRecognitionService {
     // 简单的本地缓存（可选）
     private final Map<String, IntentRecognitionResponse> cache = new HashMap<>();
 
+    // 一级分类中文映射（兜底用）
+    private static final Map<String, String> CATEGORY_CN_MAP = Map.of(
+            "DATA_QUERY", "数据查询",
+            "GENERAL_CHAT", "普通对话",
+            "HYBRID", "混合查询",
+            "DATA_OPERATION", "数据操作",
+            "DATA_ANALYSIS", "数据分析",
+            "DIAGNOSTIC_ANALYSIS", "归因分析"
+    );
+
+    // 二级分类中文映射（兜底用）
+    private static final Map<String, String> SUBTYPE_CN_MAP = Map.ofEntries(
+            Map.entry("AGGREGATION_SUM", "求和统计"),
+            Map.entry("AGGREGATION_COUNT", "计数统计"),
+            Map.entry("AGGREGATION_AVG", "平均值统计"),
+            Map.entry("AGGREGATION_MAX_MIN", "最大最小值"),
+            Map.entry("DETAIL_LIST", "明细列表"),
+            Map.entry("DETAIL_SINGLE", "单条明细"),
+            Map.entry("DETAIL_SEARCH", "明细搜索"),
+            Map.entry("TREND_ANALYSIS", "趋势分析"),
+            Map.entry("COMPARISON_ANALYSIS", "对比分析"),
+            Map.entry("RANKING_ANALYSIS", "排名分析"),
+            Map.entry("DISTRIBUTION_ANALYSIS", "分布分析"),
+            Map.entry("JOIN_QUERY", "关联查询"),
+            Map.entry("SUB_QUERY", "子查询"),
+            Map.entry("METADATA_QUERY", "元数据查询"),
+            Map.entry("ROOT_CAUSE_ANALYSIS", "根因分析"),
+            Map.entry("CREATE_OPERATION", "创建操作"),
+            Map.entry("UPDATE_OPERATION", "更新操作"),
+            Map.entry("DELETE_OPERATION", "删除操作"),
+            Map.entry("EXPORT_OPERATION", "导出操作"),
+            Map.entry("HYBRID_QUERY", "混合查询"),
+            Map.entry("CHAT", "普通对话"),
+            Map.entry("UNKNOWN_QUERY", "未知查询")
+    );
+
     public IntentRecognitionService() {
         this.restTemplate = new RestTemplate();
     }
@@ -76,14 +112,36 @@ public class IntentRecognitionService {
             long startTime = System.currentTimeMillis();
             logger.debug("Calling intent service: {} with text: {}", url, request.getText());
 
-            ResponseEntity<IntentRecognitionResponse> response = restTemplate.postForEntity(
+            @SuppressWarnings("unchecked")
+            ResponseEntity<Map<String, Object>> response = restTemplate.postForEntity(
                     url,
                     request,
-                    IntentRecognitionResponse.class
+                    (Class<Map<String, Object>>) (Class<?>) Map.class
             );
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                IntentRecognitionResponse result = response.getBody();
+                Map<String, Object> body = response.getBody();
+                logger.debug("Python 意图服务原始响应: {}", body);
+                IntentRecognitionResponse result = new IntentRecognitionResponse();
+                result.setText((String) body.get("text"));
+                result.setCategory((String) body.get("category"));
+                result.setCategoryCn((String) body.get("category_cn"));
+                result.setCategoryConfidence(toDouble(body.get("category_confidence")));
+                result.setSubtype((String) body.get("subtype"));
+                result.setSubtypeCn((String) body.get("subtype_cn"));
+                result.setSubtypeConfidence(toDouble(body.get("subtype_confidence")));
+
+                // 兜底：如果 Python 服务未返回中文名称，根据英文名称映射
+                if (result.getCategoryCn() == null || result.getCategoryCn().isEmpty()) {
+                    String fallbackCn = CATEGORY_CN_MAP.getOrDefault(result.getCategory(), result.getCategory());
+                    logger.warn("Python 意图服务未返回 category_cn，使用兜底映射: {} -> {}", result.getCategory(), fallbackCn);
+                    result.setCategoryCn(fallbackCn);
+                }
+                if (result.getSubtypeCn() == null || result.getSubtypeCn().isEmpty()) {
+                    String fallbackCn = SUBTYPE_CN_MAP.getOrDefault(result.getSubtype(), result.getSubtype());
+                    logger.warn("Python 意图服务未返回 subtype_cn，使用兜底映射: {} -> {}", result.getSubtype(), fallbackCn);
+                    result.setSubtypeCn(fallbackCn);
+                }
                 long duration = System.currentTimeMillis() - startTime;
 
                 // 结构化日志: 意图识别结果
@@ -198,6 +256,11 @@ public class IntentRecognitionService {
     public void clearCache() {
         cache.clear();
         logger.info("Intent recognition cache cleared");
+    }
+
+    private double toDouble(Object val) {
+        if (val instanceof Number) return ((Number) val).doubleValue();
+        return 0.0;
     }
 
     // Getters

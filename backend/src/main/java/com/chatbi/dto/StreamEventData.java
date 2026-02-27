@@ -60,4 +60,17 @@ public class StreamEventData {
         private String message;
         private String stage;
     }
+
+    /**
+     * 推理步骤事件
+     * event: reasoning
+     */
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ReasoningEventData {
+        private String step;       // "thought" 或 "observation"
+        private String content;    // 推理内容
+        private int stepIndex;     // 步骤序号（从0开始）
+    }
 }
