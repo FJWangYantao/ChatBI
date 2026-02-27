@@ -12,7 +12,7 @@ import MosaicLogo from "@/components/MosaicLogo";
 import { DataSource } from "@/types/datasource";
 import { CodeEntry } from "@/types/code-sidebar";
 import { getActiveDataSource } from "@/lib/api/datasource";
-import { streamChatMessage } from "@/lib/api/chatStream";
+import { streamChatMessage, PauseController } from "@/lib/api/chatStream";
 
 // 消息标签类型
 export interface MessageTag {
@@ -75,6 +75,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0); // 用于触发对话列表刷新
   const [isSending, setIsSending] = useState(false); // 消息发送状态
+  const [isPaused, setIsPaused] = useState(false); // 暂停状态
+  const pauseControllerRef = useRef<PauseController | null>(null);
 
   // 当前激活的数据源
   const [activeDataSource, setActiveDataSource] = useState<DataSource | null>(null);
@@ -172,7 +174,9 @@ export default function Home() {
     // 中止进行中的 SSE 流
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
+    pauseControllerRef.current = null;
     setIsSending(false);
+    setIsPaused(false);
 
     setCurrentConversationId(null);
     setMessages([
@@ -193,7 +197,9 @@ export default function Home() {
     // 中止进行中的 SSE 流
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
+    pauseControllerRef.current = null;
     setIsSending(false);
+    setIsPaused(false);
 
     setCurrentConversationId(conversationId);
     loadConversationHistory(conversationId);
@@ -236,10 +242,13 @@ export default function Home() {
 
     setMessages((prev) => [...prev, userMessage, assistantMessage]);
     setIsSending(true);
+    setIsPaused(false);
 
     // 创建 AbortController
     const controller = new AbortController();
     abortControllerRef.current = controller;
+    const pauseCtrl = new PauseController();
+    pauseControllerRef.current = pauseCtrl;
     const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 分钟超时
 
     // 用于累积 tags 的辅助引用
@@ -559,7 +568,8 @@ export default function Home() {
           },
         },
         controller.signal,
-        agentType
+        agentType,
+        pauseCtrl
       );
     } catch (error: any) {
       console.error('流式聊天失败:', error);
@@ -584,8 +594,31 @@ export default function Home() {
     } finally {
       clearTimeout(timeoutId);
       abortControllerRef.current = null;
+      pauseControllerRef.current = null;
       setIsSending(false);
+      setIsPaused(false);
     }
+  };
+
+  // 暂停流式输出
+  const handlePause = () => {
+    pauseControllerRef.current?.pause();
+    setIsPaused(true);
+  };
+
+  // 恢复流式输出
+  const handleResume = () => {
+    pauseControllerRef.current?.resume();
+    setIsPaused(false);
+  };
+
+  // 停止流式输出
+  const handleStop = () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    pauseControllerRef.current = null;
+    setIsSending(false);
+    setIsPaused(false);
   };
 
   // 初始加载欢迎消息
@@ -726,10 +759,18 @@ export default function Home() {
             <ChatWindow
               messages={messages}
               isSending={isSending}
+              isPaused={isPaused}
               onUpdateMessage={handleUpdateMessage}
               onSendMessage={handleSendMessage}
             />
-            <InputBox onSend={handleSendMessage} />
+            <InputBox
+              onSend={handleSendMessage}
+              onStop={handleStop}
+              onPause={handlePause}
+              onResume={handleResume}
+              isSending={isSending}
+              isPaused={isPaused}
+            />
           </div>
 
           {/* 代码侧栏 */}

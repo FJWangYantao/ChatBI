@@ -8,6 +8,7 @@ interface StepTimelineProps {
   currentStage?: string;
   currentMessage?: string;
   isStreaming?: boolean;
+  isPaused?: boolean;
 }
 
 const stepIcons: Record<string, string> = {
@@ -86,6 +87,7 @@ export default function StepTimeline({
   currentStage,
   currentMessage,
   isStreaming,
+  isPaused,
 }: StepTimelineProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
@@ -94,19 +96,37 @@ export default function StepTimeline({
   // 当前步骤的实时计时器
   const [elapsed, setElapsed] = useState(0);
   const stageStartRef = useRef<number>(0);
+  const pausedElapsedRef = useRef<number>(0);
+  const prevStageRef = useRef<string | undefined>();
 
   useEffect(() => {
     if (!isStreaming || !currentStage) {
       setElapsed(0);
+      pausedElapsedRef.current = 0;
+      prevStageRef.current = undefined;
       return;
     }
-    stageStartRef.current = Date.now();
-    setElapsed(0);
+    // 阶段切换时重置计时
+    if (currentStage !== prevStageRef.current) {
+      prevStageRef.current = currentStage;
+      stageStartRef.current = Date.now();
+      pausedElapsedRef.current = 0;
+      setElapsed(0);
+    }
+    if (isPaused) {
+      return; // 暂停时不启动 interval，elapsed 冻结
+    }
+    // 恢复或新启动：用已累积的暂停时间修正起点
+    stageStartRef.current = Date.now() - pausedElapsedRef.current;
     const timer = setInterval(() => {
       setElapsed(Date.now() - stageStartRef.current);
     }, 1000);
-    return () => clearInterval(timer);
-  }, [currentStage, isStreaming]);
+    return () => {
+      // 清理前保存已走过的时间，供恢复时使用
+      pausedElapsedRef.current = Date.now() - stageStartRef.current;
+      clearInterval(timer);
+    };
+  }, [currentStage, isStreaming, isPaused]);
 
   // 流式结束后 1s 自动折叠
   useEffect(() => {

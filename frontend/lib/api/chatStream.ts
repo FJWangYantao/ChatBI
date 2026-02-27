@@ -3,6 +3,30 @@
  * 使用 fetch + ReadableStream 解析 SSE（支持 POST 请求）
  */
 
+// 暂停/恢复控制器，用于控制 SSE 读取循环
+export class PauseController {
+  private _paused = false;
+  private _resolve: (() => void) | null = null;
+
+  get paused() { return this._paused; }
+
+  pause() {
+    this._paused = true;
+  }
+
+  resume() {
+    this._paused = false;
+    this._resolve?.();
+    this._resolve = null;
+  }
+
+  // 在读取循环中调用，暂停时阻塞
+  async waitIfPaused(): Promise<void> {
+    if (!this._paused) return;
+    return new Promise(resolve => { this._resolve = resolve; });
+  }
+}
+
 export interface StreamCallbacks {
   onStatus?: (data: { stage: string; message: string; progress: number; totalSteps: number }) => void;
   onIntent?: (data: { category: string; categoryCn: string; categoryConfidence: number; subtype: string; subtypeConfidence: number; subtypeCn: string }) => void;
@@ -88,7 +112,8 @@ export async function streamChatMessage(
   conversationId: string | null,
   callbacks: StreamCallbacks,
   signal?: AbortSignal,
-  agentType?: string
+  agentType?: string,
+  pauseController?: PauseController
 ): Promise<void> {
   const response = await fetch('/api/chat/stream', {
     method: 'POST',
@@ -112,6 +137,7 @@ export async function streamChatMessage(
 
   try {
     while (true) {
+      await pauseController?.waitIfPaused();
       const { done, value } = await reader.read();
       if (done) break;
 

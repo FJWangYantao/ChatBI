@@ -13,6 +13,7 @@ import AnalysisResultRenderer from "./AnalysisResultRenderer";
 interface ChatWindowProps {
   messages: Message[];
   isSending?: boolean;
+  isPaused?: boolean;
   onUpdateMessage?: (messageId: string, newTags: MessageTag[]) => void;
   onSendMessage?: (content: string) => void;
 }
@@ -551,7 +552,7 @@ function renderSuggestions(
   );
 }
 
-export default function ChatWindow({ messages, isSending, onUpdateMessage, onSendMessage }: ChatWindowProps) {
+export default function ChatWindow({ messages, isSending, isPaused, onUpdateMessage, onSendMessage }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef(0);
 
@@ -617,6 +618,7 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
                     currentStage={message.streamingStage}
                     currentMessage={message.streamingMessage}
                     isStreaming={message.isStreaming}
+                    isPaused={isPaused}
                   />
                 )}
 
