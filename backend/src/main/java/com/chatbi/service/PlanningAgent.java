@@ -3,7 +3,10 @@ package com.chatbi.service;
 import com.chatbi.config.ModelOptionsProvider;
 import com.chatbi.dto.NERResponse;
 import com.chatbi.dto.StreamingTagEvent;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.messages.*;
@@ -14,9 +17,17 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.model.function.FunctionCallback;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -36,6 +47,13 @@ public class PlanningAgent {
     private final FunctionCallback queryDatabaseFunction;
     private final Map<String, FunctionCallback> toolMap;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final HttpClient httpClient = HttpClient.newHttpClient();
+
+    @Value("${spring.ai.openai.api-key}")
+    private String apiKey;
+
+    @Value("${spring.ai.openai.base-url:https://api.deepseek.com}")
+    private String apiBaseUrl;
 
     public PlanningAgent(ChatClient.Builder chatClientBuilder,
                          ChatModel chatModel,
@@ -102,8 +120,8 @@ public class PlanningAgent {
             for (int round = 0; round < maxRounds; round++) {
                 log.info("[PlanningAgent] Round {} starting", round + 1);
 
-                // 流式调用 LLM
-                RoundResult result = streamOneRound(messages, options, onTextDelta);
+                // 流式调用 LLM（同时拦截 execute_code 的代码参数进行流式发送）
+                RoundResult result = streamOneRound(messages, options, onTextDelta, onTagEvent);
 
                 if (!result.hasToolCalls) {
                     // 最终文本回复，已通过 onTextDelta 实时转发
@@ -153,66 +171,313 @@ public class PlanningAgent {
     }
 
     /**
-     * 单轮流式 LLM 调用：收集文本和工具调用
-     * 文本 token 实时通过 onTextDelta 转发
+     * 从工具调用的 JSON 参数流中实时提取 "code" 字段内容。
+     * 处理 JSON 转义序列（\n, \t, \\, \" 等），逐块返回解码后的代码文本。
+     */
+    private static class ToolArgCodeExtractor {
+        private final StringBuilder args = new StringBuilder();
+        private int scanPos = 0;
+        private boolean inCodeValue = false;
+        private boolean done = false;
+        private boolean prevBackslash = false;
+
+        /**
+         * 喂入新的参数 chunk，返回解码后的代码增量（无新内容则返回 null）
+         */
+        String feed(String chunk) {
+            if (done || chunk == null || chunk.isEmpty()) return null;
+            args.append(chunk);
+
+            String all = args.toString();
+            StringBuilder delta = new StringBuilder();
+
+            while (scanPos < all.length()) {
+                char c = all.charAt(scanPos);
+
+                if (!inCodeValue) {
+                    // 查找 "code" : " 模式
+                    String rest = all.substring(scanPos);
+                    int keyIdx = rest.indexOf("\"code\"");
+                    if (keyIdx < 0) {
+                        // 还没找到 key，跳到末尾附近（保留几个字符防止截断匹配）
+                        scanPos = Math.max(scanPos, all.length() - 10);
+                        break;
+                    }
+                    // 找到 "code"，定位冒号和开引号
+                    int afterKey = scanPos + keyIdx + 6;
+                    int colonIdx = -1;
+                    for (int i = afterKey; i < all.length(); i++) {
+                        char ch = all.charAt(i);
+                        if (ch == ':') { colonIdx = i; break; }
+                        if (ch != ' ' && ch != '\t') break;
+                    }
+                    if (colonIdx < 0) break;
+
+                    int quoteIdx = -1;
+                    for (int i = colonIdx + 1; i < all.length(); i++) {
+                        char ch = all.charAt(i);
+                        if (ch == '"') { quoteIdx = i; break; }
+                        if (ch != ' ' && ch != '\t') break;
+                    }
+                    if (quoteIdx < 0) break;
+
+                    inCodeValue = true;
+                    scanPos = quoteIdx + 1;
+                    prevBackslash = false;
+                    continue;
+                }
+
+                // 在 code 值内部 — 提取并解码内容
+                if (prevBackslash) {
+                    prevBackslash = false;
+                    switch (c) {
+                        case '"':  delta.append('"'); break;
+                        case '\\': delta.append('\\'); break;
+                        case 'n':  delta.append('\n'); break;
+                        case 't':  delta.append('\t'); break;
+                        case 'r':  delta.append('\r'); break;
+                        case '/':  delta.append('/'); break;
+                        default:   delta.append('\\').append(c); break;
+                    }
+                    scanPos++;
+                } else if (c == '\\') {
+                    prevBackslash = true;
+                    scanPos++;
+                    if (scanPos >= all.length()) break; // 需要更多数据
+                } else if (c == '"') {
+                    done = true;
+                    scanPos++;
+                    break;
+                } else {
+                    delta.append(c);
+                    scanPos++;
+                }
+            }
+
+            return delta.length() > 0 ? delta.toString() : null;
+        }
+
+        boolean isDone() { return done; }
+    }
+
+    /**
+     * 从完整的工具调用 JSON 参数中提取 code 字段值
+     */
+    private String extractCodeFromArgs(String argsJson) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> args = objectMapper.readValue(argsJson, Map.class);
+            Object code = args.get("code");
+            return code != null ? code.toString() : null;
+        } catch (Exception e) {
+            log.debug("解析工具参数失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 将 Spring AI 消息列表转换为 OpenAI API 格式的 JSON 数组
+     */
+    private ArrayNode convertMessagesToOpenAI(List<Message> messages) {
+        ArrayNode arr = objectMapper.createArrayNode();
+        for (Message msg : messages) {
+            if (msg instanceof UserMessage um) {
+                arr.add(objectMapper.createObjectNode()
+                        .put("role", "user")
+                        .put("content", um.getContent()));
+            } else if (msg instanceof AssistantMessage am) {
+                ObjectNode node = objectMapper.createObjectNode()
+                        .put("role", "assistant");
+                if (am.getContent() != null && !am.getContent().isEmpty()) {
+                    node.put("content", am.getContent());
+                }
+                if (am.hasToolCalls()) {
+                    ArrayNode tcArr = objectMapper.createArrayNode();
+                    for (AssistantMessage.ToolCall tc : am.getToolCalls()) {
+                        tcArr.add(objectMapper.createObjectNode()
+                                .put("id", tc.id())
+                                .put("type", "function")
+                                .set("function", objectMapper.createObjectNode()
+                                        .put("name", tc.name())
+                                        .put("arguments", tc.arguments())));
+                    }
+                    node.set("tool_calls", tcArr);
+                }
+                arr.add(node);
+            } else if (msg instanceof ToolResponseMessage trm) {
+                for (ToolResponseMessage.ToolResponse tr : trm.getResponses()) {
+                    arr.add(objectMapper.createObjectNode()
+                            .put("role", "tool")
+                            .put("tool_call_id", tr.id())
+                            .put("content", tr.responseData()));
+                }
+            }
+        }
+        return arr;
+    }
+
+    /**
+     * 从 FunctionCallback 列表构建 OpenAI tools 数组
+     */
+    private ArrayNode buildToolsArray() {
+        ArrayNode tools = objectMapper.createArrayNode();
+        for (FunctionCallback fc : List.of(queryDatabaseFunction, executeCodeFunction,
+                validateCodeFunction, sandboxInfoFunction)) {
+            try {
+                ObjectNode fn = objectMapper.createObjectNode()
+                        .put("name", fc.getName())
+                        .put("description", fc.getDescription());
+                JsonNode schema = objectMapper.readTree(fc.getInputTypeSchema());
+                fn.set("parameters", schema);
+
+                tools.add(objectMapper.createObjectNode()
+                        .put("type", "function")
+                        .set("function", fn));
+            } catch (Exception e) {
+                log.warn("构建工具定义失败: {}", fc.getName(), e);
+            }
+        }
+        return tools;
+    }
+
+    /**
+     * 单轮流式 LLM 调用：绕过 Spring AI，直接用 HttpClient 调 OpenAI 兼容 API。
+     * 这样可以拿到逐 token 的工具调用参数，实现 Python 代码的真正流式输出。
      */
     private RoundResult streamOneRound(
             List<Message> messages,
             OpenAiChatOptions options,
-            Consumer<String> onTextDelta) {
+            Consumer<String> onTextDelta,
+            Consumer<StreamingTagEvent> onTagEvent) {
 
-        Prompt prompt = new Prompt(messages, options);
+        String model = options.getModel() != null ? options.getModel() : "deepseek-chat";
+        double temperature = options.getTemperature() != null ? options.getTemperature() : 0.1;
+
+        try {
+            // 构建请求体
+            ObjectNode body = objectMapper.createObjectNode();
+            body.put("model", model);
+            body.put("temperature", temperature);
+            body.put("stream", true);
+            body.set("messages", convertMessagesToOpenAI(messages));
+            body.set("tools", buildToolsArray());
+
+            String url = apiBaseUrl.replaceAll("/+$", "") + "/chat/completions";
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + apiKey)
+                    .POST(HttpRequest.BodyPublishers.ofString(
+                            objectMapper.writeValueAsString(body), StandardCharsets.UTF_8))
+                    .build();
+
+            HttpResponse<java.io.InputStream> response = httpClient.send(
+                    request, HttpResponse.BodyHandlers.ofInputStream());
+
+            if (response.statusCode() != 200) {
+                String errBody = new String(response.body().readAllBytes(), StandardCharsets.UTF_8);
+                log.error("[PlanningAgent] Raw API error {}: {}", response.statusCode(), errBody);
+                throw new RuntimeException("API returned " + response.statusCode());
+            }
+
+            return parseSSEStream(response.body(), onTextDelta, onTagEvent);
+
+        } catch (Exception e) {
+            log.warn("[PlanningAgent] Raw streaming failed, falling back to Spring AI: {}", e.getMessage());
+            return fallbackStreamRound(messages, options, onTextDelta);
+        }
+    }
+
+    /**
+     * 解析 SSE 流，提取文本 delta 和工具调用参数（逐 token）
+     */
+    private RoundResult parseSSEStream(
+            java.io.InputStream inputStream,
+            Consumer<String> onTextDelta,
+            Consumer<StreamingTagEvent> onTagEvent) throws Exception {
+
         StringBuilder textBuffer = new StringBuilder();
-
-        // 工具调用累积器：toolCallIndex -> {id, name, arguments}
+        // 工具调用累积：index -> {id, name, argsBuilder}
         Map<Integer, String> tcIds = new HashMap<>();
         Map<Integer, String> tcNames = new HashMap<>();
         Map<Integer, StringBuilder> tcArgs = new HashMap<>();
+        // 代码流式提取
+        Map<Integer, ToolArgCodeExtractor> codeExtractors = new HashMap<>();
+        Map<Integer, String> codeTagIds = new HashMap<>();
+        Map<Integer, Boolean> tagStartSent = new HashMap<>();
 
-        try {
-            Flux<ChatResponse> flux = chatModel.stream(prompt);
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (!line.startsWith("data:")) continue;
+                String data = line.substring(5).trim();
+                if (data.equals("[DONE]")) break;
+                if (data.isEmpty()) continue;
 
-            flux.doOnNext(response -> {
-                if (response == null || response.getResult() == null) return;
-                Generation gen = response.getResult();
-                AssistantMessage msg = gen.getOutput();
-                if (msg == null) return;
+                JsonNode chunk = objectMapper.readTree(data);
+                JsonNode choices = chunk.get("choices");
+                if (choices == null || choices.isEmpty()) continue;
+                JsonNode delta = choices.get(0).get("delta");
+                if (delta == null) continue;
 
-                // 1. 文本内容 → 实时转发
-                String text = msg.getContent();
-                if (text != null && !text.isEmpty()) {
-                    textBuffer.append(text);
-                    try {
-                        onTextDelta.accept(text);
-                    } catch (Exception e) {
-                        log.debug("文本回调失败: {}", e.getMessage());
+                // 文本内容
+                JsonNode contentNode = delta.get("content");
+                if (contentNode != null && !contentNode.isNull()) {
+                    String text = contentNode.asText();
+                    if (!text.isEmpty()) {
+                        textBuffer.append(text);
+                        try { onTextDelta.accept(text); }
+                        catch (Exception e) { log.debug("文本回调失败: {}", e.getMessage()); }
                     }
                 }
 
-                // 2. 工具调用 → 累积
-                if (msg.hasToolCalls()) {
-                    for (int i = 0; i < msg.getToolCalls().size(); i++) {
-                        AssistantMessage.ToolCall tc = msg.getToolCalls().get(i);
-                        if (tc.id() != null && !tc.id().isEmpty()) {
-                            tcIds.put(i, tc.id());
+                // 工具调用 delta
+                JsonNode toolCallsNode = delta.get("tool_calls");
+                if (toolCallsNode != null && toolCallsNode.isArray()) {
+                    for (JsonNode tcNode : toolCallsNode) {
+                        int idx = tcNode.has("index") ? tcNode.get("index").asInt() : 0;
+
+                        if (tcNode.has("id")) {
+                            tcIds.put(idx, tcNode.get("id").asText());
                         }
-                        if (tc.name() != null && !tc.name().isEmpty()) {
-                            tcNames.put(i, tc.name());
-                        }
-                        if (tc.arguments() != null && !tc.arguments().isEmpty()) {
-                            tcArgs.computeIfAbsent(i, k -> new StringBuilder())
-                                    .append(tc.arguments());
+                        JsonNode fnNode = tcNode.get("function");
+                        if (fnNode != null) {
+                            if (fnNode.has("name")) {
+                                tcNames.put(idx, fnNode.get("name").asText());
+                            }
+                            if (fnNode.has("arguments")) {
+                                String argDelta = fnNode.get("arguments").asText();
+                                if (!argDelta.isEmpty()) {
+                                    tcArgs.computeIfAbsent(idx, k -> new StringBuilder())
+                                            .append(argDelta);
+                                    // 拦截 execute_code，流式提取 code 字段
+                                    handleCodeStreaming(idx, argDelta, tcNames,
+                                            codeExtractors, codeTagIds, tagStartSent, onTagEvent);
+                                }
+                            }
                         }
                     }
                 }
-            }).blockLast();
-        } catch (Exception e) {
-            log.error("[PlanningAgent] Stream round failed: {}", e.getMessage(), e);
-            // 如果流式失败，降级为同步调用
-            return fallbackCallRound(messages, options, onTextDelta);
+            }
         }
 
-        // 组装完整的工具调用列表
+        // 发送 tag_end
+        for (Map.Entry<Integer, String> entry : codeTagIds.entrySet()) {
+            int idx = entry.getKey();
+            String tagId = entry.getValue();
+            String argsJson = tcArgs.containsKey(idx) ? tcArgs.get(idx).toString() : "";
+            String fullCode = extractCodeFromArgs(argsJson);
+            if (fullCode != null && onTagEvent != null) {
+                try {
+                    onTagEvent.accept(StreamingTagEvent.end(tagId, "code", "Python 代码", fullCode));
+                } catch (Exception e) {
+                    log.debug("tag_end 回调失败: {}", e.getMessage());
+                }
+            }
+        }
+
+        // 组装工具调用列表
         List<AssistantMessage.ToolCall> toolCalls = new ArrayList<>();
         for (Integer idx : tcIds.keySet()) {
             String id = tcIds.get(idx);
@@ -223,6 +488,92 @@ public class PlanningAgent {
             }
         }
 
+        return new RoundResult(textBuffer.toString(), toolCalls);
+    }
+
+    /**
+     * 处理 execute_code 工具的代码流式输出
+     */
+    private void handleCodeStreaming(
+            int idx, String argDelta,
+            Map<Integer, String> tcNames,
+            Map<Integer, ToolArgCodeExtractor> codeExtractors,
+            Map<Integer, String> codeTagIds,
+            Map<Integer, Boolean> tagStartSent,
+            Consumer<StreamingTagEvent> onTagEvent) {
+
+        if (!"execute_code".equals(tcNames.get(idx)) || onTagEvent == null) return;
+
+        ToolArgCodeExtractor extractor = codeExtractors
+                .computeIfAbsent(idx, k -> new ToolArgCodeExtractor());
+        String codeDelta = extractor.feed(argDelta);
+        if (codeDelta == null) return;
+
+        String tagId = codeTagIds.computeIfAbsent(idx,
+                k -> "code-" + UUID.randomUUID().toString().substring(0, 8));
+        if (!tagStartSent.containsKey(idx)) {
+            tagStartSent.put(idx, true);
+            try {
+                onTagEvent.accept(StreamingTagEvent.start(tagId, "code", "Python 代码"));
+            } catch (Exception e) {
+                log.debug("tag_start 失败: {}", e.getMessage());
+            }
+        }
+        try {
+            onTagEvent.accept(StreamingTagEvent.delta(tagId, codeDelta));
+        } catch (Exception e) {
+            log.debug("tag_delta 失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 降级：使用 Spring AI 的 chatModel.stream()（原始 HTTP 流失败时）
+     */
+    private RoundResult fallbackStreamRound(
+            List<Message> messages,
+            OpenAiChatOptions options,
+            Consumer<String> onTextDelta) {
+
+        log.info("[PlanningAgent] Using Spring AI stream fallback");
+        Prompt prompt = new Prompt(messages, options);
+        StringBuilder textBuffer = new StringBuilder();
+        Map<Integer, String> tcIds = new HashMap<>();
+        Map<Integer, String> tcNames = new HashMap<>();
+        Map<Integer, StringBuilder> tcArgs = new HashMap<>();
+
+        try {
+            chatModel.stream(prompt).doOnNext(response -> {
+                if (response == null || response.getResult() == null) return;
+                AssistantMessage msg = response.getResult().getOutput();
+                if (msg == null) return;
+                String text = msg.getContent();
+                if (text != null && !text.isEmpty()) {
+                    textBuffer.append(text);
+                    try { onTextDelta.accept(text); }
+                    catch (Exception e) { /* ignore */ }
+                }
+                if (msg.hasToolCalls()) {
+                    for (int i = 0; i < msg.getToolCalls().size(); i++) {
+                        AssistantMessage.ToolCall tc = msg.getToolCalls().get(i);
+                        if (tc.id() != null && !tc.id().isEmpty()) tcIds.put(i, tc.id());
+                        if (tc.name() != null && !tc.name().isEmpty()) tcNames.put(i, tc.name());
+                        if (tc.arguments() != null && !tc.arguments().isEmpty())
+                            tcArgs.computeIfAbsent(i, k -> new StringBuilder()).append(tc.arguments());
+                    }
+                }
+            }).blockLast();
+        } catch (Exception e) {
+            log.error("[PlanningAgent] Spring AI stream also failed: {}", e.getMessage());
+            return fallbackCallRound(messages, options, onTextDelta);
+        }
+
+        List<AssistantMessage.ToolCall> toolCalls = new ArrayList<>();
+        for (Integer idx : tcIds.keySet()) {
+            String id = tcIds.get(idx);
+            String name = tcNames.getOrDefault(idx, "");
+            String args = tcArgs.containsKey(idx) ? tcArgs.get(idx).toString() : "";
+            if (!name.isEmpty()) toolCalls.add(new AssistantMessage.ToolCall(id, "function", name, args));
+        }
         return new RoundResult(textBuffer.toString(), toolCalls);
     }
 

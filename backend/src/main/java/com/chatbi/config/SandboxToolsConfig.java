@@ -46,7 +46,7 @@ public class SandboxToolsConfig {
      * 返回短 data_ref_id 给 LLM；execute_code 通过 data_ref_id 取回数据。
      * 避免 LLM 在输出中重复生成巨大的 JSON 字符串导致 token 溢出。
      */
-    static final ConcurrentHashMap<String, DataEntry> DATA_STORE = new ConcurrentHashMap<>();
+    public static final ConcurrentHashMap<String, DataEntry> DATA_STORE = new ConcurrentHashMap<>();
 
     /**
      * 定时清理过期数据（每10分钟扫描，删除30分钟前的条目）

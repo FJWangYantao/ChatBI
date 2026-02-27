@@ -5,13 +5,10 @@ import { useState, KeyboardEvent } from "react";
 interface InputBoxProps {
   onSend: (message: string, agentType?: string) => void;
   onStop?: () => void;
-  onPause?: () => void;
-  onResume?: () => void;
   isSending?: boolean;
-  isPaused?: boolean;
 }
 
-export default function InputBox({ onSend, onStop, onPause, onResume, isSending, isPaused }: InputBoxProps) {
+export default function InputBox({ onSend, onStop, isSending }: InputBoxProps) {
   const [input, setInput] = useState("");
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null);
 
@@ -115,40 +112,15 @@ export default function InputBox({ onSend, onStop, onPause, onResume, isSending,
             style={{ minHeight: "40px", maxHeight: "200px" }}
           />
           {isSending ? (
-            <div className="flex items-center gap-2">
-              {/* 暂停/恢复按钮 */}
-              {isPaused ? (
-                <button
-                  onClick={onResume}
-                  className="flex h-10 w-10 items-center justify-center bg-green-600 text-white hover:bg-green-700 transition-colors"
-                  title="继续"
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </button>
-              ) : (
-                <button
-                  onClick={onPause}
-                  className="flex h-10 w-10 items-center justify-center bg-yellow-500 text-white hover:bg-yellow-600 transition-colors"
-                  title="暂停"
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-                  </svg>
-                </button>
-              )}
-              {/* 停止按钮 */}
-              <button
-                onClick={onStop}
-                className="flex h-10 w-10 items-center justify-center bg-red-500 text-white hover:bg-red-600 transition-colors"
-                title="停止"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M6 6h12v12H6z" />
-                </svg>
-              </button>
-            </div>
+            <button
+              onClick={onStop}
+              className="flex h-10 w-10 items-center justify-center bg-red-500 text-white hover:bg-red-600 transition-colors"
+              title="停止"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 6h12v12H6z" />
+              </svg>
+            </button>
           ) : (
             <button
               onClick={handleSend}
