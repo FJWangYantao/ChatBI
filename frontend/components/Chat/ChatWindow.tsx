@@ -554,14 +554,36 @@ function renderSuggestions(
 export default function ChatWindow({ messages, isSending, onUpdateMessage, onSendMessage }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef(0);
+  const isNearBottomRef = useRef(true);
 
-  // 自动滚动到底部
+  // 监听滚动事件，判断用户是否在底部附近
   useEffect(() => {
-    // 当消息数量增加、发送状态变化、或流式内容更新时滚动到底部
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const handleScroll = () => {
+      const threshold = 80; // 距底部 80px 以内视为"在底部"
+      isNearBottomRef.current =
+        el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    };
+
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // 自动滚动到底部（仅在用户处于底部附近时）
+  useEffect(() => {
+    const hasNewMessage = messages.length > prevMessagesLengthRef.current;
     const lastMessage = messages[messages.length - 1];
     const isStreaming = lastMessage?.isStreaming;
+    // 用户发送新消息时，强制滚到底部
+    const userJustSent = hasNewMessage && lastMessage?.role === "user";
 
-    if (messages.length > prevMessagesLengthRef.current || isSending || isStreaming) {
+    if (userJustSent) {
+      isNearBottomRef.current = true;
+    }
+
+    if (isNearBottomRef.current && (hasNewMessage || isSending || isStreaming)) {
       scrollRef.current?.scrollTo({
         top: scrollRef.current.scrollHeight,
         behavior: "smooth"
