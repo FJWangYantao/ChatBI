@@ -22,6 +22,29 @@ public class QueryHistoryRepository {
     public QueryHistoryRepository(
             @Qualifier("conversationJdbcTemplate") JdbcTemplate conversationJdbcTemplate) {
         this.conversationJdbcTemplate = conversationJdbcTemplate;
+        initTable();
+    }
+
+    /**
+     * 初始化查询历史表
+     */
+    private void initTable() {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS query_history (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                message_id VARCHAR(100) COMMENT '关联消息ID',
+                conversation_id VARCHAR(100) COMMENT '关联对话ID',
+                sql_text TEXT COMMENT 'SQL语句',
+                execution_time BIGINT DEFAULT 0 COMMENT '执行时间(ms)',
+                rows_affected INT DEFAULT 0 COMMENT '影响行数',
+                success BOOLEAN DEFAULT TRUE COMMENT '是否成功',
+                error_message TEXT COMMENT '错误信息',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                INDEX idx_message_id (message_id),
+                INDEX idx_conversation_id (conversation_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='查询历史表'
+            """;
+        conversationJdbcTemplate.execute(sql);
     }
 
     private final RowMapper<QueryHistory> rowMapper = new RowMapper<QueryHistory>() {

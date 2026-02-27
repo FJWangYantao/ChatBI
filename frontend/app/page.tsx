@@ -59,6 +59,7 @@ export default function Home() {
   const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0); // 用于触发对话列表刷新
@@ -71,9 +72,15 @@ export default function Home() {
   const [codeExecutions, setCodeExecutions] = useState<CodeExecution[]>([]);
   const [codePanelOpen, setCodePanelOpen] = useState(false);
 
+  // 同步 conversationId 到 ref，避免闭包捕获过期值
+  useEffect(() => {
+    conversationIdRef.current = currentConversationId;
+  }, [currentConversationId]);
+
   // 加载对话历史
   const loadConversationHistory = async (conversationId: string) => {
     setLoading(true);
+    setMessages([]); // 立即清空旧内容，避免显示上一个对话
     try {
       const response = await fetch(`/api/conversations/${conversationId}`);
       if (response.ok) {
@@ -86,9 +93,23 @@ export default function Home() {
           tags: msg.tags || undefined,
         }));
         setMessages(historyMessages);
+      } else {
+        // HTTP 错误时显示提示
+        setMessages([{
+          id: "error",
+          role: "assistant",
+          content: `加载对话历史失败（HTTP ${response.status}），请稍后重试。`,
+          timestamp: new Date(),
+        }]);
       }
     } catch (error) {
       console.error('加载对话历史失败:', error);
+      setMessages([{
+        id: "error",
+        role: "assistant",
+        content: "网络错误，无法加载对话历史。请检查后端服务是否正常运行。",
+        timestamp: new Date(),
+      }]);
     } finally {
       setLoading(false);
     }
@@ -96,6 +117,11 @@ export default function Home() {
 
   // 新建对话
   const handleNewConversation = () => {
+    // 中止进行中的 SSE 流
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setIsSending(false);
+
     setCurrentConversationId(null);
     setMessages([
       {
@@ -112,6 +138,11 @@ export default function Home() {
 
   // 选择对话
   const handleSelectConversation = (conversationId: string) => {
+    // 中止进行中的 SSE 流
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setIsSending(false);
+
     setCurrentConversationId(conversationId);
     loadConversationHistory(conversationId);
     setSidebarOpen(false);
@@ -165,7 +196,7 @@ export default function Home() {
     try {
       await streamChatMessage(
         content,
-        currentConversationId,
+        conversationIdRef.current,
         {
           onStatus: (data) => {
             setMessages((prev) =>
@@ -290,8 +321,9 @@ export default function Home() {
           },
 
           onDone: (data) => {
-            // 更新 conversationId
-            if (data.conversationId && data.conversationId !== currentConversationId) {
+            // 更新 conversationId（先更新 ref 再更新 state）
+            if (data.conversationId && data.conversationId !== conversationIdRef.current) {
+              conversationIdRef.current = data.conversationId;
               setCurrentConversationId(data.conversationId);
             }
 

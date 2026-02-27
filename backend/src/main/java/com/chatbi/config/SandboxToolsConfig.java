@@ -11,6 +11,7 @@ import org.springframework.ai.model.function.FunctionCallback;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.*;
@@ -20,16 +21,85 @@ import java.util.function.Function;
 
 @Slf4j
 @Configuration
+@EnableScheduling
 public class SandboxToolsConfig {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    /**
+     * 数据条目包装类，包含数据和创建时间
+     */
+    public static class DataEntry {
+        public final String data;
+        public final long createdAt;
+
+        public DataEntry(String data) {
+            this.data = data;
+            this.createdAt = System.currentTimeMillis();
+        }
+    }
 
     /**
      * 服务端数据引用存储。query_database 将完整 JSON 存入此 Map，
      * 返回短 data_ref_id 给 LLM；execute_code 通过 data_ref_id 取回数据。
      * 避免 LLM 在输出中重复生成巨大的 JSON 字符串导致 token 溢出。
      */
-    static final ConcurrentHashMap<String, String> DATA_STORE = new ConcurrentHashMap<>();
+    static final ConcurrentHashMap<String, DataEntry> DATA_STORE = new ConcurrentHashMap<>();
+
+    /**
+     * 定时清理过期数据（每10分钟扫描，删除30分钟前的条目）
+     */
+    @org.springframework.scheduling.annotation.Scheduled(fixedRate = 600_000)
+    public void cleanExpiredData() {
+        long now = System.currentTimeMillis();
+        long expireMs = 30 * 60 * 1000L; // 30分钟
+        int removed = 0;
+        var it = DATA_STORE.entrySet().iterator();
+        while (it.hasNext()) {
+            var entry = it.next();
+            if (now - entry.getValue().createdAt > expireMs) {
+                it.remove();
+                removed++;
+            }
+        }
+        if (removed > 0) {
+            log.info("[DATA_STORE] 清理过期数据: 删除 {} 条，剩余 {} 条", removed, DATA_STORE.size());
+        }
+    }
+
+    /**
+     * 分页获取存储的数据
+     */
+    public static Map<String, Object> getPagedData(String refId, int offset, int limit) {
+        DataEntry entry = DATA_STORE.get(refId);
+        Map<String, Object> result = new LinkedHashMap<>();
+        if (entry == null) {
+            result.put("success", false);
+            result.put("error", "数据引用不存在或已过期");
+            return result;
+        }
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            List<Map<String, Object>> allRows = mapper.readValue(entry.data,
+                    mapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+            int totalRows = allRows.size();
+            int safeOffset = Math.max(0, Math.min(offset, totalRows));
+            int safeLimit = Math.max(1, Math.min(limit, 500));
+            int end = Math.min(safeOffset + safeLimit, totalRows);
+            List<Map<String, Object>> pageRows = allRows.subList(safeOffset, end);
+
+            result.put("success", true);
+            result.put("rows", pageRows);
+            result.put("totalRows", totalRows);
+            result.put("offset", safeOffset);
+            result.put("limit", safeLimit);
+            return result;
+        } catch (Exception e) {
+            result.put("success", false);
+            result.put("error", "数据解析失败: " + e.getMessage());
+            return result;
+        }
+    }
 
     /**
      * 安全地将 Map 中的值转为 String。
@@ -74,14 +144,15 @@ public class SandboxToolsConfig {
 
                     // 优先使用 data_ref_id 从服务端取数据，避免 LLM 传递巨大 JSON
                     if ((dataJson == null || dataJson.isEmpty()) && dataRefId != null && !dataRefId.isEmpty()) {
-                        dataJson = DATA_STORE.get(dataRefId);
-                        if (dataJson == null) {
+                        DataEntry entry = DATA_STORE.get(dataRefId);
+                        if (entry == null) {
                             log.warn("[SandboxTool] data_ref_id={} not found in DATA_STORE", dataRefId);
                             Map<String, Object> err = new LinkedHashMap<>();
                             err.put("success", false);
                             err.put("error_hint", "data_ref_id 无效或已过期，请重新调用 query_database 获取数据");
                             return err;
                         }
+                        dataJson = entry.data;
                         log.info("[SandboxTool] Resolved data_ref_id={}, data length={}", dataRefId, dataJson.length());
                     }
 
@@ -204,9 +275,6 @@ public class SandboxToolsConfig {
                         + "data_ref_id（数据引用ID，传给 execute_code 的 data_ref_id 参数即可，无需传递完整数据）。")
                 .function("query_database", (Function<Map<String, Object>, Map<String, Object>>) params -> {
                     String dataDescription = toStr(params.get("data_description"));
-                    int maxRows = params.containsKey("max_rows")
-                            ? ((Number) params.get("max_rows")).intValue()
-                            : 1000;
 
                     log.info("[SandboxTool] query_database called, description={}", dataDescription);
 
@@ -224,33 +292,29 @@ public class SandboxToolsConfig {
                             return result;
                         }
 
-                        // 限制行数
-                        List<Map<String, Object>> limitedData = data.size() > maxRows
-                                ? data.subList(0, maxRows) : data;
-
                         result.put("success", true);
                         result.put("row_count", data.size());
                         result.put("columns", data.get(0).keySet().toArray(new String[0]));
 
                         // 给 LLM 看的预览（最多 50 行）
-                        int previewRows = Math.min(50, limitedData.size());
-                        result.put("data_preview", limitedData.subList(0, previewRows));
+                        int previewRows = Math.min(50, data.size());
+                        result.put("data_preview", data.subList(0, previewRows));
                         if (data.size() > previewRows) {
                             result.put("preview_note",
                                     "仅展示前 " + previewRows + " 行，完整数据共 " + data.size() + " 行，已存入 data_json_full");
                         }
 
                         // 完整数据 JSON 存入服务端，返回引用 ID
-                        String fullJson = jsonMapper.writeValueAsString(limitedData);
+                        String fullJson = jsonMapper.writeValueAsString(data);
                         // 大小保护：超过 5MB 则截断
                         if (fullJson.length() > 5 * 1024 * 1024) {
-                            int reducedRows = limitedData.size() / 2;
-                            fullJson = jsonMapper.writeValueAsString(limitedData.subList(0, reducedRows));
+                            int reducedRows = data.size() / 2;
+                            fullJson = jsonMapper.writeValueAsString(data.subList(0, reducedRows));
                             result.put("data_truncated", true);
                             result.put("truncated_rows", reducedRows);
                         }
                         String refId = "data_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-                        DATA_STORE.put(refId, fullJson);
+                        DATA_STORE.put(refId, new DataEntry(fullJson));
                         result.put("data_ref_id", refId);
                         log.info("[SandboxTool] Stored data with ref_id={}, size={} bytes", refId, fullJson.length());
 

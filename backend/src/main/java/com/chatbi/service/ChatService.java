@@ -1,8 +1,11 @@
 package com.chatbi.service;
 
 import com.chatbi.config.ModelOptionsProvider;
+import com.chatbi.config.SandboxToolsConfig;
 import com.chatbi.dto.*;
 import com.chatbi.service.enhancement.PromptEnhancementManager;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -706,10 +709,22 @@ public class ChatService {
                     queryResult.setColumns(new ArrayList<>());
                 }
                 
-                // 限制返回行数，防止 PacketTooBigException 和前端性能问题
-                int maxRows = 500;
-                if (rows.size() > maxRows) {
-                    queryResult.setRows(rows.subList(0, maxRows));
+                // 分页传输：rows > 50 时只推预览数据 + dataRefId
+                int previewLimit = 50;
+                if (rows.size() > previewLimit) {
+                    queryResult.setRows(rows.subList(0, previewLimit));
+                    // 全量数据序列化存入 DATA_STORE
+                    try {
+                        ObjectMapper jsonMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+                        String fullJson = jsonMapper.writeValueAsString(rows);
+                        String refId = "data_" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+                        SandboxToolsConfig.DATA_STORE.put(refId, new SandboxToolsConfig.DataEntry(fullJson));
+                        queryResult.setDataRefId(refId);
+                        log.info("大数据集分页: refId={}, totalRows={}, previewRows={}", refId, rows.size(), previewLimit);
+                    } catch (Exception e) {
+                        log.warn("序列化全量数据失败，降级为截断模式: {}", e.getMessage());
+                        queryResult.setRows(rows.subList(0, Math.min(rows.size(), 500)));
+                    }
                 } else {
                     queryResult.setRows(rows);
                 }

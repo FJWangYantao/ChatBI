@@ -27,6 +27,24 @@ public class ConversationRepository {
             ObjectMapper objectMapper) {
         this.conversationJdbcTemplate = conversationJdbcTemplate;
         this.objectMapper = objectMapper;
+        initTable();
+    }
+
+    /**
+     * 初始化对话表
+     */
+    private void initTable() {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS conversations (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                conversation_id VARCHAR(100) NOT NULL COMMENT '对话ID',
+                title VARCHAR(500) DEFAULT '新对话' COMMENT '对话标题',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                UNIQUE KEY uk_conversation_id (conversation_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='对话表'
+            """;
+        conversationJdbcTemplate.execute(sql);
     }
 
     private final RowMapper<Conversation> rowMapper = new RowMapper<Conversation>() {

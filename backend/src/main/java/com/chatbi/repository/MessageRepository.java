@@ -4,6 +4,8 @@ import com.chatbi.entity.Message;
 import com.chatbi.dto.MessageTag;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -21,6 +23,8 @@ import java.util.Optional;
 @Repository
 public class MessageRepository {
 
+    private static final Logger log = LoggerFactory.getLogger(MessageRepository.class);
+
     private final JdbcTemplate conversationJdbcTemplate;
     private final ObjectMapper objectMapper;
 
@@ -29,6 +33,27 @@ public class MessageRepository {
             ObjectMapper objectMapper) {
         this.conversationJdbcTemplate = conversationJdbcTemplate;
         this.objectMapper = objectMapper;
+        initTable();
+    }
+
+    /**
+     * 初始化消息表
+     */
+    private void initTable() {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS messages (
+                id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                message_id VARCHAR(100) NOT NULL COMMENT '消息ID',
+                conversation_id VARCHAR(100) NOT NULL COMMENT '对话ID',
+                role VARCHAR(20) NOT NULL COMMENT '角色(user/assistant)',
+                content TEXT COMMENT '消息内容',
+                tags JSON COMMENT '标签数据',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                UNIQUE KEY uk_message_id (message_id),
+                INDEX idx_conversation_id (conversation_id)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息表'
+            """;
+        conversationJdbcTemplate.execute(sql);
     }
 
     private final RowMapper<Message> rowMapper = new RowMapper<Message>() {
@@ -43,7 +68,8 @@ public class MessageRepository {
                             objectMapper.getTypeFactory().constructCollectionType(List.class, MessageTag.class)
                     );
                 } catch (JsonProcessingException e) {
-                    // 忽略解析错误
+                    log.warn("tags JSON 解析失败, message_id={}, tagsJson={}, error={}",
+                            rs.getString("message_id"), tagsJson, e.getMessage());
                 }
             }
 

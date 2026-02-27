@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { MessageTag } from "@/app/page";
 import { QueryResult, DatasetAnalysis, analyzeDataset } from "@/lib/utils/dataAnalyzer";
+import { fetchPagedData } from "@/lib/api/chat";
 import { BarChartView } from "./BarChartView";
 import { LineChartView } from "./LineChartView";
 import { PieChartView } from "./PieChartView";
@@ -15,11 +16,39 @@ interface AutoChartProps {
 // 分页表格组件
 function PaginatedTable({ tag, queryResult }: { tag: MessageTag; queryResult: QueryResult }) {
   const [currentPage, setCurrentPage] = useState(1);
+  const [remoteRows, setRemoteRows] = useState<Record<string, any>[] | null>(null);
+  const [loading, setLoading] = useState(false);
   const pageSize = 10;
-  const totalRows = queryResult.rows?.length || 0;
+
+  const previewRows = queryResult.rows?.length || 0;
+  const previewPages = Math.ceil(previewRows / pageSize);
+  const totalRows = queryResult.totalRows || previewRows;
   const totalPages = Math.ceil(totalRows / pageSize);
+  const hasDataRef = !!queryResult.dataRefId;
+
+  useEffect(() => {
+    if (!hasDataRef || currentPage <= previewPages) {
+      setRemoteRows(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    const offset = (currentPage - 1) * pageSize;
+    fetchPagedData(queryResult.dataRefId!, offset, pageSize)
+      .then((res) => {
+        if (!cancelled && res.success) {
+          setRemoteRows(res.rows);
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [currentPage, hasDataRef, previewPages, queryResult.dataRefId]);
 
   const getCurrentPageData = () => {
+    if (hasDataRef && currentPage > previewPages && remoteRows) {
+      return remoteRows;
+    }
     if (!queryResult.rows) return [];
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;
@@ -54,6 +83,17 @@ function PaginatedTable({ tag, queryResult }: { tag: MessageTag; queryResult: Qu
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-800 bg-white dark:bg-gray-900">
+            {loading ? (
+              <tr>
+                <td
+                  colSpan={queryResult.columns?.length || 1}
+                  className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
+                >
+                  加载中...
+                </td>
+              </tr>
+            ) : (
+            <>
             {getCurrentPageData().map((row: any, idx: number) => (
               <tr key={idx} className={idx % 2 === 0 ? "bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" : "bg-gray-50 dark:bg-gray-850 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"}>
                 {queryResult.columns?.map((column: string, colIdx: number) => (
@@ -75,6 +115,8 @@ function PaginatedTable({ tag, queryResult }: { tag: MessageTag; queryResult: Qu
                   暂无数据
                 </td>
               </tr>
+            )}
+            </>
             )}
           </tbody>
         </table>

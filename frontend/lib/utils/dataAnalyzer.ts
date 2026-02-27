@@ -36,6 +36,7 @@ export interface QueryResult {
   executionTime?: number;
   success?: boolean;
   error?: string;
+  dataRefId?: string;
 }
 
 /**

@@ -7,7 +7,7 @@ import { AutoChart } from "@/components/Charts";
 import IntentBadge from "./IntentBadge";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { executeSql } from "@/lib/api/chat";
+import { executeSql, fetchPagedData } from "@/lib/api/chat";
 import AnalysisResultRenderer from "./AnalysisResultRenderer";
 
 interface ChatWindowProps {
@@ -20,11 +20,41 @@ interface ChatWindowProps {
 function PaginatedTable({ tag }: { tag: MessageTag }) {
   const tableData = tag.content;
   const [currentPage, setCurrentPage] = useState(1);
+  const [remoteRows, setRemoteRows] = useState<Record<string, any>[] | null>(null);
+  const [loading, setLoading] = useState(false);
   const pageSize = 10;
-  const totalRows = tableData.rows?.length || 0;
+
+  // 预览数据能覆盖的页数（SSE 推送的前 50 行）
+  const previewRows = tableData.rows?.length || 0;
+  const previewPages = Math.ceil(previewRows / pageSize);
+  const totalRows = tableData.totalRows || previewRows;
   const totalPages = Math.ceil(totalRows / pageSize);
+  const hasDataRef = !!tableData.dataRefId;
+
+  // 当翻页超出预览范围时，从服务端获取数据
+  useEffect(() => {
+    if (!hasDataRef || currentPage <= previewPages) {
+      setRemoteRows(null);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    const offset = (currentPage - 1) * pageSize;
+    fetchPagedData(tableData.dataRefId, offset, pageSize)
+      .then((res) => {
+        if (!cancelled && res.success) {
+          setRemoteRows(res.rows);
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [currentPage, hasDataRef, previewPages, tableData.dataRefId]);
 
   const getCurrentPageData = () => {
+    if (hasDataRef && currentPage > previewPages && remoteRows) {
+      return remoteRows;
+    }
     if (!tableData.rows) return [];
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;
@@ -60,6 +90,17 @@ function PaginatedTable({ tag }: { tag: MessageTag }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border/20">
+            {loading ? (
+              <tr>
+                <td
+                  colSpan={tableData.columns?.length || 1}
+                  className="px-5 py-10 text-center text-sm opacity-50"
+                >
+                  加载中...
+                </td>
+              </tr>
+            ) : (
+            <>
             {getCurrentPageData().map((row: any, idx: number) => (
               <tr key={idx} className="hover:bg-accent/5 transition-colors duration-150">
                 {tableData.columns?.map((column: string, colIdx: number) => (
@@ -81,6 +122,8 @@ function PaginatedTable({ tag }: { tag: MessageTag }) {
                   暂无数据
                 </td>
               </tr>
+            )}
+            </>
             )}
           </tbody>
         </table>

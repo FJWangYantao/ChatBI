@@ -30,6 +30,11 @@ public class  QueryResult {
     private Integer totalRows;
 
     /**
+     * 大数据集引用ID，前端通过此ID分页获取完整数据
+     */
+    private String dataRefId;
+
+    /**
      * 执行时间（毫秒）
      */
     private Long executionTime;

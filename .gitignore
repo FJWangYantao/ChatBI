@@ -46,3 +46,6 @@ target/
 
 # Model files
 *.pt
+
+# Sandbox 运行生成的图片
+backend/sandbox-service/*.png

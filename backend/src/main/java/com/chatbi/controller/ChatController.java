@@ -1,5 +1,6 @@
 package com.chatbi.controller;
 
+import com.chatbi.config.SandboxToolsConfig;
 import com.chatbi.dto.ChatRequest;
 import com.chatbi.dto.ChatResponse;
 import com.chatbi.dto.ChatResponseWithConversation;
@@ -16,6 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -145,6 +147,19 @@ public class ChatController {
     @GetMapping("/health")
     public String health() {
         return "ChatBI Backend is running!";
+    }
+
+    /**
+     * 大数据集分页获取接口
+     * GET /api/chat/data/{refId}?offset=0&limit=100
+     */
+    @GetMapping("/data/{refId}")
+    public Map<String, Object> getPagedData(
+            @PathVariable String refId,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "100") int limit) {
+        log.info("分页数据请求: refId={}, offset={}, limit={}", refId, offset, limit);
+        return SandboxToolsConfig.getPagedData(refId, offset, limit);
     }
 
     /**

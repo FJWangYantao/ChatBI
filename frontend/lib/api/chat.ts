@@ -25,3 +25,14 @@ export async function executeSql(sql: string) {
     throw error;
   }
 }
+
+/**
+ * 分页获取大数据集
+ */
+export async function fetchPagedData(refId: string, offset: number, limit: number) {
+  const response = await fetch(`/api/chat/data/${refId}?offset=${offset}&limit=${limit}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch paged data');
+  }
+  return response.json();
+}

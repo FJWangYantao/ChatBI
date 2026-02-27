@@ -103,12 +103,6 @@ export default function ConversationSidebar({
     }
   };
 
-  useEffect(() => {
-    if (isOpen) {
-      loadConversations();
-    }
-  }, [isOpen]);
-
   return (
     <>
       {/* 遮罩层 */}
