@@ -1,6 +1,7 @@
 package com.chatbi.config;
 
 import com.chatbi.context.SseEmitterContext;
+import com.chatbi.dto.MessageTag;
 import com.chatbi.service.ChatStreamService;
 import com.chatbi.service.MCPSandboxService;
 import com.chatbi.service.Text2SQLAgent;
@@ -206,6 +207,12 @@ public class SandboxToolsConfig {
                                     emitter.send(SseEmitter.event()
                                             .name("tag")
                                             .data(MAPPER.writeValueAsString(imageTag)));
+                                    // 收集 tag 用于持久化
+                                    SseEmitterContext.collectTag(new MessageTag(
+                                            "image",
+                                            "data:image/png;base64," + base64Img,
+                                            "分析图表",
+                                            Map.of("source", "sandbox")));
                                 }
                             }
 
@@ -219,6 +226,12 @@ public class SandboxToolsConfig {
                                 emitter.send(SseEmitter.event()
                                         .name("tag")
                                         .data(MAPPER.writeValueAsString(analysisTag)));
+                                // 收集 tag 用于持久化
+                                SseEmitterContext.collectTag(new MessageTag(
+                                        "analysis_result",
+                                        analysisOutput,
+                                        "分析详情",
+                                        null));
                             }
                         } catch (Exception e) {
                             log.warn("[CodeExecution] 发送完成事件失败: {}", e.getMessage());

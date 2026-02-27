@@ -252,6 +252,8 @@ public class ChatStreamService {
             log.error("[planWithTools] Function Calling 失败: {}", e.getMessage(), e);
         } finally {
             heartbeatManager.stopHeartbeat(sessionId);
+            // 取出工具内部收集的 tags（image、analysis_result 等），再清理上下文
+            tags.addAll(SseEmitterContext.drainCollectedTags());
             SseEmitterContext.clear();
         }
 
