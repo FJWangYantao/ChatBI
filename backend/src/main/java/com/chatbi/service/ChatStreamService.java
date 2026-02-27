@@ -66,6 +66,8 @@ public class ChatStreamService {
     public void streamChat(String message, String conversationId, SseEmitter emitter, String forceAgentType) {
         long startTime = System.currentTimeMillis();
         AtomicBoolean completed = new AtomicBoolean(false);
+        // 收集步骤结果用于持久化
+        List<Map<String, Object>> collectedSteps = new ArrayList<>();
 
         try {
             // 1. 创建对话 / 保存用户消息
@@ -106,6 +108,7 @@ public class ChatStreamService {
             // 3. 意图识别（如果强制指定了agent类型，则跳过意图识别）
             IntentType intent;
             IntentRecognitionResponse intentResponse = null;
+            long intentStartTime = System.currentTimeMillis();
 
             if (forceAgentType != null && !forceAgentType.isEmpty()) {
                 // 强制指定agent类型
@@ -128,11 +131,20 @@ public class ChatStreamService {
             // 发送意图事件（如果有意图识别结果）
             if (intentResponse != null) {
                 emitIntent(emitter, intentResponse);
+                // 发送意图识别步骤结果
+                Map<String, Object> intentResult = new LinkedHashMap<>();
+                intentResult.put("categoryCn", intentResponse.getCategoryCn());
+                intentResult.put("subtypeCn", intentResponse.getSubtypeCn());
+                intentResult.put("confidence", intentResponse.getCategoryConfidence());
+                emitStepResult(emitter, "intent_detection", "意图识别",
+                        System.currentTimeMillis() - intentStartTime, "success", intentResult, collectedSteps);
             }
 
             // 4. Prompt 增强
             emitStatus(emitter, "prompt_enhancement", "正在优化问题...", 2, 7);
+            long enhanceStartTime = System.currentTimeMillis();
             String promptToUse = message;
+            boolean isEnhanced = false;
             try {
                 EnhancementContext context = EnhancementContext.builder()
                         .originalMessage(message)
@@ -143,10 +155,20 @@ public class ChatStreamService {
                 EnhancedPrompt enhanced = enhancementManager.enhance(message, context);
                 if (enhanced.isEnhanced()) {
                     promptToUse = enhanced.getEnhancedPrompt();
+                    isEnhanced = true;
                 }
             } catch (Exception e) {
                 log.warn("Prompt 增强失败: {}", e.getMessage());
             }
+            // 发送增强步骤结果
+            Map<String, Object> enhanceResult = new LinkedHashMap<>();
+            enhanceResult.put("isEnhanced", isEnhanced);
+            enhanceResult.put("originalPrompt", message);
+            if (isEnhanced) {
+                enhanceResult.put("enhancedPrompt", promptToUse);
+            }
+            emitStepResult(emitter, "prompt_enhancement", "问题优化",
+                    System.currentTimeMillis() - enhanceStartTime, "success", enhanceResult, collectedSteps);
 
             // 5. 根据意图路由
             String reply;
@@ -161,7 +183,7 @@ public class ChatStreamService {
                 case DATA_QUERY:
                 case HYBRID:
                 case DATA_ANALYSIS:
-                    reply = handleDataAnalysisStream(emitter, promptToUse, message, tags);
+                    reply = handleDataAnalysisStream(emitter, promptToUse, message, tags, collectedSteps);
                     // 提取 suggestions
                     suggestions = extractSuggestions(tags);
                     break;
@@ -176,7 +198,7 @@ public class ChatStreamService {
             }
 
             // 6. 保存助手消息
-            conversationService.saveMessage(conversationId, "assistant", reply, tags.isEmpty() ? null : tags);
+            conversationService.saveMessage(conversationId, "assistant", reply, tags.isEmpty() ? null : tags, collectedSteps.isEmpty() ? null : collectedSteps);
 
             // 7. 发送完成事件
             long duration = System.currentTimeMillis() - startTime;
@@ -215,10 +237,19 @@ public class ChatStreamService {
 
     // ─── DATA_QUERY / HYBRID / DATA_ANALYSIS: Agent 协同 ──────
 
-    private String handleDataAnalysisStream(SseEmitter emitter, String promptToUse, String originalQuestion, List<MessageTag> tags) throws IOException {
+    private String handleDataAnalysisStream(SseEmitter emitter, String promptToUse, String originalQuestion, List<MessageTag> tags, List<Map<String, Object>> collectedSteps) throws IOException {
         // 澄清检查
         emitStatus(emitter, "clarification", "正在分析问题...", 3, 5);
+        long clarifyStartTime = System.currentTimeMillis();
         List<String> clarifications = clarificationAgent.clarify(originalQuestion);
+
+        // 发送澄清步骤结果
+        Map<String, Object> clarifyResult = new LinkedHashMap<>();
+        clarifyResult.put("needsClarification", !clarifications.isEmpty());
+        clarifyResult.put("clarifications", clarifications);
+        emitStepResult(emitter, "clarification", "澄清检查",
+                System.currentTimeMillis() - clarifyStartTime, "success", clarifyResult, collectedSteps);
+
         if (!clarifications.isEmpty()) {
             StringBuilder reply = new StringBuilder("为了更准确地回答您，我需要确认以下信息：\n");
             for (String q : clarifications) {
@@ -228,14 +259,22 @@ public class ChatStreamService {
             return reply.toString();
         }
 
-        // Function Calling 流程（LLM 自主调用 query_database + execute_code）
+        // Function Calling 流程（真流式输出）
         emitStatus(emitter, "planning", "正在分析数据...", 4, 5);
 
         String sessionId = java.util.UUID.randomUUID().toString();
         String toolResult = null;
+        long analysisStartTime = System.currentTimeMillis();
 
-        // 设置 ThreadLocal
+        // 设置 ThreadLocal：emitter + 流式 tag 回调
         SseEmitterContext.setEmitter(emitter);
+        SseEmitterContext.setTagStreamCallback(event -> {
+            switch (event.eventType()) {
+                case "start" -> emitTagStart(emitter, event.id(), event.type(), event.title());
+                case "delta" -> emitTagDelta(emitter, event.id(), event.delta());
+                case "end"   -> emitTagEnd(emitter, event.id(), event.type(), event.title(), event.content());
+            }
+        });
 
         // 启动心跳
         heartbeatManager.startHeartbeat(sessionId, (message) -> {
@@ -247,12 +286,29 @@ public class ChatStreamService {
         });
 
         try {
-            toolResult = planningAgent.planWithTools(promptToUse);
+            // 调用流式版 PlanningAgent：文本 token 实时转发，SQL 流式通过 tag 回调
+            toolResult = planningAgent.planWithToolsStreaming(
+                    promptToUse,
+                    delta -> {
+                        try {
+                            emitTextDelta(emitter, delta);
+                        } catch (IOException e) {
+                            log.debug("文本 delta 发送失败: {}", e.getMessage());
+                        }
+                    },
+                    event -> {
+                        // 同上 tag 回调（PlanningAgent 内部也可能发送 tag 事件）
+                        switch (event.eventType()) {
+                            case "start" -> emitTagStart(emitter, event.id(), event.type(), event.title());
+                            case "delta" -> emitTagDelta(emitter, event.id(), event.delta());
+                            case "end"   -> emitTagEnd(emitter, event.id(), event.type(), event.title(), event.content());
+                        }
+                    }
+            );
         } catch (Exception e) {
-            log.error("[planWithTools] Function Calling 失败: {}", e.getMessage(), e);
+            log.error("[planWithToolsStreaming] 流式 Function Calling 失败: {}", e.getMessage(), e);
         } finally {
             heartbeatManager.stopHeartbeat(sessionId);
-            // 取出工具内部收集的 tags（image、analysis_result 等），再清理上下文
             tags.addAll(SseEmitterContext.drainCollectedTags());
             SseEmitterContext.clear();
         }
@@ -263,32 +319,34 @@ public class ChatStreamService {
             return errorMsg;
         }
 
-        // 解析推理链：提取 <!-- REASONING_START --> 和 <!-- REASONING_END --> 之间的内容
+        // 解析推理链（文本已通过流式实时发送，这里只做结构化提取）
         String reasoning = null;
         String conclusion = toolResult;
         Pattern reasoningPattern = Pattern.compile("<!--\\s*REASONING_START\\s*-->(.*?)<!--\\s*REASONING_END\\s*-->", Pattern.DOTALL);
         Matcher reasoningMatcher = reasoningPattern.matcher(toolResult);
         if (reasoningMatcher.find()) {
             reasoning = reasoningMatcher.group(1).trim();
-            // 从最终回复中移除推理部分
             conclusion = toolResult.substring(0, reasoningMatcher.start()) + toolResult.substring(reasoningMatcher.end());
             conclusion = conclusion.trim();
         }
 
-        // 推送推理步骤
+        // 推送推理步骤（结构化事件，供前端展示推理链组件）
         if (reasoning != null && !reasoning.isEmpty()) {
             emitReasoningSteps(emitter, reasoning);
         }
 
-        // 发送最终结论文本
-        try {
-            emitTextDeltaFull(emitter, conclusion);
-        } catch (Exception e) {
-            log.warn("[planWithTools] SSE 发送失败（连接可能已超时）: {}", e.getMessage());
-        }
+        // 注意：最终文本已通过 onTextDelta 实时流式发送，不再需要 emitTextDeltaFull
+
+        // 发送数据分析步骤结果
+        Map<String, Object> analysisResult = new LinkedHashMap<>();
+        analysisResult.put("hasResult", toolResult != null && !toolResult.isBlank());
+        analysisResult.put("hasReasoning", reasoning != null && !reasoning.isEmpty());
+        emitStepResult(emitter, "data_analysis", "数据分析",
+                System.currentTimeMillis() - analysisStartTime, "success", analysisResult, collectedSteps);
 
         // 生成建议
         emitStatus(emitter, "suggestions", "正在生成推荐问题...", 5, 5);
+        long suggestStartTime = System.currentTimeMillis();
         try {
             String summaryForSuggestion = toolResult.length() > 500
                     ? toolResult.substring(0, 500) : toolResult;
@@ -297,8 +355,15 @@ public class ChatStreamService {
                 tags.add(new MessageTag("suggestions", suggestions, "推荐后续问题", null));
                 emitSuggestions(emitter, suggestions);
             }
+            // 发送建议生成步骤结果
+            Map<String, Object> suggestResult = new LinkedHashMap<>();
+            suggestResult.put("count", suggestions.size());
+            emitStepResult(emitter, "suggestions", "建议生成",
+                    System.currentTimeMillis() - suggestStartTime, "success", suggestResult, collectedSteps);
         } catch (Exception e) {
             log.warn("建议生成失败", e);
+            emitStepResult(emitter, "suggestions", "建议生成",
+                    System.currentTimeMillis() - suggestStartTime, "skipped", null, collectedSteps);
         }
 
         return conclusion;
@@ -364,7 +429,9 @@ public class ChatStreamService {
 
     private void emitTextDelta(SseEmitter emitter, String delta) throws IOException {
         StreamEventData.TextDeltaEventData data = new StreamEventData.TextDeltaEventData(delta);
-        emitter.send(SseEmitter.event().name("text_delta").data(objectMapper.writeValueAsString(data)));
+        synchronized (emitter) {
+            emitter.send(SseEmitter.event().name("text_delta").data(objectMapper.writeValueAsString(data)));
+        }
     }
 
     private void emitTextDeltaFull(SseEmitter emitter, String text) throws IOException {
@@ -383,7 +450,52 @@ public class ChatStreamService {
     }
 
     private void emitTag(SseEmitter emitter, MessageTag tag) throws IOException {
-        emitter.send(SseEmitter.event().name("tag").data(objectMapper.writeValueAsString(tag)));
+        synchronized (emitter) {
+            emitter.send(SseEmitter.event().name("tag").data(objectMapper.writeValueAsString(tag)));
+        }
+    }
+
+    /**
+     * 发送流式 tag 开始事件
+     */
+    public void emitTagStart(SseEmitter emitter, String id, String type, String title) {
+        try {
+            Map<String, String> data = Map.of("id", id, "type", type, "title", title);
+            synchronized (emitter) {
+                emitter.send(SseEmitter.event().name("tag_start").data(objectMapper.writeValueAsString(data)));
+            }
+        } catch (IOException e) {
+            log.warn("发送 tag_start 失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 发送流式 tag 增量事件
+     */
+    public void emitTagDelta(SseEmitter emitter, String id, String delta) {
+        try {
+            Map<String, String> data = Map.of("id", id, "delta", delta);
+            synchronized (emitter) {
+                emitter.send(SseEmitter.event().name("tag_delta").data(objectMapper.writeValueAsString(data)));
+            }
+        } catch (IOException e) {
+            log.warn("发送 tag_delta 失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 发送流式 tag 结束事件（附带完整内容用于持久化）
+     */
+    public void emitTagEnd(SseEmitter emitter, String id, String type, String title, Object content) {
+        try {
+            MessageTag tag = new MessageTag(type, content, title, null);
+            Map<String, Object> data = Map.of("id", id, "tag", tag);
+            synchronized (emitter) {
+                emitter.send(SseEmitter.event().name("tag_end").data(objectMapper.writeValueAsString(data)));
+            }
+        } catch (IOException e) {
+            log.warn("发送 tag_end 失败: {}", e.getMessage());
+        }
     }
 
     private void emitSuggestions(SseEmitter emitter, List<String> items) throws IOException {
@@ -407,6 +519,29 @@ public class ChatStreamService {
     private void emitReasoning(SseEmitter emitter, String step, String content, int stepIndex) throws IOException {
         StreamEventData.ReasoningEventData data = new StreamEventData.ReasoningEventData(step, content, stepIndex);
         emitter.send(SseEmitter.event().name("reasoning").data(objectMapper.writeValueAsString(data)));
+    }
+
+    private void emitStepResult(SseEmitter emitter, String stepName, String stepLabel, long duration, String status, Object result) {
+        emitStepResult(emitter, stepName, stepLabel, duration, status, result, null);
+    }
+
+    private void emitStepResult(SseEmitter emitter, String stepName, String stepLabel, long duration, String status, Object result, List<Map<String, Object>> collector) {
+        try {
+            StreamEventData.StepResultEventData data = new StreamEventData.StepResultEventData(stepName, stepLabel, duration, status, result);
+            emitter.send(SseEmitter.event().name("step_result").data(objectMapper.writeValueAsString(data)));
+            // 收集步骤数据用于持久化
+            if (collector != null) {
+                Map<String, Object> stepMap = new LinkedHashMap<>();
+                stepMap.put("stepName", stepName);
+                stepMap.put("stepLabel", stepLabel);
+                stepMap.put("duration", duration);
+                stepMap.put("status", status);
+                stepMap.put("result", result);
+                collector.add(stepMap);
+            }
+        } catch (IOException e) {
+            log.warn("发送 step_result 事件失败: {}", e.getMessage());
+        }
     }
 
     /**

@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 消息DTO
@@ -21,5 +22,6 @@ public class MessageDTO {
     private String role;
     private String content;
     private List<MessageTag> tags;
+    private List<Map<String, Object>> steps; // 处理步骤结果
     private LocalDateTime createdAt;
 }

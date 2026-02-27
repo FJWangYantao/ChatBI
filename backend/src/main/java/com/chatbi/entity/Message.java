@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 消息实体类
@@ -24,5 +25,6 @@ public class Message {
     private String role; // "user", "assistant", "system"
     private String content;
     private List<MessageTag> tags;
+    private List<Map<String, Object>> steps; // 处理步骤结果
     private LocalDateTime createdAt;
 }

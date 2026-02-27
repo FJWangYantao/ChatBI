@@ -73,4 +73,19 @@ public class StreamEventData {
         private String content;    // 推理内容
         private int stepIndex;     // 步骤序号（从0开始）
     }
+
+    /**
+     * 步骤结果事件
+     * event: step_result
+     */
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class StepResultEventData {
+        private String stepName;   // 步骤标识：intent_detection, prompt_enhancement, clarification, data_analysis, suggestions
+        private String stepLabel;  // 步骤中文名
+        private long duration;     // 耗时（毫秒）
+        private String status;     // "success" 或 "skipped"
+        private Object result;     // 步骤结果摘要
+    }
 }

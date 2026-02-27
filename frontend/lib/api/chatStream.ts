@@ -8,8 +8,12 @@ export interface StreamCallbacks {
   onIntent?: (data: { category: string; categoryCn: string; categoryConfidence: number; subtype: string; subtypeConfidence: number; subtypeCn: string }) => void;
   onTextDelta?: (data: { delta: string }) => void;
   onTag?: (data: { type: string; content: any; title?: string; metadata?: any }) => void;
+  onTagStart?: (data: { id: string; type: string; title: string }) => void;
+  onTagDelta?: (data: { id: string; delta: string }) => void;
+  onTagEnd?: (data: { id: string; tag: { type: string; content: any; title?: string; metadata?: any } }) => void;
   onSuggestions?: (data: { items: string[] }) => void;
   onReasoning?: (data: { step: string; content: string; stepIndex: number }) => void;
+  onStepResult?: (data: { stepName: string; stepLabel: string; duration: number; status: string; result: any }) => void;
   onCodeExecution?: (data: {
     executionId: string;
     stage: string;
@@ -47,6 +51,18 @@ function processSSELine(eventType: string, dataStr: string, callbacks: StreamCal
         break;
       case 'reasoning':
         callbacks.onReasoning?.(data);
+        break;
+      case 'step_result':
+        callbacks.onStepResult?.(data);
+        break;
+      case 'tag_start':
+        callbacks.onTagStart?.(data);
+        break;
+      case 'tag_delta':
+        callbacks.onTagDelta?.(data);
+        break;
+      case 'tag_end':
+        callbacks.onTagEnd?.(data);
         break;
       case 'code_execution':
         console.log('[SSE] code_execution 事件到达:', data);

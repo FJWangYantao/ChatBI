@@ -15,6 +15,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -48,12 +49,21 @@ public class MessageRepository {
                 role VARCHAR(20) NOT NULL COMMENT '角色(user/assistant)',
                 content TEXT COMMENT '消息内容',
                 tags JSON COMMENT '标签数据',
+                steps JSON COMMENT '处理步骤结果',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                 UNIQUE KEY uk_message_id (message_id),
                 INDEX idx_conversation_id (conversation_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息表'
             """;
         conversationJdbcTemplate.execute(sql);
+        // 兼容已有表：添加 steps 列（如果不存在）
+        try {
+            conversationJdbcTemplate.execute(
+                "ALTER TABLE messages ADD COLUMN steps JSON COMMENT '处理步骤结果' AFTER tags"
+            );
+        } catch (Exception ignored) {
+            // 列已存在，忽略
+        }
     }
 
     private final RowMapper<Message> rowMapper = new RowMapper<Message>() {
@@ -73,6 +83,20 @@ public class MessageRepository {
                 }
             }
 
+            String stepsJson = rs.getString("steps");
+            List<Map<String, Object>> steps = null;
+            if (stepsJson != null) {
+                try {
+                    steps = objectMapper.readValue(
+                            stepsJson,
+                            objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class)
+                    );
+                } catch (JsonProcessingException e) {
+                    log.warn("steps JSON 解析失败, message_id={}, error={}",
+                            rs.getString("message_id"), e.getMessage());
+                }
+            }
+
             return Message.builder()
                     .id(rs.getLong("id"))
                     .messageId(rs.getString("message_id"))
@@ -80,6 +104,7 @@ public class MessageRepository {
                     .role(rs.getString("role"))
                     .content(rs.getString("content"))
                     .tags(tags)
+                    .steps(steps)
                     .createdAt(rs.getTimestamp("created_at").toLocalDateTime())
                     .build();
         }
@@ -90,19 +115,21 @@ public class MessageRepository {
             // 插入新消息
             String messageId = generateMessageId();
             String tagsJson = serializeTags(message.getTags());
+            String stepsJson = serializeSteps(message.getSteps());
 
             conversationJdbcTemplate.update(
-                    "INSERT INTO messages (message_id, conversation_id, role, content, tags) VALUES (?, ?, ?, ?, ?)",
-                    messageId, message.getConversationId(), message.getRole(), message.getContent(), tagsJson
+                    "INSERT INTO messages (message_id, conversation_id, role, content, tags, steps) VALUES (?, ?, ?, ?, ?, ?)",
+                    messageId, message.getConversationId(), message.getRole(), message.getContent(), tagsJson, stepsJson
             );
 
             return findByMessageId(messageId).orElse(null);
         } else {
             // 更新消息
             String tagsJson = serializeTags(message.getTags());
+            String stepsJson = serializeSteps(message.getSteps());
             conversationJdbcTemplate.update(
-                    "UPDATE messages SET content = ?, tags = ? WHERE message_id = ?",
-                    message.getContent(), tagsJson, message.getMessageId()
+                    "UPDATE messages SET content = ?, tags = ?, steps = ? WHERE message_id = ?",
+                    message.getContent(), tagsJson, stepsJson, message.getMessageId()
             );
             return findByMessageId(message.getMessageId()).orElse(null);
         }
@@ -149,6 +176,17 @@ public class MessageRepository {
         }
         try {
             return objectMapper.writeValueAsString(tags);
+        } catch (JsonProcessingException e) {
+            return null;
+        }
+    }
+
+    private String serializeSteps(List<Map<String, Object>> steps) {
+        if (steps == null || steps.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(steps);
         } catch (JsonProcessingException e) {
             return null;
         }

@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -112,6 +113,13 @@ public class ConversationService {
      * 保存消息
      */
     public MessageDTO saveMessage(String conversationId, String role, String content, List<MessageTag> tags) {
+        return saveMessage(conversationId, role, content, tags, null);
+    }
+
+    /**
+     * 保存消息（含处理步骤）
+     */
+    public MessageDTO saveMessage(String conversationId, String role, String content, List<MessageTag> tags, List<Map<String, Object>> steps) {
         // 确保对话存在
         conversationRepository.findByConversationId(conversationId)
                 .orElseThrow(() -> new RuntimeException("对话不存在: " + conversationId));
@@ -121,6 +129,7 @@ public class ConversationService {
                 .role(role)
                 .content(content)
                 .tags(tags)
+                .steps(steps)
                 .build();
 
         Message saved = messageRepository.save(message);
@@ -181,6 +190,7 @@ public class ConversationService {
                 .role(message.getRole())
                 .content(message.getContent())
                 .tags(message.getTags())
+                .steps(message.getSteps())
                 .createdAt(message.getCreatedAt())
                 .build();
     }

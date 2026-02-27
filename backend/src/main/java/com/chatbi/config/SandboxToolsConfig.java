@@ -2,6 +2,7 @@ package com.chatbi.config;
 
 import com.chatbi.context.SseEmitterContext;
 import com.chatbi.dto.MessageTag;
+import com.chatbi.dto.StreamingTagEvent;
 import com.chatbi.service.ChatStreamService;
 import com.chatbi.service.MCPSandboxService;
 import com.chatbi.service.Text2SQLAgent;
@@ -294,9 +295,32 @@ public class SandboxToolsConfig {
                     // 延迟获取 Text2SQLAgent，避免循环依赖
                     Text2SQLAgent text2SQLAgent = applicationContext.getBean(Text2SQLAgent.class);
 
+                    // 从 ThreadLocal 获取流式回调
+                    java.util.function.Consumer<StreamingTagEvent> tagCallback = SseEmitterContext.getTagStreamCallback();
+                    String tagId = "sql-" + UUID.randomUUID().toString().substring(0, 8);
+
+                    // 发送 tag_start
+                    if (tagCallback != null) {
+                        tagCallback.accept(StreamingTagEvent.start(tagId, "sql", "SQL 查询"));
+                    }
+
                     Map<String, Object> result = new LinkedHashMap<>();
                     try {
-                        List<Map<String, Object>> data = text2SQLAgent.fetchData(dataDescription);
+                        // 调用流式版本，每个 SQL token 实时转发
+                        List<Map<String, Object>> data = text2SQLAgent.fetchDataWithStreaming(
+                                dataDescription,
+                                delta -> {
+                                    if (tagCallback != null) {
+                                        tagCallback.accept(StreamingTagEvent.delta(tagId, delta));
+                                    }
+                                }
+                        );
+
+                        // 发送 tag_end（附带完整 SQL 用于持久化）
+                        String finalSQL = text2SQLAgent.getLastGeneratedSQL();
+                        if (tagCallback != null && finalSQL != null) {
+                            tagCallback.accept(StreamingTagEvent.end(tagId, "sql", "SQL 查询", finalSQL));
+                        }
 
                         if (data == null || data.isEmpty()) {
                             result.put("success", false);

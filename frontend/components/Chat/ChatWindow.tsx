@@ -1,7 +1,7 @@
 import { Message, MessageTag } from "@/app/page";
 import { useState, useEffect, useRef } from "react";
 import LoadingSpinner from "./LoadingSpinner";
-import StreamingIndicator from "./StreamingIndicator";
+import StepTimeline from "./StepTimeline";
 import ReasoningChain from "./ReasoningChain";
 import { AutoChart } from "@/components/Charts";
 import IntentBadge from "./IntentBadge";
@@ -610,13 +610,13 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
                   : "glass-card border border-border/50 hover:border-accent/30"
                   } ${message.role === "assistant" && message.tags?.some(t => t.type === 'analysis_result') ? 'w-full' : ''}`}
               >
-                {/* 流式进度指示器 */}
-                {message.isStreaming && (
-                  <StreamingIndicator
-                    stage={message.streamingStage}
-                    message={message.streamingMessage}
-                    progress={message.streamingProgress}
-                    totalSteps={message.streamingTotalSteps}
+                {/* 步骤时间线 */}
+                {(message.isStreaming || (message.completedSteps && message.completedSteps.length > 0)) && (
+                  <StepTimeline
+                    completedSteps={message.completedSteps}
+                    currentStage={message.streamingStage}
+                    currentMessage={message.streamingMessage}
+                    isStreaming={message.isStreaming}
                   />
                 )}
 

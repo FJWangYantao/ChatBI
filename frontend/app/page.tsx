@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import ChatWindow from "@/components/Chat/ChatWindow";
 import InputBox from "@/components/Chat/InputBox";
 import ConversationSidebar from "@/components/Chat/ConversationSidebar";
-import CodeExecutionPanel from "@/components/CodeExecution/CodeExecutionPanel";
+import { CodeSidebar } from "@/components/CodeSidebar";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import MosaicLogo from "@/components/MosaicLogo";
 import { DataSource } from "@/types/datasource";
-import { CodeExecution } from "@/types/code-execution";
+import { CodeEntry } from "@/types/code-sidebar";
 import { getActiveDataSource } from "@/lib/api/datasource";
 import { streamChatMessage } from "@/lib/api/chatStream";
 
@@ -39,6 +39,16 @@ export interface ReasoningStep {
   stepIndex: number;
 }
 
+// 已完成步骤类型
+export interface CompletedStep {
+  stepName: string;
+  stepLabel: string;
+  duration: number;
+  status: string;
+  result: any;
+  timestamp: number;
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
@@ -48,6 +58,7 @@ export interface Message {
   intentInfo?: IntentInfo; // 意图识别信息
   suggestions?: string[];  // 推荐后续问题
   reasoningSteps?: ReasoningStep[]; // 推理步骤
+  completedSteps?: CompletedStep[]; // 已完成的处理步骤
   isStreaming?: boolean;           // 是否正在流式输出
   streamingStage?: string;         // 当前流式阶段
   streamingMessage?: string;       // 当前阶段描述
@@ -68,9 +79,10 @@ export default function Home() {
   // 当前激活的数据源
   const [activeDataSource, setActiveDataSource] = useState<DataSource | null>(null);
 
-  // 代码执行状态
-  const [codeExecutions, setCodeExecutions] = useState<CodeExecution[]>([]);
-  const [codePanelOpen, setCodePanelOpen] = useState(false);
+  // 代码侧栏状态
+  const [codeSidebarOpen, setCodeSidebarOpen] = useState(true);
+  const [codeEntries, setCodeEntries] = useState<CodeEntry[]>([]);
+  const [activeCodeEntryId, setActiveCodeEntryId] = useState<string | null>(null);
 
   // 同步 conversationId 到 ref，避免闭包捕获过期值
   useEffect(() => {
@@ -91,8 +103,48 @@ export default function Home() {
           content: msg.content,
           timestamp: new Date(msg.createdAt),
           tags: msg.tags || undefined,
+          completedSteps: msg.steps ? msg.steps.map((s: any) => ({
+            stepName: s.stepName,
+            stepLabel: s.stepLabel,
+            duration: s.duration,
+            status: s.status,
+            result: s.result,
+            timestamp: 0,
+          })) : undefined,
         }));
         setMessages(historyMessages);
+
+        // 从历史消息 tags 中提取代码条目
+        const historyCodeEntries: CodeEntry[] = [];
+        historyMessages.forEach((msg) => {
+          if (msg.tags) {
+            msg.tags.forEach((tag, idx) => {
+              if (tag.type === "sql") {
+                historyCodeEntries.push({
+                  id: `${msg.id}-sql-${idx}`,
+                  type: "sql",
+                  code: typeof tag.content === "string" ? tag.content : tag.content?.sql || "",
+                  title: tag.title || "SQL 查询",
+                  timestamp: new Date(msg.timestamp).getTime(),
+                  messageId: msg.id,
+                  isStreaming: false,
+                });
+              } else if (tag.type === "code") {
+                historyCodeEntries.push({
+                  id: `${msg.id}-code-${idx}`,
+                  type: "python",
+                  code: typeof tag.content === "string" ? tag.content : "",
+                  title: tag.title || "Python 代码",
+                  timestamp: new Date(msg.timestamp).getTime(),
+                  messageId: msg.id,
+                  isStreaming: false,
+                });
+              }
+            });
+          }
+        });
+        setCodeEntries(historyCodeEntries);
+        setActiveCodeEntryId(null);
       } else {
         // HTTP 错误时显示提示
         setMessages([{
@@ -131,8 +183,8 @@ export default function Home() {
         timestamp: new Date(),
       },
     ]);
-    setCodeExecutions([]);
-    setCodePanelOpen(false);
+    setCodeEntries([]);
+    setActiveCodeEntryId(null);
     setSidebarOpen(false);
   };
 
@@ -192,6 +244,8 @@ export default function Home() {
 
     // 用于累积 tags 的辅助引用
     const tagsAccumulator: MessageTag[] = [];
+    // 用于累积已完成步骤
+    const stepsAccumulator: CompletedStep[] = [];
 
     try {
       await streamChatMessage(
@@ -272,6 +326,97 @@ export default function Home() {
                   : msg
               )
             );
+
+            // 将 sql/code 类型追加到代码侧栏
+            if (data.type === 'sql' || data.type === 'code') {
+              const entryType = data.type === 'sql' ? 'sql' : 'python';
+              const entryId = `${assistantId}-${data.type}`;
+              const codeContent = typeof data.content === 'string' ? data.content : data.content?.sql || '';
+
+              setCodeEntries((prev) => {
+                const existing = prev.find(e => e.id === entryId);
+                if (existing) {
+                  // 追加代码内容（流式更新）
+                  return prev.map(e =>
+                    e.id === entryId
+                      ? { ...e, code: e.code + codeContent }
+                      : e
+                  );
+                } else {
+                  // 创建新 entry
+                  const newEntry: CodeEntry = {
+                    id: entryId,
+                    type: entryType,
+                    code: codeContent,
+                    title: data.title || (data.type === 'sql' ? 'SQL 查询' : 'Python 代码'),
+                    timestamp: Date.now(),
+                    messageId: assistantId,
+                    isStreaming: true,
+                  };
+                  return [...prev, newEntry];
+                }
+              });
+
+              setActiveCodeEntryId(entryId);
+              setCodeSidebarOpen(true);
+            }
+          },
+
+          onTagStart: (data) => {
+            // 流式 tag 开始：创建新的代码侧栏条目
+            if (data.type === 'sql' || data.type === 'code') {
+              const entryType = data.type === 'sql' ? 'sql' as const : 'python' as const;
+              const newEntry: CodeEntry = {
+                id: data.id,
+                type: entryType,
+                code: '',
+                title: data.title || (data.type === 'sql' ? 'SQL 查询' : 'Python 代码'),
+                timestamp: Date.now(),
+                messageId: assistantId,
+                isStreaming: true,
+              };
+              setCodeEntries((prev) => [...prev, newEntry]);
+              setActiveCodeEntryId(data.id);
+              setCodeSidebarOpen(true);
+            }
+          },
+
+          onTagDelta: (data) => {
+            // 流式 tag 增量：追加代码内容
+            setCodeEntries((prev) =>
+              prev.map((e) =>
+                e.id === data.id
+                  ? { ...e, code: e.code + data.delta }
+                  : e
+              )
+            );
+          },
+
+          onTagEnd: (data) => {
+            // 流式 tag 结束：标记完成，同步到消息 tags
+            setCodeEntries((prev) =>
+              prev.map((e) =>
+                e.id === data.id
+                  ? { ...e, isStreaming: false, code: typeof data.tag.content === 'string' ? data.tag.content : e.code }
+                  : e
+              )
+            );
+
+            // 将完整 tag 加入消息
+            const newTag: MessageTag = {
+              type: data.tag.type,
+              content: data.tag.content,
+              title: data.tag.title,
+              metadata: data.tag.metadata,
+            };
+            tagsAccumulator.push(newTag);
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantId
+                  ? { ...msg, tags: [...tagsAccumulator] }
+                  : msg
+              )
+            );
           },
 
           onSuggestions: (data) => {
@@ -299,25 +444,67 @@ export default function Home() {
             );
           },
 
+          onStepResult: (data) => {
+            const step: CompletedStep = {
+              stepName: data.stepName,
+              stepLabel: data.stepLabel,
+              duration: data.duration,
+              status: data.status,
+              result: data.result,
+              timestamp: Date.now(),
+            };
+            stepsAccumulator.push(step);
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantId
+                  ? { ...msg, completedSteps: [...stepsAccumulator] }
+                  : msg
+              )
+            );
+          },
+
           onCodeExecution: (data) => {
             console.log('[CodeExecution] 收到事件:', data.executionId, data.stage);
-            setCodeExecutions((prev) => {
-              const existing = prev.find(e => e.executionId === data.executionId);
+
+            // 同步到代码侧栏
+            const execEntryId = `exec-${data.executionId}`;
+            setCodeEntries((prev) => {
+              const existing = prev.find(e => e.id === execEntryId);
               if (existing) {
-                // 更新现有执行记录
                 return prev.map(e =>
-                  e.executionId === data.executionId
-                    ? { ...e, ...data } as CodeExecution
+                  e.id === execEntryId
+                    ? {
+                        ...e,
+                        code: data.code || e.code,
+                        stage: data.stage,
+                        stdout: data.stdout || e.stdout,
+                        stderr: data.stderr || e.stderr,
+                        success: data.success ?? e.success,
+                        executionTime: data.executionTime ?? e.executionTime,
+                        isStreaming: data.stage === 'executing',
+                      }
                     : e
                 );
               } else {
-                // 新增执行记录
-                return [...prev, data as CodeExecution];
+                return [...prev, {
+                  id: execEntryId,
+                  type: 'execution' as const,
+                  code: data.code || '',
+                  title: `代码执行 #${data.executionId.slice(-4)}`,
+                  timestamp: Date.now(),
+                  messageId: assistantId,
+                  isStreaming: data.stage === 'executing',
+                  executionId: data.executionId,
+                  stage: data.stage,
+                  stdout: data.stdout,
+                  stderr: data.stderr,
+                  success: data.success,
+                  executionTime: data.executionTime,
+                }];
               }
             });
-
-            // 自动打开代码面板（setCodePanelOpen 是幂等的，无需闭包检查）
-            setCodePanelOpen(true);
+            setActiveCodeEntryId(execEntryId);
+            setCodeSidebarOpen(true);
           },
 
           onDone: (data) => {
@@ -342,6 +529,14 @@ export default function Home() {
                   : msg
               )
             );
+
+            // 标记当前消息的所有代码条目为非流式
+            setCodeEntries((prev) =>
+              prev.map((e) =>
+                e.messageId === assistantId ? { ...e, isStreaming: false } : e
+              )
+            );
+            setActiveCodeEntryId(null);
 
             // 刷新对话列表
             setRefreshTrigger((prev) => prev + 1);
@@ -483,6 +678,24 @@ export default function Home() {
               >
                 历史记录
               </button>
+              <button
+                onClick={() => setCodeSidebarOpen(!codeSidebarOpen)}
+                className={`hidden lg:flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-xl border transition-all duration-200 ${
+                  codeSidebarOpen
+                    ? "border-accent/50 bg-accent/10 text-accent"
+                    : "border-border/50 hover:border-accent/50 hover:bg-accent/10"
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
+                <span>代码</span>
+                {codeEntries.length > 0 && (
+                  <span className="text-xs bg-accent/20 px-1.5 py-0.5 rounded-full">
+                    {codeEntries.length}
+                  </span>
+                )}
+              </button>
               <ThemeToggle />
             </div>
           </div>
@@ -518,15 +731,16 @@ export default function Home() {
             />
             <InputBox onSend={handleSendMessage} />
           </div>
+
+          {/* 代码侧栏 */}
+          <CodeSidebar
+            entries={codeEntries}
+            isOpen={codeSidebarOpen}
+            onToggle={() => setCodeSidebarOpen(!codeSidebarOpen)}
+            activeEntryId={activeCodeEntryId}
+          />
         </div>
       </main>
-
-      {/* 代码执行面板 */}
-      <CodeExecutionPanel
-        executions={codeExecutions}
-        isOpen={codePanelOpen}
-        onClose={() => setCodePanelOpen(false)}
-      />
     </ThemeProvider>
   );
 }

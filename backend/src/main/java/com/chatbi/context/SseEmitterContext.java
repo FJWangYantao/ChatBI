@@ -1,11 +1,13 @@
 package com.chatbi.context;
 
 import com.chatbi.dto.MessageTag;
+import com.chatbi.dto.StreamingTagEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * SSE Emitter 上下文管理器
@@ -17,6 +19,7 @@ public class SseEmitterContext {
 
     private static final ThreadLocal<SseEmitter> emitterHolder = new ThreadLocal<>();
     private static final ThreadLocal<List<MessageTag>> tagCollector = new ThreadLocal<>();
+    private static final ThreadLocal<Consumer<StreamingTagEvent>> tagStreamCallback = new ThreadLocal<>();
 
     /**
      * 设置当前线程的 SseEmitter，同时初始化 tag 收集器
@@ -57,10 +60,25 @@ public class SseEmitterContext {
     }
 
     /**
+     * 设置流式 tag 回调（用于在工具函数内部向 SSE 发送流式 tag）
+     */
+    public static void setTagStreamCallback(Consumer<StreamingTagEvent> callback) {
+        tagStreamCallback.set(callback);
+    }
+
+    /**
+     * 获取流式 tag 回调
+     */
+    public static Consumer<StreamingTagEvent> getTagStreamCallback() {
+        return tagStreamCallback.get();
+    }
+
+    /**
      * 清理当前线程的所有上下文
      */
     public static void clear() {
         emitterHolder.remove();
         tagCollector.remove();
+        tagStreamCallback.remove();
     }
 }
