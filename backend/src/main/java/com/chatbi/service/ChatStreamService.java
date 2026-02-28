@@ -411,9 +411,21 @@ public class ChatStreamService {
 
     // ─── SSE 事件发送方法 ─────────────────────────────────────
 
+    /**
+     * 安全发送 SSE 事件，连接已断开时静默跳过
+     */
+    private void safeSend(SseEmitter emitter, SseEmitter.SseEventBuilder event) throws IOException {
+        if (SseEmitterContext.isDisconnected()) return;
+        try {
+            emitter.send(event);
+        } catch (IllegalStateException e) {
+            SseEmitterContext.markDisconnected();
+        }
+    }
+
     private void emitStatus(SseEmitter emitter, String stage, String message, int progress, int totalSteps) throws IOException {
         StreamEventData.StatusEventData data = new StreamEventData.StatusEventData(stage, message, progress, totalSteps);
-        emitter.send(SseEmitter.event().name("status").data(objectMapper.writeValueAsString(data)));
+        safeSend(emitter, SseEmitter.event().name("status").data(objectMapper.writeValueAsString(data)));
     }
 
     private void emitIntent(SseEmitter emitter, IntentRecognitionResponse intent) throws IOException {
@@ -424,13 +436,13 @@ public class ChatStreamService {
         data.put("subtype", intent.getSubtype() != null ? intent.getSubtype() : "UNKNOWN_QUERY");
         data.put("subtypeConfidence", intent.getSubtypeConfidence());
         data.put("subtypeCn", intent.getSubtypeCn() != null ? intent.getSubtypeCn() : "未知查询");
-        emitter.send(SseEmitter.event().name("intent").data(objectMapper.writeValueAsString(data)));
+        safeSend(emitter, SseEmitter.event().name("intent").data(objectMapper.writeValueAsString(data)));
     }
 
     private void emitTextDelta(SseEmitter emitter, String delta) throws IOException {
         StreamEventData.TextDeltaEventData data = new StreamEventData.TextDeltaEventData(delta);
         synchronized (emitter) {
-            emitter.send(SseEmitter.event().name("text_delta").data(objectMapper.writeValueAsString(data)));
+            safeSend(emitter, SseEmitter.event().name("text_delta").data(objectMapper.writeValueAsString(data)));
         }
     }
 
@@ -451,7 +463,7 @@ public class ChatStreamService {
 
     private void emitTag(SseEmitter emitter, MessageTag tag) throws IOException {
         synchronized (emitter) {
-            emitter.send(SseEmitter.event().name("tag").data(objectMapper.writeValueAsString(tag)));
+            safeSend(emitter, SseEmitter.event().name("tag").data(objectMapper.writeValueAsString(tag)));
         }
     }
 
@@ -507,12 +519,12 @@ public class ChatStreamService {
 
     private void emitSuggestions(SseEmitter emitter, List<String> items) throws IOException {
         Map<String, Object> data = Map.of("items", items);
-        emitter.send(SseEmitter.event().name("suggestions").data(objectMapper.writeValueAsString(data)));
+        safeSend(emitter, SseEmitter.event().name("suggestions").data(objectMapper.writeValueAsString(data)));
     }
 
     private void emitDone(SseEmitter emitter, String conversationId, long totalDuration) throws IOException {
         StreamEventData.DoneEventData data = new StreamEventData.DoneEventData(conversationId, totalDuration);
-        emitter.send(SseEmitter.event().name("done").data(objectMapper.writeValueAsString(data)));
+        safeSend(emitter, SseEmitter.event().name("done").data(objectMapper.writeValueAsString(data)));
     }
 
     private void emitError(SseEmitter emitter, String code, String message, String stage) {
@@ -525,7 +537,7 @@ public class ChatStreamService {
 
     private void emitReasoning(SseEmitter emitter, String step, String content, int stepIndex) throws IOException {
         StreamEventData.ReasoningEventData data = new StreamEventData.ReasoningEventData(step, content, stepIndex);
-        emitter.send(SseEmitter.event().name("reasoning").data(objectMapper.writeValueAsString(data)));
+        safeSend(emitter, SseEmitter.event().name("reasoning").data(objectMapper.writeValueAsString(data)));
     }
 
     private void emitStepResult(SseEmitter emitter, String stepName, String stepLabel, long duration, String status, Object result) {
@@ -608,7 +620,7 @@ public class ChatStreamService {
         if (success != null) data.put("success", success);
         if (executionTime != null) data.put("executionTime", executionTime);
 
-        emitter.send(SseEmitter.event()
+        safeSend(emitter, SseEmitter.event()
                 .name("code_execution")
                 .data(objectMapper.writeValueAsString(data)));
     }

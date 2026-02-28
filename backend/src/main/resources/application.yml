@@ -74,6 +74,7 @@ chatbi:
       chat:               # ChatService 主流程
       diagnostic:         # 归因分析 Agent
       formatting:         # 排版 Agent
+      code-agent:         # 并行代码生成 Agent
 
 # 服务器配置
 server:

@@ -9,12 +9,16 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { executeSql, fetchPagedData } from "@/lib/api/chat";
 import AnalysisResultRenderer from "./AnalysisResultRenderer";
+import MessageToolbar from "./MessageToolbar";
 
 interface ChatWindowProps {
   messages: Message[];
   isSending?: boolean;
   onUpdateMessage?: (messageId: string, newTags: MessageTag[]) => void;
   onSendMessage?: (content: string) => void;
+  onEditAndResend?: (messageId: string, newContent: string) => void;
+  onRegenerateMessage?: (messageId: string) => void;
+  onFeedback?: (messageId: string, feedback: 'like' | 'dislike' | null) => void;
 }
 
 function PaginatedTable({ tag }: { tag: MessageTag }) {
@@ -551,10 +555,12 @@ function renderSuggestions(
   );
 }
 
-export default function ChatWindow({ messages, isSending, onUpdateMessage, onSendMessage }: ChatWindowProps) {
+export default function ChatWindow({ messages, isSending, onUpdateMessage, onSendMessage, onEditAndResend, onRegenerateMessage, onFeedback }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef(0);
   const isNearBottomRef = useRef(true);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState("");
 
   // 监听滚动事件，判断用户是否在底部附近
   useEffect(() => {
@@ -598,7 +604,7 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`flex gap-4 ${message.role === "user" ? "flex-row-reverse" : "flex-row"
+            className={`group flex gap-4 ${message.role === "user" ? "flex-row-reverse" : "flex-row"
               }`}
           >
             {/* 头像 */}
@@ -632,51 +638,106 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
                   : "glass-card border border-border/50 hover:border-accent/30"
                   } ${message.role === "assistant" && message.tags?.some(t => t.type === 'analysis_result') ? 'w-full' : ''}`}
               >
-                {/* 步骤时间线 */}
-                {(message.isStreaming || (message.completedSteps && message.completedSteps.length > 0)) && (
-                  <StepTimeline
-                    completedSteps={message.completedSteps}
-                    currentStage={message.streamingStage}
-                    currentMessage={message.streamingMessage}
-                    isStreaming={message.isStreaming}
-                  />
-                )}
-
-                {/* 推理过程展示 */}
-                {message.role === "assistant" && message.reasoningSteps && message.reasoningSteps.length > 0 && (
-                  <ReasoningChain
-                    steps={message.reasoningSteps}
-                    isStreaming={message.isStreaming && message.streamingStage === "reasoning"}
-                  />
-                )}
-
-                {/* 标签化消息或有 tags 的消息 */}
-                {message.tags && message.tags.length > 0 ? (
-                  <TaggedMessage
-                    message={message}
-                    onUpdateMessage={onUpdateMessage}
-                  />
-                ) : (
-                  <div className={`max-w-none break-words leading-relaxed ${message.role === "user"
-                    ? "prose prose-sm max-w-none"
-                    : "prose prose-sm dark:prose-invert max-w-none"
-                    }`}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {message.content}
-                    </ReactMarkdown>
-                    {message.isStreaming && message.content && (
-                      <span className="inline-block w-2 h-5 bg-emerald-500 animate-pulse ml-0.5 align-middle" />
-                    )}
+                {/* 编辑态 */}
+                {editingMessageId === message.id ? (
+                  <div>
+                    <textarea
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      className="w-full min-h-[80px] glass-card border border-border/50 text-foreground text-sm p-3 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none resize-y transition-colors duration-200"
+                      autoFocus
+                    />
+                    <div className="flex justify-end gap-2 mt-2">
+                      <button
+                        onClick={() => setEditingMessageId(null)}
+                        className="px-3 py-1.5 text-xs font-medium rounded-xl glass-card border border-border/50 hover:border-accent/50 hover:bg-accent/10 transition-all duration-200"
+                      >
+                        取消
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (onEditAndResend && editContent.trim()) {
+                            onEditAndResend(message.id, editContent.trim());
+                            setEditingMessageId(null);
+                          }
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium gradient-btn text-white rounded-xl transition-all duration-200"
+                      >
+                        发送
+                      </button>
+                    </div>
                   </div>
-                )}
+                ) : (
+                  <>
+                    {/* 步骤时间线 */}
+                    {(message.isStreaming || (message.completedSteps && message.completedSteps.length > 0)) && (
+                      <StepTimeline
+                        completedSteps={message.completedSteps}
+                        currentStage={message.streamingStage}
+                        currentMessage={message.streamingMessage}
+                        isStreaming={message.isStreaming}
+                      />
+                    )}
 
-                <span
-                  className={`mt-2 text-xs block opacity-60 font-mono ${message.role === "user" ? "" : ""
-                    }`}
-                >
-                  {message.timestamp.toLocaleTimeString()}
-                </span>
+                    {/* 推理过程展示 */}
+                    {message.role === "assistant" && message.reasoningSteps && message.reasoningSteps.length > 0 && (
+                      <ReasoningChain
+                        steps={message.reasoningSteps}
+                        isStreaming={message.isStreaming && message.streamingStage === "reasoning"}
+                      />
+                    )}
+
+                    {/* 标签化消息或有 tags 的消息 */}
+                    {message.tags && message.tags.length > 0 ? (
+                      <TaggedMessage
+                        message={message}
+                        onUpdateMessage={onUpdateMessage}
+                      />
+                    ) : (
+                      <div className={`max-w-none break-words leading-relaxed ${message.role === "user"
+                        ? "prose prose-sm max-w-none"
+                        : "prose prose-sm dark:prose-invert max-w-none"
+                        }`}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {message.content}
+                        </ReactMarkdown>
+                        {message.isStreaming && message.content && (
+                          <span className="inline-block w-2 h-5 bg-emerald-500 animate-pulse ml-0.5 align-middle" />
+                        )}
+                      </div>
+                    )}
+
+                    <span
+                      className={`mt-2 text-xs block opacity-60 font-mono ${message.role === "user" ? "" : ""
+                        }`}
+                    >
+                      {message.timestamp.toLocaleTimeString()}
+                    </span>
+                  </>
+                )}
               </div>
+
+              {/* 工具栏 - 流式输出中不显示 */}
+              {!message.isStreaming && editingMessageId !== message.id && (
+                <div className={`opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${
+                  message.role === "user" ? "flex justify-end" : ""
+                }`}>
+                  <MessageToolbar
+                    message={message}
+                    onCopy={() => navigator.clipboard.writeText(message.content)}
+                    onEdit={message.role === "user" ? () => {
+                      setEditingMessageId(message.id);
+                      setEditContent(message.content);
+                    } : undefined}
+                    onRegenerate={message.role === "assistant" && onRegenerateMessage
+                      ? () => onRegenerateMessage(message.id)
+                      : undefined}
+                    onFeedback={message.role === "assistant" && onFeedback
+                      ? (fb) => onFeedback(message.id, fb)
+                      : undefined}
+                  />
+                </div>
+              )}
 
               {/* ── analysis_result 独立全宽展示区（气泡外） ── */}
               {message.role === "assistant" && message.tags

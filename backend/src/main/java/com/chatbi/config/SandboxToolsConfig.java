@@ -4,6 +4,7 @@ import com.chatbi.context.SseEmitterContext;
 import com.chatbi.dto.MessageTag;
 import com.chatbi.dto.StreamingTagEvent;
 import com.chatbi.service.ChatStreamService;
+import com.chatbi.service.CodeAgent;
 import com.chatbi.service.FormattingAgent;
 import com.chatbi.service.MCPSandboxService;
 import com.chatbi.service.Text2SQLAgent;
@@ -18,7 +19,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -50,6 +51,12 @@ public class SandboxToolsConfig {
     public static final ConcurrentHashMap<String, DataEntry> DATA_STORE = new ConcurrentHashMap<>();
 
     /**
+     * 代码引用存储。execute_code 将代码存入此 Map 并返回 code_ref_id，
+     * fix_code 通过 code_ref_id 取回原始代码，应用差量修复后重新执行。
+     */
+    public static final ConcurrentHashMap<String, DataEntry> CODE_STORE = new ConcurrentHashMap<>();
+
+    /**
      * 定时清理过期数据（每10分钟扫描，删除30分钟前的条目）
      */
     @org.springframework.scheduling.annotation.Scheduled(fixedRate = 600_000)
@@ -65,8 +72,13 @@ public class SandboxToolsConfig {
                 removed++;
             }
         }
+        var it2 = CODE_STORE.entrySet().iterator();
+        while (it2.hasNext()) {
+            if (now - it2.next().getValue().createdAt > expireMs) { it2.remove(); removed++; }
+        }
         if (removed > 0) {
-            log.info("[DATA_STORE] 清理过期数据: 删除 {} 条，剩余 {} 条", removed, DATA_STORE.size());
+            log.info("[STORE] 清理过期数据: 删除 {} 条，DATA_STORE={} 条，CODE_STORE={} 条",
+                    removed, DATA_STORE.size(), CODE_STORE.size());
         }
     }
 
@@ -249,12 +261,165 @@ public class SandboxToolsConfig {
                         }
                     }
 
+                    // 存储代码，返回 code_ref_id 供 fix_code 使用
+                    if (code != null && !code.isEmpty()) {
+                        String codeRefId = "code_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+                        CODE_STORE.put(codeRefId, new DataEntry(code));
+                        result.put("code_ref_id", codeRefId);
+                    }
+
                     // 优化返回格式，提供更清晰的错误提示供 LLM 理解
                     boolean success = toBool(result.getOrDefault("success", false));
                     if (!success) {
                         String stderr = toStr(result.get("stderr"));
                         String errorHint = buildErrorHint(stderr);
                         result.put("error_hint", errorHint);
+                    }
+
+                    return result;
+                })
+                .inputType(Map.class)
+                .build();
+    }
+
+    @Bean("fixCodeFunction")
+    public FunctionCallback fixCodeFunction(
+            MCPSandboxService sandboxService,
+            ApplicationContext applicationContext) {
+
+        AtomicInteger fixCounter = new AtomicInteger(0);
+
+        return FunctionCallback.builder()
+                .description("差量修复已执行过的 Python 代码。通过 code_ref_id 引用原始代码，"
+                        + "传入 fixes 数组（每项包含 old 和 new 字段）进行文本替换，然后重新执行修复后的代码。"
+                        + "当 execute_code 返回错误时，优先使用此工具修复，避免重新生成完整代码。")
+                .function("fix_code", (Function<Map<String, Object>, Map<String, Object>>) params -> {
+                    String codeRefId = toStr(params.get("code_ref_id"));
+                    String dataRefId = toStr(params.getOrDefault("data_ref_id", null));
+                    Object fixesObj = params.get("fixes");
+
+                    Map<String, Object> result = new LinkedHashMap<>();
+
+                    // 取出原始代码
+                    if (codeRefId == null || codeRefId.isEmpty()) {
+                        result.put("success", false);
+                        result.put("error_hint", "缺少 code_ref_id 参数");
+                        return result;
+                    }
+                    DataEntry codeEntry = CODE_STORE.get(codeRefId);
+                    if (codeEntry == null) {
+                        result.put("success", false);
+                        result.put("error_hint", "code_ref_id 无效或已过期，请使用 execute_code 重新执行完整代码");
+                        return result;
+                    }
+
+                    // 解析 fixes 并应用替换
+                    String code = codeEntry.data;
+                    try {
+                        List<?> fixes = (fixesObj instanceof List) ? (List<?>) fixesObj
+                                : MAPPER.readValue(toStr(fixesObj), List.class);
+                        for (Object fix : fixes) {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> f = (fix instanceof Map) ? (Map<String, Object>) fix
+                                    : MAPPER.readValue(toStr(fix), Map.class);
+                            String oldText = toStr(f.get("old"));
+                            String newText = toStr(f.get("new"));
+                            if (oldText != null && newText != null) {
+                                code = code.replace(oldText, newText);
+                            }
+                        }
+                    } catch (Exception e) {
+                        result.put("success", false);
+                        result.put("error_hint", "fixes 参数解析失败: " + e.getMessage());
+                        return result;
+                    }
+
+                    // 解析 data_ref_id
+                    String dataJson = null;
+                    if (dataRefId != null && !dataRefId.isEmpty()) {
+                        DataEntry dataEntry = DATA_STORE.get(dataRefId);
+                        if (dataEntry != null) dataJson = dataEntry.data;
+                    }
+
+                    // 发送执行中事件
+                    String executionId = "fix_" + fixCounter.incrementAndGet();
+                    SseEmitter emitter = SseEmitterContext.getEmitter();
+                    if (emitter != null) {
+                        try {
+                            ChatStreamService css = applicationContext.getBean(ChatStreamService.class);
+                            css.emitCodeExecution(emitter, executionId, "executing", code, null, null, null, null);
+                        } catch (Exception e) {
+                            log.warn("[FixCode] 发送执行中事件失败: {}", e.getMessage());
+                        }
+                    }
+
+                    // 执行修复后的代码
+                    long startTime = System.currentTimeMillis();
+                    result = sandboxService.executeCode(code, dataJson, 30);
+                    long executionTime = System.currentTimeMillis() - startTime;
+
+                    // 发送完成事件 + 图片 + 分析结果（复用 execute_code 的逻辑）
+                    if (emitter != null) {
+                        try {
+                            boolean success = toBool(result.getOrDefault("success", false));
+                            ChatStreamService css = applicationContext.getBean(ChatStreamService.class);
+                            css.emitCodeExecution(emitter, executionId,
+                                    success ? "completed" : "failed",
+                                    code, toStr(result.get("stdout")), toStr(result.get("stderr")),
+                                    success, executionTime);
+
+                            Object imagesObj = result.get("images");
+                            if (success && imagesObj instanceof List) {
+                                for (Object img : (List<?>) imagesObj) {
+                                    String base64Img = img.toString();
+                                    Map<String, Object> imageTag = new LinkedHashMap<>();
+                                    imageTag.put("type", "image");
+                                    imageTag.put("content", "data:image/png;base64," + base64Img);
+                                    imageTag.put("title", "分析图表");
+                                    imageTag.put("metadata", Map.of("source", "sandbox"));
+                                    emitter.send(SseEmitter.event()
+                                            .name("tag")
+                                            .data(MAPPER.writeValueAsString(imageTag)));
+                                    SseEmitterContext.collectTag(new MessageTag(
+                                            "image", "data:image/png;base64," + base64Img,
+                                            "分析图表", Map.of("source", "sandbox")));
+                                }
+                            }
+
+                            if (success) {
+                                String stdout = toStr(result.get("stdout"));
+                                if (stdout != null && !stdout.isEmpty()) {
+                                    FormattingAgent fa = applicationContext.getBean(FormattingAgent.class);
+                                    var tagCallback = SseEmitterContext.getTagStreamCallback();
+                                    if (tagCallback != null) {
+                                        fa.formatAnalysisOutputStreaming(stdout, tagCallback);
+                                    } else {
+                                        var analysisOutput = fa.formatAnalysisOutput(stdout);
+                                        Map<String, Object> analysisTag = new LinkedHashMap<>();
+                                        analysisTag.put("type", "analysis_result");
+                                        analysisTag.put("content", analysisOutput);
+                                        analysisTag.put("title", "分析详情");
+                                        emitter.send(SseEmitter.event()
+                                                .name("tag")
+                                                .data(MAPPER.writeValueAsString(analysisTag)));
+                                        SseEmitterContext.collectTag(new MessageTag(
+                                                "analysis_result", analysisOutput, "分析详情", null));
+                                    }
+                                }
+                            }
+                        } catch (Exception e) {
+                            log.warn("[FixCode] 发送完成事件失败: {}", e.getMessage());
+                        }
+                    }
+
+                    // 存储修复后的代码
+                    String newCodeRefId = "code_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+                    CODE_STORE.put(newCodeRefId, new DataEntry(code));
+                    result.put("code_ref_id", newCodeRefId);
+
+                    boolean success = toBool(result.getOrDefault("success", false));
+                    if (!success) {
+                        result.put("error_hint", buildErrorHint(toStr(result.get("stderr"))));
                     }
 
                     return result;
@@ -426,5 +591,170 @@ public class SandboxToolsConfig {
 
         // 通用错误
         return "代码执行失败。错误信息：" + stderr;
+    }
+
+    @Bean("dispatchParallelTasksFunction")
+    public FunctionCallback dispatchParallelTasksFunction(ApplicationContext applicationContext) {
+        ExecutorService executor = Executors.newFixedThreadPool(6);
+
+        return FunctionCallback.builder()
+                .description("并行执行多个独立的数据分析子任务。当需要对同一份数据做多个独立分析时（如统计摘要+趋势图+排名），"
+                        + "使用此工具一次性派发，比逐个调用 execute_code 更快。每个子任务由独立的 CodeAgent 并行生成代码并执行。")
+                .function("dispatch_parallel_tasks", (Function<Map<String, Object>, Map<String, Object>>) params -> {
+                    Object tasksObj = params.get("tasks");
+                    List<?> tasksList;
+                    try {
+                        if (tasksObj instanceof List) {
+                            tasksList = (List<?>) tasksObj;
+                        } else {
+                            tasksList = MAPPER.readValue(toStr(tasksObj), List.class);
+                        }
+                    } catch (Exception e) {
+                        return Map.of("success", false, "error", "tasks 参数解析失败: " + e.getMessage());
+                    }
+
+                    if (tasksList == null || tasksList.isEmpty()) {
+                        return Map.of("success", false, "error", "tasks 数组为空");
+                    }
+
+                    log.info("[DispatchParallel] 收到 {} 个子任务", tasksList.size());
+
+                    // 获取当前线程的 Holder，传递给并行线程
+                    SseEmitterContext.Holder holder = SseEmitterContext.getHolder();
+
+                    // 发送 subtask_status SSE 事件（前端展示进度）
+                    if (holder != null) {
+                        try {
+                            List<String> titles = new ArrayList<>();
+                            for (Object t : tasksList) {
+                                @SuppressWarnings("unchecked")
+                                Map<String, Object> task = (t instanceof Map) ? (Map<String, Object>) t
+                                        : MAPPER.readValue(toStr(t), Map.class);
+                                titles.add(toStr(task.getOrDefault("title", "子任务")));
+                            }
+                            Map<String, Object> statusEvent = new LinkedHashMap<>();
+                            statusEvent.put("type", "subtask_status");
+                            statusEvent.put("status", "started");
+                            statusEvent.put("total", tasksList.size());
+                            statusEvent.put("titles", titles);
+                            holder.safeSend(SseEmitter.event()
+                                    .name("subtask_status")
+                                    .data(MAPPER.writeValueAsString(statusEvent)));
+                        } catch (Exception e) {
+                            log.warn("[DispatchParallel] 发送 subtask_status 事件失败: {}", e.getMessage());
+                        }
+                    }
+
+                    CodeAgent codeAgent = applicationContext.getBean(CodeAgent.class);
+
+                    // 并行提交所有子任务
+                    List<CompletableFuture<com.chatbi.dto.SubTaskResult>> futures = new ArrayList<>();
+                    for (int i = 0; i < tasksList.size(); i++) {
+                        final int idx = i;
+                        try {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> task = (tasksList.get(i) instanceof Map)
+                                    ? (Map<String, Object>) tasksList.get(i)
+                                    : MAPPER.readValue(toStr(tasksList.get(i)), Map.class);
+
+                            String title = toStr(task.getOrDefault("title", "子任务" + (i + 1)));
+                            String description = toStr(task.getOrDefault("description", title));
+                            String dataRefId = toStr(task.get("data_ref_id"));
+
+                            // 从 DATA_STORE 获取列名和预览
+                            String[] columns = new String[0];
+                            String dataPreview = null;
+                            if (dataRefId != null) {
+                                DataEntry entry = DATA_STORE.get(dataRefId);
+                                if (entry != null) {
+                                    try {
+                                        List<?> rows = MAPPER.readValue(entry.data, List.class);
+                                        if (!rows.isEmpty() && rows.get(0) instanceof Map) {
+                                            @SuppressWarnings("unchecked")
+                                            Map<String, Object> firstRow = (Map<String, Object>) rows.get(0);
+                                            columns = firstRow.keySet().toArray(new String[0]);
+                                            // 预览前5行
+                                            int previewCount = Math.min(5, rows.size());
+                                            StringBuilder sb = new StringBuilder();
+                                            for (int r = 0; r < previewCount; r++) {
+                                                sb.append(rows.get(r).toString());
+                                                if (r < previewCount - 1) sb.append("\n");
+                                            }
+                                            dataPreview = sb.toString();
+                                        }
+                                    } catch (Exception e) {
+                                        log.warn("[DispatchParallel] 解析数据预览失败: {}", e.getMessage());
+                                    }
+                                }
+                            }
+
+                            final String[] cols = columns;
+                            final String preview = dataPreview;
+                            futures.add(CompletableFuture.supplyAsync(
+                                    () -> codeAgent.execute(description, dataRefId, cols, preview, holder),
+                                    executor));
+                        } catch (Exception e) {
+                            log.error("[DispatchParallel] 子任务 {} 构建失败: {}", idx, e.getMessage());
+                            futures.add(CompletableFuture.completedFuture(
+                                    com.chatbi.dto.SubTaskResult.failed("子任务" + (idx + 1), e.getMessage())));
+                        }
+                    }
+
+                    // 等待全部完成（120s 超时）
+                    List<Map<String, Object>> results = new ArrayList<>();
+                    try {
+                        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                                .get(120, TimeUnit.SECONDS);
+                        for (CompletableFuture<com.chatbi.dto.SubTaskResult> f : futures) {
+                            results.add(f.get().toMap());
+                        }
+                    } catch (TimeoutException e) {
+                        log.warn("[DispatchParallel] 部分子任务超时");
+                        for (int i = 0; i < futures.size(); i++) {
+                            CompletableFuture<com.chatbi.dto.SubTaskResult> f = futures.get(i);
+                            if (f.isDone()) {
+                                try { results.add(f.get().toMap()); }
+                                catch (Exception ex) {
+                                    results.add(com.chatbi.dto.SubTaskResult.failed("子任务" + (i + 1), "执行异常").toMap());
+                                }
+                            } else {
+                                f.cancel(true);
+                                results.add(com.chatbi.dto.SubTaskResult.failed("子任务" + (i + 1), "执行超时(120s)").toMap());
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.error("[DispatchParallel] 等待子任务完成异常: {}", e.getMessage());
+                        for (int i = results.size(); i < futures.size(); i++) {
+                            results.add(com.chatbi.dto.SubTaskResult.failed("子任务" + (i + 1), e.getMessage()).toMap());
+                        }
+                    }
+
+                    // 发送完成事件
+                    if (holder != null) {
+                        try {
+                            Map<String, Object> doneEvent = new LinkedHashMap<>();
+                            doneEvent.put("type", "subtask_status");
+                            doneEvent.put("status", "completed");
+                            doneEvent.put("total", tasksList.size());
+                            long successCount = results.stream()
+                                    .filter(r -> Boolean.TRUE.equals(r.get("success"))).count();
+                            doneEvent.put("success_count", successCount);
+                            holder.safeSend(SseEmitter.event()
+                                    .name("subtask_status")
+                                    .data(MAPPER.writeValueAsString(doneEvent)));
+                        } catch (Exception e) {
+                            log.warn("[DispatchParallel] 发送完成事件失败: {}", e.getMessage());
+                        }
+                    }
+
+                    Map<String, Object> response = new LinkedHashMap<>();
+                    response.put("success", true);
+                    response.put("total_tasks", tasksList.size());
+                    response.put("results", results);
+                    log.info("[DispatchParallel] 全部子任务完成, 共 {} 个", tasksList.size());
+                    return response;
+                })
+                .inputType(Map.class)
+                .build();
     }
 }

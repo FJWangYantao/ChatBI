@@ -34,7 +34,11 @@ cd /d "%~dp0"
 echo [INFO] Starting Spring Boot application...
 echo.
 
+REM ===== 代理配置 =====
+set PROXY_HOST=127.0.0.1
+set PROXY_PORT=7890
+
 REM 启动 Spring Boot
-mvn spring-boot:run
+mvn spring-boot:run "-Dspring-boot.run.jvmArguments=-Dhttps.proxyHost=%PROXY_HOST% -Dhttps.proxyPort=%PROXY_PORT% -Dhttp.nonProxyHosts=localhost|127.0.0.1"
 
 pause

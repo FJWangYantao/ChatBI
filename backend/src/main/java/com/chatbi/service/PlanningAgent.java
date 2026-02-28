@@ -23,6 +23,8 @@ import reactor.core.publisher.Flux;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
+import java.net.InetSocketAddress;
+import java.net.ProxySelector;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -42,12 +44,25 @@ public class PlanningAgent {
     private final NERService nerService;
     private final ReadSchemaStructureService schemaService;
     private final FunctionCallback executeCodeFunction;
+    private final FunctionCallback fixCodeFunction;
     private final FunctionCallback validateCodeFunction;
     private final FunctionCallback sandboxInfoFunction;
     private final FunctionCallback queryDatabaseFunction;
+    private final FunctionCallback dispatchParallelTasksFunction;
     private final Map<String, FunctionCallback> toolMap;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final HttpClient httpClient = buildHttpClient();
+
+    private static HttpClient buildHttpClient() {
+        String proxyHost = System.getProperty("https.proxyHost");
+        String proxyPort = System.getProperty("https.proxyPort");
+        if (proxyHost != null && !proxyHost.isEmpty() && proxyPort != null) {
+            return HttpClient.newBuilder()
+                    .proxy(ProxySelector.of(new InetSocketAddress(proxyHost, Integer.parseInt(proxyPort))))
+                    .build();
+        }
+        return HttpClient.newHttpClient();
+    }
 
     // Token 限制相关常量
     private static final int MAX_CONTEXT_TOKENS = 131072;
@@ -71,26 +86,32 @@ public class PlanningAgent {
                          NERService nerService,
                          ReadSchemaStructureService schemaService,
                          @Qualifier("executeCodeFunction") FunctionCallback executeCodeFunction,
+                         @Qualifier("fixCodeFunction") FunctionCallback fixCodeFunction,
                          @Qualifier("validateCodeFunction") FunctionCallback validateCodeFunction,
                          @Qualifier("sandboxInfoFunction") FunctionCallback sandboxInfoFunction,
-                         @Qualifier("queryDatabaseFunction") FunctionCallback queryDatabaseFunction) {
+                         @Qualifier("queryDatabaseFunction") FunctionCallback queryDatabaseFunction,
+                         @Qualifier("dispatchParallelTasksFunction") FunctionCallback dispatchParallelTasksFunction) {
         this.chatClient = chatClientBuilder.build();
         this.chatModel = chatModel;
         this.modelOptions = modelOptions;
         this.nerService = nerService;
         this.schemaService = schemaService;
         this.executeCodeFunction = executeCodeFunction;
+        this.fixCodeFunction = fixCodeFunction;
         this.validateCodeFunction = validateCodeFunction;
         this.sandboxInfoFunction = sandboxInfoFunction;
         this.queryDatabaseFunction = queryDatabaseFunction;
+        this.dispatchParallelTasksFunction = dispatchParallelTasksFunction;
 
         // 构建工具名称到回调的映射
-        this.toolMap = Map.of(
-                "query_database", queryDatabaseFunction,
-                "execute_code", executeCodeFunction,
-                "validate_code", validateCodeFunction,
-                "sandbox_info", sandboxInfoFunction
-        );
+        this.toolMap = new HashMap<>();
+        toolMap.put("query_database", queryDatabaseFunction);
+        toolMap.put("execute_code", executeCodeFunction);
+        toolMap.put("fix_code", fixCodeFunction);
+        toolMap.put("validate_code", validateCodeFunction);
+        toolMap.put("sandbox_info", sandboxInfoFunction);
+        toolMap.put("dispatch_parallel_tasks", dispatchParallelTasksFunction);
+        log.info("[PlanningAgent] 已注册工具: {}", toolMap.keySet());
     }
 
     /**
@@ -121,8 +142,8 @@ public class PlanningAgent {
         OpenAiChatOptions baseOptions = modelOptions.getOptions("planning");
         OpenAiChatOptions options = OpenAiChatOptions.fromOptions(baseOptions);
         options.setFunctionCallbacks(List.of(
-                queryDatabaseFunction, executeCodeFunction,
-                validateCodeFunction, sandboxInfoFunction));
+                queryDatabaseFunction, executeCodeFunction, fixCodeFunction,
+                validateCodeFunction, sandboxInfoFunction, dispatchParallelTasksFunction));
         options.setProxyToolCalls(true);
 
         int maxRounds = 10;
@@ -344,7 +365,7 @@ public class PlanningAgent {
     private ArrayNode buildToolsArray() {
         ArrayNode tools = objectMapper.createArrayNode();
         for (FunctionCallback fc : List.of(queryDatabaseFunction, executeCodeFunction,
-                validateCodeFunction, sandboxInfoFunction)) {
+                fixCodeFunction, validateCodeFunction, sandboxInfoFunction, dispatchParallelTasksFunction)) {
             try {
                 ObjectNode fn = objectMapper.createObjectNode()
                         .put("name", fc.getName())
@@ -747,6 +768,7 @@ public class PlanningAgent {
     }
 
     private String truncateString(String s, int maxLen) {
+        if (s == null) return "(null)";
         return s.length() <= maxLen ? s : s.substring(0, maxLen) + "...[已截断]";
     }
 
@@ -816,8 +838,20 @@ public class PlanningAgent {
             2. **execute_code**: 在安全沙盒中执行 Python 代码进行数据分析和可视化。
                - 输入: {"code": "...", "data_ref_id": "..."}
                - data_ref_id 使用 query_database 返回的 data_ref_id，系统会自动加载数据
-            3. **validate_code**: 预检代码安全性（通常不需要调用）
-            4. **sandbox_info**: 查询沙盒环境能力（通常不需要调用）
+               - 返回: stdout、stderr、images、code_ref_id（代码引用ID，用于 fix_code）
+            3. **fix_code**: 差量修复已执行过的代码。当 execute_code 失败时优先使用此工具，只需传入修改部分。
+               - 输入: {"code_ref_id": "...", "data_ref_id": "...", "fixes": [{"old": "错误代码片段", "new": "修正后代码片段"}]}
+               - code_ref_id 使用 execute_code 返回的 code_ref_id
+               - fixes 数组中每项的 old 是原代码中需要替换的文本，new 是替换后的文本
+            4. **validate_code**: 预检代码安全性（通常不需要调用）
+            5. **sandbox_info**: 查询沙盒环境能力（通常不需要调用）
+            6. **dispatch_parallel_tasks**: 并行执行多个独立的数据分析子任务。
+               当你需要对同一份数据做多个独立分析时（如统计摘要+趋势图+排名），
+               使用此工具一次性派发，比逐个调用 execute_code 更快。
+               - 输入: {"tasks": [{"title": "子任务标题", "description": "详细分析要求", "data_ref_id": "query_database返回的data_ref_id", "needs_chart": true}]}
+               - 每个子任务会由独立的 CodeAgent 并行生成代码并执行
+               - 返回: 所有子任务的执行结果汇总
+               - 注意: 仅当有2个及以上独立分析任务时使用，单个分析直接用 execute_code
 
             **标准工作流程：**
             1. 先调用 query_database 获取数据
@@ -829,7 +863,8 @@ public class PlanningAgent {
             - 必须先用 query_database 获取真实数据，绝对不要自己编造或模拟数据
             - execute_code 只需传 data_ref_id，不要传 data_json（数据由服务端自动注入）
             - 如果 query_database 返回 success=false，向用户说明无法获取数据
-            - 如果 execute_code 失败，根据 error_hint 修正代码并重试（最多 2 次）
+            - 如果 execute_code 失败，**必须优先使用 fix_code 工具**修复错误代码（传入 code_ref_id 和 fixes），而不是用 execute_code 重新生成完整代码。只有当 code_ref_id 过期或需要完全重写逻辑时才用 execute_code 重试
+            - 修复最多 2 次，仍然失败则向用户说明原因
             - Python 代码中数据已自动加载为 df (pandas DataFrame)
             - 绘图使用 matplotlib，设置中文字体: plt.rcParams['font.sans-serif'] = ['SimHei']
             - 保存图表: plt.savefig('output.png', dpi=100, bbox_inches='tight')

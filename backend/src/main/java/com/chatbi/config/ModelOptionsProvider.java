@@ -36,7 +36,7 @@ public class ModelOptionsProvider {
     @PostConstruct
     public void init() {
         String[] agents = {"clarification", "planning", "code", "forecast", "report",
-                "suggestion", "sql-correction", "text2sql", "ner", "chat", "diagnostic", "formatting"};
+                "suggestion", "sql-correction", "text2sql", "ner", "chat", "diagnostic", "formatting", "code-agent"};
         for (String agent : agents) {
             String key = "chatbi.model.agents." + agent;
             String value = environment.getProperty(key, "").trim();

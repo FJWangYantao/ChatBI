@@ -64,6 +64,7 @@ export interface Message {
   streamingMessage?: string;       // 当前阶段描述
   streamingProgress?: number;      // 当前进度
   streamingTotalSteps?: number;    // 总步骤数
+  feedback?: 'like' | 'dislike' | null; // 用户反馈
 }
 
 export default function Home() {
@@ -221,6 +222,12 @@ export default function Home() {
       timestamp: new Date(),
     };
 
+    setMessages((prev) => [...prev, userMessage]);
+    await sendMessageCore(content, agentType);
+  };
+
+  // 核心发送逻辑：创建 assistant 占位消息 + 调用 streamChatMessage
+  const sendMessageCore = async (content: string, agentType?: string) => {
     const assistantId = (Date.now() + 1).toString();
     const assistantMessage: Message = {
       id: assistantId,
@@ -234,7 +241,7 @@ export default function Home() {
       streamingTotalSteps: 7,
     };
 
-    setMessages((prev) => [...prev, userMessage, assistantMessage]);
+    setMessages((prev) => [...prev, assistantMessage]);
     setIsSending(true);
 
     // 创建 AbortController
@@ -643,6 +650,31 @@ export default function Home() {
     setIsSending(false);
   };
 
+  // 编辑用户消息后重新发送
+  const handleEditAndResend = async (messageId: string, newContent: string) => {
+    const msgIndex = messages.findIndex(m => m.id === messageId);
+    if (msgIndex === -1) return;
+    setMessages(prev => prev.slice(0, msgIndex));
+    await handleSendMessage(newContent);
+  };
+
+  // 重新生成 AI 回复
+  const handleRegenerateMessage = async (messageId: string) => {
+    const msgIndex = messages.findIndex(m => m.id === messageId);
+    if (msgIndex === -1) return;
+    const userMsg = messages.slice(0, msgIndex).reverse().find(m => m.role === 'user');
+    if (!userMsg) return;
+    setMessages(prev => prev.slice(0, msgIndex));
+    await sendMessageCore(userMsg.content);
+  };
+
+  // 消息反馈
+  const handleFeedback = (messageId: string, feedback: 'like' | 'dislike' | null) => {
+    setMessages(prev => prev.map(msg =>
+      msg.id === messageId ? { ...msg, feedback } : msg
+    ));
+  };
+
   // 初始加载欢迎消息
   useEffect(() => {
     handleNewConversation();
@@ -783,6 +815,9 @@ export default function Home() {
               isSending={isSending}
               onUpdateMessage={handleUpdateMessage}
               onSendMessage={handleSendMessage}
+              onEditAndResend={handleEditAndResend}
+              onRegenerateMessage={handleRegenerateMessage}
+              onFeedback={handleFeedback}
             />
             <InputBox
               onSend={handleSendMessage}
