@@ -4,6 +4,7 @@ import com.chatbi.context.SseEmitterContext;
 import com.chatbi.dto.MessageTag;
 import com.chatbi.dto.StreamingTagEvent;
 import com.chatbi.service.ChatStreamService;
+import com.chatbi.service.FormattingAgent;
 import com.chatbi.service.MCPSandboxService;
 import com.chatbi.service.Text2SQLAgent;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -217,22 +218,31 @@ public class SandboxToolsConfig {
                                 }
                             }
 
-                            // 发送 analysis_result tag
+                            // 发送 analysis_result tag（使用 LLM 排版 agent 流式输出）
                             if (success && stdout != null && !stdout.isEmpty()) {
-                                Map<String, Object> analysisOutput = chatStreamService.parseAnalysisOutput(stdout);
-                                Map<String, Object> analysisTag = new LinkedHashMap<>();
-                                analysisTag.put("type", "analysis_result");
-                                analysisTag.put("content", analysisOutput);
-                                analysisTag.put("title", "分析详情");
-                                emitter.send(SseEmitter.event()
-                                        .name("tag")
-                                        .data(MAPPER.writeValueAsString(analysisTag)));
-                                // 收集 tag 用于持久化
-                                SseEmitterContext.collectTag(new MessageTag(
-                                        "analysis_result",
-                                        analysisOutput,
-                                        "分析详情",
-                                        null));
+                                FormattingAgent formattingAgent = applicationContext.getBean(FormattingAgent.class);
+                                java.util.function.Consumer<StreamingTagEvent> tagCallback = SseEmitterContext.getTagStreamCallback();
+
+                                if (tagCallback != null) {
+                                    // 流式模式：tag_start/delta/end 由 FormattingAgent 内部通过 callback 发送
+                                    // emitTagEnd 内部自动调用 SseEmitterContext.collectTag() 完成持久化
+                                    formattingAgent.formatAnalysisOutputStreaming(stdout, tagCallback);
+                                } else {
+                                    // 无流式回调时（兜底）：保留旧逻辑
+                                    Map<String, Object> analysisOutput = formattingAgent.formatAnalysisOutput(stdout);
+                                    Map<String, Object> analysisTag = new LinkedHashMap<>();
+                                    analysisTag.put("type", "analysis_result");
+                                    analysisTag.put("content", analysisOutput);
+                                    analysisTag.put("title", "分析详情");
+                                    emitter.send(SseEmitter.event()
+                                            .name("tag")
+                                            .data(MAPPER.writeValueAsString(analysisTag)));
+                                    SseEmitterContext.collectTag(new MessageTag(
+                                            "analysis_result",
+                                            analysisOutput,
+                                            "分析详情",
+                                            null));
+                                }
                             }
                         } catch (Exception e) {
                             log.warn("[CodeExecution] 发送完成事件失败: {}", e.getMessage());

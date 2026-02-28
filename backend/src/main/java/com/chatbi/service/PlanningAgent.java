@@ -49,6 +49,16 @@ public class PlanningAgent {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
+    // Token 限制相关常量
+    private static final int MAX_CONTEXT_TOKENS = 131072;
+    private static final int TOKEN_SAFETY_MARGIN = 15000; // 预留给 tools 定义 + 模型输出
+    private static final int TARGET_TOKEN_LIMIT = MAX_CONTEXT_TOKENS - TOKEN_SAFETY_MARGIN;
+    private static final double CHARS_PER_TOKEN = 2.0; // 保守估算（中文约1.5-2字符/token）
+
+    private static class TokenLimitExceededException extends RuntimeException {
+        TokenLimitExceededException(String msg) { super(msg); }
+    }
+
     @Value("${spring.ai.openai.api-key}")
     private String apiKey;
 
@@ -120,6 +130,9 @@ public class PlanningAgent {
             for (int round = 0; round < maxRounds; round++) {
                 log.info("[PlanningAgent] Round {} starting", round + 1);
 
+                // 发送前检查 token 估算，必要时压缩历史消息
+                trimMessagesIfNeeded(messages);
+
                 // 流式调用 LLM（同时拦截 execute_code 的代码参数进行流式发送）
                 RoundResult result = streamOneRound(messages, options, onTextDelta, onTagEvent);
 
@@ -136,19 +149,28 @@ public class PlanningAgent {
                         Map.of(),
                         result.toolCalls));
 
-                // 手动执行工具
+                // 手动执行工具，并瘦身响应再加入历史
                 List<ToolResponseMessage.ToolResponse> toolResponses = new ArrayList<>();
                 for (AssistantMessage.ToolCall toolCall : result.toolCalls) {
                     String toolResult = executeToolManually(toolCall);
+                    String slimResult = slimToolResponse(toolCall.name(), toolResult);
                     toolResponses.add(new ToolResponseMessage.ToolResponse(
-                            toolCall.id(), toolCall.name(), toolResult));
+                            toolCall.id(), toolCall.name(), slimResult));
                 }
                 messages.add(new ToolResponseMessage(toolResponses));
                 log.info("[PlanningAgent] Round {} completed,  tools executed",
                         round + 1, result.toolCalls.size());
             }
+        } catch (TokenLimitExceededException e) {
+            log.warn("[PlanningAgent] Token 超限，返回友好提示: {}", e.getMessage());
+            String hint = "抱歉，本次分析过程中产生的上下文信息过多，超出了模型处理能力。请尝试：\n"
+                    + "1. 简化您的问题，减少分析步骤\n"
+                    + "2. 将复杂问题拆分为多个小问题分别提问";
+            onTextDelta.accept(hint);
+            return hint;
         } catch (Exception e) {
-            log.error("[PlanningAgent] Streaming function calling failed: {}", e.getMessage(), e);
+            log.error("[PlanningAgent] Streaming function calling failed: {}",
+                    truncateString(e.getMessage(), 300));
             throw e;
         }
 
@@ -376,14 +398,26 @@ public class PlanningAgent {
 
             if (response.statusCode() != 200) {
                 String errBody = new String(response.body().readAllBytes(), StandardCharsets.UTF_8);
-                log.error("[PlanningAgent] Raw API error {}: {}", response.statusCode(), errBody);
+                // Token 超限快速失败，不走 fallback（fallback 也会 400）
+                if (response.statusCode() == 400
+                        && errBody.contains("maximum context length")) {
+                    log.warn("[PlanningAgent] Token 超限: {}",
+                            truncateString(errBody, 200));
+                    throw new TokenLimitExceededException(
+                            "上下文长度超过模型限制 (" + MAX_CONTEXT_TOKENS + " tokens)");
+                }
+                log.error("[PlanningAgent] Raw API error {}: {}",
+                        response.statusCode(), truncateString(errBody, 500));
                 throw new RuntimeException("API returned " + response.statusCode());
             }
 
             return parseSSEStream(response.body(), onTextDelta, onTagEvent);
 
+        } catch (TokenLimitExceededException e) {
+            throw e; // Token 超限直接抛出，不走 fallback
         } catch (Exception e) {
-            log.warn("[PlanningAgent] Raw streaming failed, falling back to Spring AI: {}", e.getMessage());
+            log.warn("[PlanningAgent] Raw streaming failed, falling back to Spring AI: {}",
+                    truncateString(e.getMessage(), 200));
             return fallbackStreamRound(messages, options, onTextDelta);
         }
     }
@@ -563,7 +597,8 @@ public class PlanningAgent {
                 }
             }).blockLast();
         } catch (Exception e) {
-            log.error("[PlanningAgent] Spring AI stream also failed: {}", e.getMessage());
+            log.warn("[PlanningAgent] Spring AI stream also failed: {}",
+                    truncateString(e.getMessage(), 200));
             return fallbackCallRound(messages, options, onTextDelta);
         }
 
@@ -625,6 +660,144 @@ public class PlanningAgent {
     }
 
     /**
+     * 估算消息列表的 token 数（字符数 / CHARS_PER_TOKEN）
+     */
+    private int estimateTokens(List<Message> messages) {
+        int totalChars = 0;
+        for (Message msg : messages) {
+            if (msg instanceof UserMessage um) {
+                totalChars += um.getContent().length();
+            } else if (msg instanceof AssistantMessage am) {
+                totalChars += am.getContent() != null ? am.getContent().length() : 0;
+                if (am.hasToolCalls()) {
+                    for (AssistantMessage.ToolCall tc : am.getToolCalls()) {
+                        totalChars += tc.arguments() != null ? tc.arguments().length() : 0;
+                    }
+                }
+            } else if (msg instanceof ToolResponseMessage trm) {
+                for (ToolResponseMessage.ToolResponse tr : trm.getResponses()) {
+                    totalChars += tr.responseData() != null ? tr.responseData().length() : 0;
+                }
+            }
+        }
+        return (int) (totalChars / CHARS_PER_TOKEN);
+    }
+
+    /**
+     * 发送前检查 token 估算，超限时压缩中间轮次的 tool response。
+     * 保留首条 UserMessage + 最近一轮对话，压缩中间轮次。
+     */
+    private void trimMessagesIfNeeded(List<Message> messages) {
+        int estimated = estimateTokens(messages);
+        if (estimated <= TARGET_TOKEN_LIMIT) return;
+
+        log.warn("[PlanningAgent] 估算 token 数 {} 超过限制 {}，开始压缩中间消息",
+                estimated, TARGET_TOKEN_LIMIT);
+
+        // 从第二条消息开始（跳过首条 UserMessage），到倒数第二条（保留最近一轮）
+        // 对中间的 ToolResponseMessage 进行深度压缩
+        int end = messages.size() - 2; // 保留最后两条（assistant + tool response）
+        for (int i = 1; i < end && i < messages.size(); i++) {
+            if (!(messages.get(i) instanceof ToolResponseMessage trm)) continue;
+
+            List<ToolResponseMessage.ToolResponse> compressed = new ArrayList<>();
+            for (ToolResponseMessage.ToolResponse tr : trm.getResponses()) {
+                String data = tr.responseData();
+                if (data == null || data.length() < 200) {
+                    compressed.add(tr);
+                    continue;
+                }
+                compressed.add(new ToolResponseMessage.ToolResponse(
+                        tr.id(), tr.name(), compressToolResponseData(tr.name(), data)));
+            }
+            messages.set(i, new ToolResponseMessage(compressed));
+        }
+
+        int after = estimateTokens(messages);
+        log.info("[PlanningAgent] 压缩后估算 token 数: {} (压缩前: {})", after, estimated);
+    }
+
+    /**
+     * 深度压缩工具响应数据：只保留元信息，去掉大块数据
+     */
+    private String compressToolResponseData(String toolName, String data) {
+        try {
+            JsonNode root = objectMapper.readTree(data);
+            if (!(root instanceof ObjectNode obj)) return truncateString(data, 500);
+
+            if ("query_database".equals(toolName)) {
+                // 只保留元信息，去掉 data_preview
+                obj.remove("data_preview");
+                if (obj.has("row_count") && obj.has("columns")) {
+                    obj.put("data_preview", "[已压缩，共" + obj.get("row_count").asInt() + "行]");
+                }
+            } else if ("execute_code".equals(toolName)) {
+                if (obj.has("images")) obj.put("images", "[已压缩]");
+                if (obj.has("stdout")) {
+                    String stdout = obj.get("stdout").asText();
+                    if (stdout.length() > 500) {
+                        obj.put("stdout", stdout.substring(0, 500) + "...[已压缩]");
+                    }
+                }
+            }
+            return objectMapper.writeValueAsString(obj);
+        } catch (Exception e) {
+            return truncateString(data, 500);
+        }
+    }
+
+    private String truncateString(String s, int maxLen) {
+        return s.length() <= maxLen ? s : s.substring(0, maxLen) + "...[已截断]";
+    }
+
+    /**
+     * 工具响应瘦身：在加入消息历史前裁剪过大的工具返回
+     * - execute_code: 去掉 images 的 base64（已通过 SSE 发到前端），截断超长 stdout
+     * - query_database: data_preview 缩减到10行
+     */
+    private String slimToolResponse(String toolName, String toolResult) {
+        if (toolResult == null || toolResult.length() < 500) return toolResult;
+        try {
+            JsonNode root = objectMapper.readTree(toolResult);
+            if (!(root instanceof ObjectNode obj)) return toolResult;
+
+            if ("execute_code".equals(toolName)) {
+                // 去掉 images 的 base64 数据（已通过 SSE 实时发送到前端）
+                if (obj.has("images")) {
+                    JsonNode images = obj.get("images");
+                    if (images.isArray() && !images.isEmpty()) {
+                        obj.put("images", "[已发送到前端，共" + images.size() + "张图]");
+                    }
+                }
+                // 截断超长 stdout
+                if (obj.has("stdout")) {
+                    String stdout = obj.get("stdout").asText();
+                    if (stdout.length() > 2000) {
+                        obj.put("stdout", stdout.substring(0, 2000)
+                                + "\n...[截断，原始长度" + stdout.length() + "字符]");
+                    }
+                }
+            } else if ("query_database".equals(toolName)) {
+                // data_preview 缩减到10行（LLM 只需理解数据结构）
+                if (obj.has("data_preview")) {
+                    String preview = obj.get("data_preview").asText();
+                    String[] lines = preview.split("\n");
+                    if (lines.length > 12) { // 表头+分隔+10行数据
+                        String trimmed = Arrays.stream(lines, 0, 12)
+                                .collect(Collectors.joining("\n"))
+                                + "\n...[共" + (lines.length - 2) + "行，已截断]";
+                        obj.put("data_preview", trimmed);
+                    }
+                }
+            }
+            return objectMapper.writeValueAsString(obj);
+        } catch (Exception e) {
+            log.debug("工具响应瘦身失败，返回原始结果: {}", e.getMessage());
+            return toolResult;
+        }
+    }
+
+    /**
      * 构建用户 prompt（包含系统指令、工具说明、用户问题）
      */
     private String buildUserPrompt(String question) {
@@ -661,6 +834,13 @@ public class PlanningAgent {
             - 绘图使用 matplotlib，设置中文字体: plt.rcParams['font.sans-serif'] = ['SimHei']
             - 保存图表: plt.savefig('output.png', dpi=100, bbox_inches='tight')
             - 打印关键统计结果到 stdout
+            - DataFrame 输出规范（必须遵守）：
+              * 禁止直接 print(df)，pandas 默认会截断列和行显示
+              * 输出表格数据时使用 print(df.to_string(index=False))，确保所有列完整显示
+              * 如果列数较多（>6列），只选择最关键的列：print(df[['col1','col2']].to_string(index=False))
+              * 如果行数较多（>30行），只输出前20行：print(df.head(20).to_string(index=False))，并打印 f"（共{len(df)}行，仅展示前20行）"
+              * 统计指标（均值、总计等单个数值）用 "指标名: 值" 格式逐行打印，不要放在 DataFrame 里
+              * 每个输出块之前用 === 标题 === 格式打印标题
 
             **沙盒限制：**
             - 仅允许导入：pandas, numpy, matplotlib, seaborn, sklearn, scipy, json, re, math, datetime, collections, itertools, functools, io, base64

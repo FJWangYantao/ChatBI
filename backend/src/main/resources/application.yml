@@ -73,6 +73,7 @@ chatbi:
       ner:                # NER 降级 LLM（不配置则用 spring.ner-service.model-name）
       chat:               # ChatService 主流程
       diagnostic:         # 归因分析 Agent
+      formatting:         # 排版 Agent
 
 # 服务器配置
 server:

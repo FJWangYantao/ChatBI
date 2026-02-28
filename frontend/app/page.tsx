@@ -379,6 +379,24 @@ export default function Home() {
               setActiveCodeEntryId(data.id);
               setCodeSidebarOpen(true);
             }
+
+            // analysis_result 流式开始：插入骨架屏占位 tag
+            if (data.type === 'analysis_result') {
+              const placeholderTag: MessageTag = {
+                type: 'analysis_result',
+                content: { sections: [], _streaming: true },
+                title: data.title || '分析详情',
+                metadata: { streamingTagId: data.id },
+              };
+              tagsAccumulator.push(placeholderTag);
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantId
+                    ? { ...msg, tags: [...tagsAccumulator] }
+                    : msg
+                )
+              );
+            }
           },
 
           onTagDelta: (data) => {
@@ -390,6 +408,26 @@ export default function Home() {
                   : e
               )
             );
+
+            // 更新 analysis_result 流式 Markdown 内容
+            const streamingTagIdx = tagsAccumulator.findIndex(
+              t => t.type === 'analysis_result' && t.metadata?.streamingTagId === data.id
+            );
+            if (streamingTagIdx >= 0) {
+              const tag = tagsAccumulator[streamingTagIdx];
+              const currentText = tag.content?._streamedText || '';
+              tagsAccumulator[streamingTagIdx] = {
+                ...tag,
+                content: { ...tag.content, _streamedText: currentText + data.delta },
+              };
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantId
+                    ? { ...msg, tags: [...tagsAccumulator] }
+                    : msg
+                )
+              );
+            }
           },
 
           onTagEnd: (data) => {
@@ -409,7 +447,17 @@ export default function Home() {
               title: data.tag.title,
               metadata: data.tag.metadata,
             };
-            tagsAccumulator.push(newTag);
+
+            // 检查是否需要替换 streaming 占位 tag
+            const streamingIdx = tagsAccumulator.findIndex(
+              t => t.type === 'analysis_result' && t.metadata?.streamingTagId === data.id
+            );
+            if (streamingIdx >= 0) {
+              tagsAccumulator[streamingIdx] = newTag;
+            } else {
+              tagsAccumulator.push(newTag);
+            }
+
             setMessages((prev) =>
               prev.map((msg) =>
                 msg.id === assistantId

@@ -466,6 +466,7 @@ public class ChatStreamService {
             }
         } catch (IOException e) {
             log.warn("发送 tag_start 失败: {}", e.getMessage());
+            SseEmitterContext.markDisconnected();
         }
     }
 
@@ -473,13 +474,15 @@ public class ChatStreamService {
      * 发送流式 tag 增量事件
      */
     public void emitTagDelta(SseEmitter emitter, String id, String delta) {
+        if (SseEmitterContext.isDisconnected()) return;
         try {
             Map<String, String> data = Map.of("id", id, "delta", delta);
             synchronized (emitter) {
                 emitter.send(SseEmitter.event().name("tag_delta").data(objectMapper.writeValueAsString(data)));
             }
         } catch (IOException e) {
-            log.warn("发送 tag_delta 失败: {}", e.getMessage());
+            log.warn("发送 tag_delta 失败，客户端可能已断开: {}", e.getMessage());
+            SseEmitterContext.markDisconnected();
         }
     }
 
@@ -489,12 +492,16 @@ public class ChatStreamService {
     public void emitTagEnd(SseEmitter emitter, String id, String type, String title, Object content) {
         try {
             MessageTag tag = new MessageTag(type, content, title, null);
+            // 无论是否断开，都收集 tag 用于持久化
+            SseEmitterContext.collectTag(tag);
+            if (SseEmitterContext.isDisconnected()) return;
             Map<String, Object> data = Map.of("id", id, "tag", tag);
             synchronized (emitter) {
                 emitter.send(SseEmitter.event().name("tag_end").data(objectMapper.writeValueAsString(data)));
             }
         } catch (IOException e) {
             log.warn("发送 tag_end 失败: {}", e.getMessage());
+            SseEmitterContext.markDisconnected();
         }
     }
 

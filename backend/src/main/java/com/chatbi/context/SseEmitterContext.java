@@ -7,6 +7,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 /**
@@ -20,13 +21,31 @@ public class SseEmitterContext {
     private static final ThreadLocal<SseEmitter> emitterHolder = new ThreadLocal<>();
     private static final ThreadLocal<List<MessageTag>> tagCollector = new ThreadLocal<>();
     private static final ThreadLocal<Consumer<StreamingTagEvent>> tagStreamCallback = new ThreadLocal<>();
+    private static final ThreadLocal<AtomicBoolean> disconnectedFlag = new ThreadLocal<>();
 
     /**
-     * 设置当前线程的 SseEmitter，同时初始化 tag 收集器
+     * 设置当前线程的 SseEmitter，同时初始化 tag 收集器和连接状态
      */
     public static void setEmitter(SseEmitter emitter) {
         emitterHolder.set(emitter);
         tagCollector.set(new ArrayList<>());
+        disconnectedFlag.set(new AtomicBoolean(false));
+    }
+
+    /**
+     * 标记客户端已断开连接（SSE 发送 IOException 时调用）
+     */
+    public static void markDisconnected() {
+        AtomicBoolean flag = disconnectedFlag.get();
+        if (flag != null) flag.set(true);
+    }
+
+    /**
+     * 检查客户端是否已断开连接
+     */
+    public static boolean isDisconnected() {
+        AtomicBoolean flag = disconnectedFlag.get();
+        return flag != null && flag.get();
     }
 
     /**
@@ -80,5 +99,6 @@ public class SseEmitterContext {
         emitterHolder.remove();
         tagCollector.remove();
         tagStreamCallback.remove();
+        disconnectedFlag.remove();
     }
 }

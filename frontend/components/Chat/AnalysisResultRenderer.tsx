@@ -28,14 +28,20 @@ interface TextSection {
     content: string;
 }
 
-type Section = StatsSection | TableSection | TextSection;
+interface MarkdownSection {
+    type: 'markdown';
+    title?: string;
+    content: string;
+}
+
+type Section = StatsSection | TableSection | TextSection | MarkdownSection;
 
 interface StructuredContent {
     sections: Section[];
 }
 
 interface AnalysisResultRendererProps {
-    content: any;   // 兼容结构化 JSON 对象 或 旧版字符串
+    content: any;   // 兼容 Markdown 字符串、结构化 JSON 对象、流式占位对象
     title?: string;
 }
 
@@ -44,20 +50,74 @@ interface AnalysisResultRendererProps {
 export default function AnalysisResultRenderer({ content, title }: AnalysisResultRendererProps) {
     const [collapsed, setCollapsed] = useState(false);
 
-    // 兼容旧版字符串 content（降级解析）
+    // 检测流式状态
+    const isStreaming = content?._streaming === true;
+    const streamedText: string = content?._streamedText || '';
+
+    // 流式状态：实时渲染已接收的 Markdown，或显示骨架屏
+    if (isStreaming) {
+        return (
+            <div className="analysis-result-card">
+                <div className="analysis-result-header">
+                    <div className="analysis-result-header-left">
+                        <span className="analysis-result-icon">📋</span>
+                        <span className="analysis-result-title">{title || '分析详情'}</span>
+                        <span className="analysis-result-badge animate-pulse">正在排版...</span>
+                    </div>
+                </div>
+                <div className="analysis-result-body">
+                    {streamedText ? (
+                        <div className="analysis-text prose prose-sm dark:prose-invert max-w-none">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {streamedText}
+                            </ReactMarkdown>
+                            <span className="inline-block w-2 h-4 bg-accent/60 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
+                        </div>
+                    ) : (
+                        <AnalysisSkeleton />
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    // Markdown 字符串内容（新版流式完成后 / 历史加载）
+    if (typeof content === 'string') {
+        return (
+            <div className="analysis-result-card">
+                <div className="analysis-result-header">
+                    <div className="analysis-result-header-left">
+                        <span className="analysis-result-icon">📋</span>
+                        <span className="analysis-result-title">{title || '分析详情'}</span>
+                    </div>
+                    <button
+                        className="analysis-collapse-btn"
+                        onClick={() => setCollapsed(v => !v)}
+                        aria-label={collapsed ? '展开' : '折叠'}
+                    >
+                        <span className="analysis-collapse-icon">{collapsed ? '▼' : '▲'}</span>
+                        <span>{collapsed ? '展开' : '折叠'}</span>
+                    </button>
+                </div>
+                {!collapsed && (
+                    <div className="analysis-result-body">
+                        <div className="analysis-text prose prose-sm dark:prose-invert max-w-none">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {content}
+                            </ReactMarkdown>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // Legacy 结构化 JSON 内容（旧版历史数据兼容）
     const structured: StructuredContent = useMemo(() => {
         if (!content) return { sections: [] };
-
-        // 已经是结构化对象
         if (typeof content === 'object' && content.sections) {
             return content as StructuredContent;
         }
-
-        // 旧版字符串 → 包装为单个 text section
-        if (typeof content === 'string') {
-            return { sections: [{ type: 'text', title: '', content }] };
-        }
-
         return { sections: [] };
     }, [content]);
 
@@ -110,7 +170,7 @@ function SectionRenderer({ section }: { section: Section }) {
             )}
             {section.type === 'stats' && <StatsRenderer section={section} />}
             {section.type === 'table' && <TableRenderer section={section} />}
-            {section.type === 'text' && <TextRenderer section={section} />}
+            {(section.type === 'text' || section.type === 'markdown') && <TextRenderer section={section} />}
         </div>
     );
 }
@@ -232,12 +292,46 @@ function TableRenderer({ section }: { section: TableSection }) {
 
 // ─── Text Markdown 渲染 ───────────────────────────────────────────────────────
 
-function TextRenderer({ section }: { section: TextSection }) {
+function TextRenderer({ section }: { section: TextSection | MarkdownSection }) {
     return (
         <div className="analysis-text prose prose-sm dark:prose-invert max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {section.content}
             </ReactMarkdown>
+        </div>
+    );
+}
+
+// ─── 骨架屏（流式排版期间显示） ──────────────────────────────────────────────
+
+function AnalysisSkeleton() {
+    return (
+        <div className="space-y-4 p-2">
+            {/* Stats 卡片占位 */}
+            <div className="grid grid-cols-3 gap-3">
+                {[0, 1, 2].map(i => (
+                    <div key={i} className="rounded-lg border border-border/30 p-3 space-y-2">
+                        <div className="h-3 w-16 rounded bg-muted/50 animate-pulse" />
+                        <div className="h-5 w-24 rounded bg-muted/50 animate-pulse" />
+                    </div>
+                ))}
+            </div>
+            {/* 表格行占位 */}
+            <div className="space-y-2">
+                <div className="h-4 w-32 rounded bg-muted/50 animate-pulse" />
+                {[0, 1, 2, 3].map(i => (
+                    <div key={i} className="flex gap-4">
+                        <div className="h-3 flex-1 rounded bg-muted/50 animate-pulse" />
+                        <div className="h-3 flex-1 rounded bg-muted/50 animate-pulse" />
+                        <div className="h-3 flex-1 rounded bg-muted/50 animate-pulse" />
+                    </div>
+                ))}
+            </div>
+            {/* 文本行占位 */}
+            <div className="space-y-2">
+                <div className="h-3 w-full rounded bg-muted/50 animate-pulse" />
+                <div className="h-3 w-3/4 rounded bg-muted/50 animate-pulse" />
+            </div>
         </div>
     );
 }
