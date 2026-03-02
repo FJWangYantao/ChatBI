@@ -287,6 +287,7 @@ public class ChatStreamService {
 
         try {
             // 调用流式版 PlanningAgent：文本 token 实时转发，SQL 流式通过 tag 回调
+            log.info("[handleDataAnalysisStream] 开始调用 planWithToolsStreaming, promptLength={}", promptToUse.length());
             toolResult = planningAgent.planWithToolsStreaming(
                     promptToUse,
                     delta -> {
@@ -307,6 +308,8 @@ public class ChatStreamService {
             );
         } catch (Exception e) {
             log.error("[planWithToolsStreaming] 流式 Function Calling 失败: {}", e.getMessage(), e);
+        } catch (Throwable t) {
+            log.error("[planWithToolsStreaming] 严重错误 (Throwable): {}", t.getMessage(), t);
         } finally {
             heartbeatManager.stopHeartbeat(sessionId);
             tags.addAll(SseEmitterContext.drainCollectedTags());
@@ -417,18 +420,32 @@ public class ChatStreamService {
     private void safeSend(SseEmitter emitter, SseEmitter.SseEventBuilder event) throws IOException {
         if (SseEmitterContext.isDisconnected()) return;
         try {
-            emitter.send(event);
+            synchronized (emitter) {
+                emitter.send(event);
+            }
         } catch (IllegalStateException e) {
+            log.warn("发送事件失败，emitter 已完成: {}", e.getMessage());
             SseEmitterContext.markDisconnected();
+            throw new IOException("Emitter already completed", e);
+        } catch (IOException e) {
+            log.warn("发送事件失败，客户端可能已断开: {}", e.getMessage());
+            SseEmitterContext.markDisconnected();
+            throw e;
         }
     }
 
     private void emitStatus(SseEmitter emitter, String stage, String message, int progress, int totalSteps) throws IOException {
+        if (SseEmitterContext.isDisconnected()) {
+            return;
+        }
         StreamEventData.StatusEventData data = new StreamEventData.StatusEventData(stage, message, progress, totalSteps);
         safeSend(emitter, SseEmitter.event().name("status").data(objectMapper.writeValueAsString(data)));
     }
 
     private void emitIntent(SseEmitter emitter, IntentRecognitionResponse intent) throws IOException {
+        if (SseEmitterContext.isDisconnected()) {
+            return;
+        }
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("category", intent.getCategory() != null ? intent.getCategory() : "GENERAL_CHAT");
         data.put("categoryCn", intent.getCategoryCn() != null ? intent.getCategoryCn() : "普通对话");
@@ -440,6 +457,9 @@ public class ChatStreamService {
     }
 
     private void emitTextDelta(SseEmitter emitter, String delta) throws IOException {
+        if (SseEmitterContext.isDisconnected()) {
+            return;
+        }
         StreamEventData.TextDeltaEventData data = new StreamEventData.TextDeltaEventData(delta);
         synchronized (emitter) {
             safeSend(emitter, SseEmitter.event().name("text_delta").data(objectMapper.writeValueAsString(data)));
@@ -462,6 +482,9 @@ public class ChatStreamService {
     }
 
     private void emitTag(SseEmitter emitter, MessageTag tag) throws IOException {
+        if (SseEmitterContext.isDisconnected()) {
+            return;
+        }
         synchronized (emitter) {
             safeSend(emitter, SseEmitter.event().name("tag").data(objectMapper.writeValueAsString(tag)));
         }
@@ -471,13 +494,17 @@ public class ChatStreamService {
      * 发送流式 tag 开始事件
      */
     public void emitTagStart(SseEmitter emitter, String id, String type, String title) {
+        if (SseEmitterContext.isDisconnected()) return;
         try {
             Map<String, String> data = Map.of("id", id, "type", type, "title", title);
             synchronized (emitter) {
                 emitter.send(SseEmitter.event().name("tag_start").data(objectMapper.writeValueAsString(data)));
             }
         } catch (IOException e) {
-            log.warn("发送 tag_start 失败: {}", e.getMessage());
+            log.warn("发送 tag_start 失败，客户端可能已断开: {}", e.getMessage());
+            SseEmitterContext.markDisconnected();
+        } catch (IllegalStateException e) {
+            log.warn("发送 tag_start 失败，emitter 已完成: {}", e.getMessage());
             SseEmitterContext.markDisconnected();
         }
     }
@@ -494,6 +521,9 @@ public class ChatStreamService {
             }
         } catch (IOException e) {
             log.warn("发送 tag_delta 失败，客户端可能已断开: {}", e.getMessage());
+            SseEmitterContext.markDisconnected();
+        } catch (IllegalStateException e) {
+            log.warn("发送 tag_delta 失败，emitter 已完成: {}", e.getMessage());
             SseEmitterContext.markDisconnected();
         }
     }
@@ -512,30 +542,49 @@ public class ChatStreamService {
                 emitter.send(SseEmitter.event().name("tag_end").data(objectMapper.writeValueAsString(data)));
             }
         } catch (IOException e) {
-            log.warn("发送 tag_end 失败: {}", e.getMessage());
+            log.warn("发送 tag_end 失败，客户端可能已断开: {}", e.getMessage());
+            SseEmitterContext.markDisconnected();
+        } catch (IllegalStateException e) {
+            log.warn("发送 tag_end 失败，emitter 已完成: {}", e.getMessage());
             SseEmitterContext.markDisconnected();
         }
     }
 
     private void emitSuggestions(SseEmitter emitter, List<String> items) throws IOException {
+        if (SseEmitterContext.isDisconnected()) {
+            return;
+        }
         Map<String, Object> data = Map.of("items", items);
         safeSend(emitter, SseEmitter.event().name("suggestions").data(objectMapper.writeValueAsString(data)));
     }
 
     private void emitDone(SseEmitter emitter, String conversationId, long totalDuration) throws IOException {
+        if (SseEmitterContext.isDisconnected()) {
+            return;
+        }
         StreamEventData.DoneEventData data = new StreamEventData.DoneEventData(conversationId, totalDuration);
         safeSend(emitter, SseEmitter.event().name("done").data(objectMapper.writeValueAsString(data)));
     }
 
     private void emitError(SseEmitter emitter, String code, String message, String stage) {
+        if (SseEmitterContext.isDisconnected()) {
+            return;
+        }
         try {
             StreamEventData.ErrorEventData data = new StreamEventData.ErrorEventData(code, message, stage);
-            emitter.send(SseEmitter.event().name("error").data(objectMapper.writeValueAsString(data)));
-        } catch (IOException ignored) {
+            synchronized (emitter) {
+                emitter.send(SseEmitter.event().name("error").data(objectMapper.writeValueAsString(data)));
+            }
+        } catch (IOException | IllegalStateException e) {
+            log.warn("发送 error 事件失败: {}", e.getMessage());
+            SseEmitterContext.markDisconnected();
         }
     }
 
     private void emitReasoning(SseEmitter emitter, String step, String content, int stepIndex) throws IOException {
+        if (SseEmitterContext.isDisconnected()) {
+            return;
+        }
         StreamEventData.ReasoningEventData data = new StreamEventData.ReasoningEventData(step, content, stepIndex);
         safeSend(emitter, SseEmitter.event().name("reasoning").data(objectMapper.writeValueAsString(data)));
     }
@@ -545,21 +594,33 @@ public class ChatStreamService {
     }
 
     private void emitStepResult(SseEmitter emitter, String stepName, String stepLabel, long duration, String status, Object result, List<Map<String, Object>> collector) {
+        // 先收集步骤数据用于持久化（无论连接是否断开）
+        if (collector != null) {
+            Map<String, Object> stepMap = new LinkedHashMap<>();
+            stepMap.put("stepName", stepName);
+            stepMap.put("stepLabel", stepLabel);
+            stepMap.put("duration", duration);
+            stepMap.put("status", status);
+            stepMap.put("result", result);
+            collector.add(stepMap);
+        }
+
+        // 检查连接状态，如果已断开则不发送
+        if (SseEmitterContext.isDisconnected()) {
+            return;
+        }
+
         try {
             StreamEventData.StepResultEventData data = new StreamEventData.StepResultEventData(stepName, stepLabel, duration, status, result);
-            emitter.send(SseEmitter.event().name("step_result").data(objectMapper.writeValueAsString(data)));
-            // 收集步骤数据用于持久化
-            if (collector != null) {
-                Map<String, Object> stepMap = new LinkedHashMap<>();
-                stepMap.put("stepName", stepName);
-                stepMap.put("stepLabel", stepLabel);
-                stepMap.put("duration", duration);
-                stepMap.put("status", status);
-                stepMap.put("result", result);
-                collector.add(stepMap);
+            synchronized (emitter) {
+                emitter.send(SseEmitter.event().name("step_result").data(objectMapper.writeValueAsString(data)));
             }
         } catch (IOException e) {
-            log.warn("发送 step_result 事件失败: {}", e.getMessage());
+            log.warn("发送 step_result 事件失败，客户端可能已断开: {}", e.getMessage());
+            SseEmitterContext.markDisconnected();
+        } catch (IllegalStateException e) {
+            log.warn("发送 step_result 事件失败，emitter 已完成: {}", e.getMessage());
+            SseEmitterContext.markDisconnected();
         }
     }
 

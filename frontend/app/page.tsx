@@ -49,6 +49,14 @@ export interface CompletedStep {
   timestamp: number;
 }
 
+// 子任务信息类型
+export interface SubtaskInfo {
+  index: number;
+  title: string;
+  status: 'pending' | 'generating' | 'executing' | 'completed' | 'failed';
+  duration?: number;
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant";
@@ -59,6 +67,7 @@ export interface Message {
   suggestions?: string[];  // 推荐后续问题
   reasoningSteps?: ReasoningStep[]; // 推理步骤
   completedSteps?: CompletedStep[]; // 已完成的处理步骤
+  subtasks?: SubtaskInfo[];          // 并行子任务列表
   isStreaming?: boolean;           // 是否正在流式输出
   streamingStage?: string;         // 当前流式阶段
   streamingMessage?: string;       // 当前阶段描述
@@ -253,6 +262,8 @@ export default function Home() {
     const tagsAccumulator: MessageTag[] = [];
     // 用于累积已完成步骤
     const stepsAccumulator: CompletedStep[] = [];
+    // 用于累积子任务状态
+    const subtasksAccumulator: SubtaskInfo[] = [];
 
     try {
       await streamChatMessage(
@@ -560,6 +571,41 @@ export default function Home() {
             });
             setActiveCodeEntryId(execEntryId);
             setCodeSidebarOpen(true);
+          },
+
+          onSubtaskStatus: (data) => {
+            if (data.status === 'started' && data.titles) {
+              // 初始化所有子任务为 pending
+              subtasksAccumulator.length = 0;
+              data.titles.forEach((title, idx) => {
+                subtasksAccumulator.push({ index: idx, title, status: 'pending' });
+              });
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === assistantId
+                    ? { ...msg, subtasks: [...subtasksAccumulator] }
+                    : msg
+                )
+              );
+            }
+          },
+
+          onSubtaskProgress: (data) => {
+            const idx = subtasksAccumulator.findIndex(s => s.index === data.taskIndex);
+            if (idx >= 0) {
+              subtasksAccumulator[idx] = {
+                ...subtasksAccumulator[idx],
+                status: data.status as SubtaskInfo['status'],
+                duration: data.duration ?? subtasksAccumulator[idx].duration,
+              };
+            }
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantId
+                  ? { ...msg, subtasks: [...subtasksAccumulator] }
+                  : msg
+              )
+            );
           },
 
           onDone: (data) => {

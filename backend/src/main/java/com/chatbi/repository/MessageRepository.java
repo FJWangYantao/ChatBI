@@ -52,7 +52,7 @@ public class MessageRepository {
                 steps JSON COMMENT '处理步骤结果',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                 UNIQUE KEY uk_message_id (message_id),
-                INDEX idx_conversation_id (conversation_id)
+                INDEX idx_conv_created (conversation_id, created_at)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息表'
             """;
         conversationJdbcTemplate.execute(sql);
@@ -63,6 +63,14 @@ public class MessageRepository {
             );
         } catch (Exception ignored) {
             // 列已存在，忽略
+        }
+        // 兼容已有表：将单列索引升级为复合索引 (conversation_id, created_at)
+        try {
+            conversationJdbcTemplate.execute(
+                "ALTER TABLE messages DROP INDEX idx_conversation_id, ADD INDEX idx_conv_created (conversation_id, created_at)"
+            );
+        } catch (Exception ignored) {
+            // 旧索引不存在或新索引已存在，忽略
         }
     }
 

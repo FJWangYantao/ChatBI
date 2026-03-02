@@ -18,28 +18,28 @@ if %errorlevel% neq 0 (
 )
 
 echo [1/4] 启动意图识别服务 (端口 8001)...
-start "意图识别服务 - 8001" cmd /k "cd /d %~dp0..\self_train_model && set PYTHONIOENCODING=utf-8 && python intent_service.py"
-ping 127.0.0.1 -n 3 >nul
+start /B "" cmd /c "cd /d %~dp0..\self_train_model && set PYTHONIOENCODING=utf-8 && python intent_service.py > nul 2>&1"
+timeout /t 3 /nobreak >nul
 
 echo [2/4] 启动实体识别服务 (端口 8002)...
-start "实体识别服务 - 8002" cmd /k "cd /d %~dp0..\self_train_model && set PYTHONIOENCODING=utf-8 && python ner_service.py"
-ping 127.0.0.1 -n 3 >nul
+start /B "" cmd /c "cd /d %~dp0..\self_train_model && set PYTHONIOENCODING=utf-8 && python ner_service.py > nul 2>&1"
+timeout /t 3 /nobreak >nul
 
 echo [3/4] 启动沙箱执行服务 (端口 8003)...
 REM 沙箱服务使用虚拟环境，首次运行自动创建并安装依赖
-start "沙箱服务 - 8003" cmd /k "cd /d %~dp0sandbox-service && set PYTHONIOENCODING=utf-8 && (if not exist venv python -m venv venv && call venv\Scripts\activate && pip install -r requirements.txt) && call venv\Scripts\activate && python main.py"
-ping 127.0.0.1 -n 3 >nul
+start /B "" cmd /c "cd /d %~dp0sandbox-service && set PYTHONIOENCODING=utf-8 && (if not exist venv python -m venv venv && call venv\Scripts\activate && pip install -r requirements.txt) && call venv\Scripts\activate && python main.py > nul 2>&1"
+timeout /t 3 /nobreak >nul
 
 echo [4/5] 启动 MCP 知识库服务 (端口 8004)...
-start "MCP知识库服务 - 8004" cmd /k "cd /d %~dp0mcp-knowledge-server && set PYTHONIOENCODING=utf-8 && (if not exist venv python -m venv venv && call venv\Scripts\activate && pip install -r requirements.txt) && call venv\Scripts\activate && python server.py"
-ping 127.0.0.1 -n 3 >nul
+start /B "" cmd /c "cd /d %~dp0mcp-knowledge-server && set PYTHONIOENCODING=utf-8 && (if not exist venv python -m venv venv && call venv\Scripts\activate && pip install -r requirements.txt) && call venv\Scripts\activate && python server.py > nul 2>&1"
+timeout /t 3 /nobreak >nul
 
 REM ===== 代理配置 =====
 set PROXY_HOST=127.0.0.1
 set PROXY_PORT=7890
 
 echo [5/5] 启动后端服务 (端口 8080)...
-start "后端服务 - 8080" cmd /k "chcp 65001 >nul && cd /d %~dp0 && mvn spring-boot:run -Dspring-boot.run.jvmArguments=-Dhttps.proxyHost=%PROXY_HOST%^ -Dhttps.proxyPort=%PROXY_PORT%^ -Dhttp.nonProxyHosts=localhost|127.0.0.1"
+start "后端服务 - 8080" cmd /k "chcp 65001 >nul && cd /d %~dp0 && mvn spring-boot:run "-Dspring-boot.run.jvmArguments=-Dhttps.proxyHost=%PROXY_HOST% -Dhttps.proxyPort=%PROXY_PORT% -Dhttp.nonProxyHosts=localhost^|127.0.0.1""
 
 echo.
 echo ========================================

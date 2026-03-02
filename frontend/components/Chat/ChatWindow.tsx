@@ -1,7 +1,8 @@
 import { Message, MessageTag } from "@/app/page";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import LoadingSpinner from "./LoadingSpinner";
 import StepTimeline from "./StepTimeline";
+import SubtaskPanel from "./SubtaskPanel";
 import ReasoningChain from "./ReasoningChain";
 import { AutoChart } from "@/components/Charts";
 import IntentBadge from "./IntentBadge";

@@ -23,6 +23,8 @@ export interface StreamCallbacks {
     success?: boolean;
     executionTime?: number;
   }) => void;
+  onSubtaskStatus?: (data: { status: string; total: number; titles?: string[]; success_count?: number }) => void;
+  onSubtaskProgress?: (data: { taskIndex: number; title: string; status: string; duration?: number }) => void;
   onDone?: (data: { conversationId: string; totalDuration: number }) => void;
   onError?: (data: { code: string; message: string; stage: string }) => void;
 }
@@ -67,6 +69,14 @@ function processSSELine(eventType: string, dataStr: string, callbacks: StreamCal
       case 'code_execution':
         console.log('[SSE] code_execution 事件到达:', data);
         callbacks.onCodeExecution?.(data);
+        break;
+      case 'subtask_status':
+        console.log('[SSE] subtask_status 事件到达:', data);
+        callbacks.onSubtaskStatus?.(data);
+        break;
+      case 'subtask_progress':
+        console.log('[SSE] subtask_progress 事件到达:', data);
+        callbacks.onSubtaskProgress?.(data);
         break;
       case 'done':
         callbacks.onDone?.(data);

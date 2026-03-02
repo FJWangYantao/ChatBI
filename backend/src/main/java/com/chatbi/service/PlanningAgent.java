@@ -1,6 +1,7 @@
 package com.chatbi.service;
 
 import com.chatbi.config.ModelOptionsProvider;
+import com.chatbi.context.SseEmitterContext;
 import com.chatbi.dto.NERResponse;
 import com.chatbi.dto.StreamingTagEvent;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -149,6 +150,12 @@ public class PlanningAgent {
         int maxRounds = 10;
         try {
             for (int round = 0; round < maxRounds; round++) {
+                // 检查客户端是否已断开连接，提前终止避免浪费资源
+                if (SseEmitterContext.isDisconnected()) {
+                    log.warn("[PlanningAgent] 客户端已断开连接，终止 function calling 循环 (round {})", round + 1);
+                    return "";
+                }
+
                 log.info("[PlanningAgent] Round {} starting", round + 1);
 
                 // 发送前检查 token 估算，必要时压缩历史消息
@@ -811,6 +818,31 @@ public class PlanningAgent {
                         obj.put("data_preview", trimmed);
                     }
                 }
+            } else if ("dispatch_parallel_tasks".equals(toolName)) {
+                // 子任务结果瘦身：去掉 code 和大块 result（已通过 SSE 实时发送到前端）
+                if (obj.has("results") && obj.get("results").isArray()) {
+                    ArrayNode results = (ArrayNode) obj.get("results");
+                    ArrayNode slim = objectMapper.createArrayNode();
+                    for (JsonNode item : results) {
+                        ObjectNode s = objectMapper.createObjectNode();
+                        s.put("title", item.has("title") ? item.get("title").asText() : "子任务");
+                        s.put("success", item.has("success") && item.get("success").asBoolean());
+                        if (item.has("error") && !item.get("error").isNull()) {
+                            s.put("error", truncateString(item.get("error").asText(), 200));
+                        }
+                        // result 只保留摘要（stdout 已通过 SSE 发送，code 不需要回传给 LLM）
+                        if (item.has("result")) {
+                            String r = item.get("result").asText();
+                            if (r.length() > 500) {
+                                s.put("result", r.substring(0, 500) + "...[已截断]");
+                            } else {
+                                s.put("result", r);
+                            }
+                        }
+                        slim.add(s);
+                    }
+                    obj.set("results", slim);
+                }
             }
             return objectMapper.writeValueAsString(obj);
         } catch (Exception e) {
@@ -863,6 +895,14 @@ public class PlanningAgent {
             - 必须先用 query_database 获取真实数据，绝对不要自己编造或模拟数据
             - execute_code 只需传 data_ref_id，不要传 data_json（数据由服务端自动注入）
             - 如果 query_database 返回 success=false，向用户说明无法获取数据
+            - **数据时间范围验证（关键）：**
+              * 当用户请求特定时间范围的数据时（如"1997年"），必须先检查数据库中实际的时间范围
+              * 如果数据库中的时间范围与用户请求不匹配，**必须立即告知用户**，说明：
+                1. 用户请求的时间范围是什么
+                2. 数据库中实际可用的时间范围是什么
+                3. 询问用户是否要调整分析的时间范围
+              * **绝对不要**自作主张地调整时间范围进行分析
+              * 示例：用户要求"1997年数据"，但数据库只有2006-2008年，应回复："数据库中没有1997年的数据，实际可用的时间范围是2006-2008年。您是否需要我分析2007年的数据（对应的相对时间位置）？"
             - 如果 execute_code 失败，**必须优先使用 fix_code 工具**修复错误代码（传入 code_ref_id 和 fixes），而不是用 execute_code 重新生成完整代码。只有当 code_ref_id 过期或需要完全重写逻辑时才用 execute_code 重试
             - 修复最多 2 次，仍然失败则向用户说明原因
             - Python 代码中数据已自动加载为 df (pandas DataFrame)

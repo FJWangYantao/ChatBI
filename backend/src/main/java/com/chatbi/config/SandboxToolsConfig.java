@@ -20,6 +20,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -208,29 +209,7 @@ public class SandboxToolsConfig {
                                     success ? "completed" : "failed",
                                     code, stdout, stderr, success, executionTime);
 
-                            // 发送图片 tag
-                            Object imagesObj = result.get("images");
-                            if (success && imagesObj instanceof List) {
-                                for (Object img : (List<?>) imagesObj) {
-                                    String base64Img = img.toString();
-                                    Map<String, Object> imageTag = new LinkedHashMap<>();
-                                    imageTag.put("type", "image");
-                                    imageTag.put("content", "data:image/png;base64," + base64Img);
-                                    imageTag.put("title", "分析图表");
-                                    imageTag.put("metadata", Map.of("source", "sandbox"));
-                                    emitter.send(SseEmitter.event()
-                                            .name("tag")
-                                            .data(MAPPER.writeValueAsString(imageTag)));
-                                    // 收集 tag 用于持久化
-                                    SseEmitterContext.collectTag(new MessageTag(
-                                            "image",
-                                            "data:image/png;base64," + base64Img,
-                                            "分析图表",
-                                            Map.of("source", "sandbox")));
-                                }
-                            }
-
-                            // 发送 analysis_result tag（使用 LLM 排版 agent 流式输出）
+                            // 先发送 analysis_result tag（流式排版，较慢，渲染在上方）
                             if (success && stdout != null && !stdout.isEmpty()) {
                                 FormattingAgent formattingAgent = applicationContext.getBean(FormattingAgent.class);
                                 java.util.function.Consumer<StreamingTagEvent> tagCallback = SseEmitterContext.getTagStreamCallback();
@@ -254,6 +233,28 @@ public class SandboxToolsConfig {
                                             analysisOutput,
                                             "分析详情",
                                             null));
+                                }
+                            }
+
+                            // 再发送图片 tag（瞬间完成，渲染在下方）
+                            Object imagesObj = result.get("images");
+                            if (success && imagesObj instanceof List) {
+                                for (Object img : (List<?>) imagesObj) {
+                                    String base64Img = img.toString();
+                                    Map<String, Object> imageTag = new LinkedHashMap<>();
+                                    imageTag.put("type", "image");
+                                    imageTag.put("content", "data:image/png;base64," + base64Img);
+                                    imageTag.put("title", "分析图表");
+                                    imageTag.put("metadata", Map.of("source", "sandbox"));
+                                    emitter.send(SseEmitter.event()
+                                            .name("tag")
+                                            .data(MAPPER.writeValueAsString(imageTag)));
+                                    // 收集 tag 用于持久化
+                                    SseEmitterContext.collectTag(new MessageTag(
+                                            "image",
+                                            "data:image/png;base64," + base64Img,
+                                            "分析图表",
+                                            Map.of("source", "sandbox")));
                                 }
                             }
                         } catch (Exception e) {
@@ -368,24 +369,7 @@ public class SandboxToolsConfig {
                                     code, toStr(result.get("stdout")), toStr(result.get("stderr")),
                                     success, executionTime);
 
-                            Object imagesObj = result.get("images");
-                            if (success && imagesObj instanceof List) {
-                                for (Object img : (List<?>) imagesObj) {
-                                    String base64Img = img.toString();
-                                    Map<String, Object> imageTag = new LinkedHashMap<>();
-                                    imageTag.put("type", "image");
-                                    imageTag.put("content", "data:image/png;base64," + base64Img);
-                                    imageTag.put("title", "分析图表");
-                                    imageTag.put("metadata", Map.of("source", "sandbox"));
-                                    emitter.send(SseEmitter.event()
-                                            .name("tag")
-                                            .data(MAPPER.writeValueAsString(imageTag)));
-                                    SseEmitterContext.collectTag(new MessageTag(
-                                            "image", "data:image/png;base64," + base64Img,
-                                            "分析图表", Map.of("source", "sandbox")));
-                                }
-                            }
-
+                            // 先发送 analysis_result tag（流式排版，渲染在上方）
                             if (success) {
                                 String stdout = toStr(result.get("stdout"));
                                 if (stdout != null && !stdout.isEmpty()) {
@@ -405,6 +389,25 @@ public class SandboxToolsConfig {
                                         SseEmitterContext.collectTag(new MessageTag(
                                                 "analysis_result", analysisOutput, "分析详情", null));
                                     }
+                                }
+                            }
+
+                            // 再发送图片 tag（瞬间完成，渲染在下方）
+                            Object imagesObj = result.get("images");
+                            if (success && imagesObj instanceof List) {
+                                for (Object img : (List<?>) imagesObj) {
+                                    String base64Img = img.toString();
+                                    Map<String, Object> imageTag = new LinkedHashMap<>();
+                                    imageTag.put("type", "image");
+                                    imageTag.put("content", "data:image/png;base64," + base64Img);
+                                    imageTag.put("title", "分析图表");
+                                    imageTag.put("metadata", Map.of("source", "sandbox"));
+                                    emitter.send(SseEmitter.event()
+                                            .name("tag")
+                                            .data(MAPPER.writeValueAsString(imageTag)));
+                                    SseEmitterContext.collectTag(new MessageTag(
+                                            "image", "data:image/png;base64," + base64Img,
+                                            "分析图表", Map.of("source", "sandbox")));
                                 }
                             }
                         } catch (Exception e) {
@@ -646,6 +649,7 @@ public class SandboxToolsConfig {
                     }
 
                     CodeAgent codeAgent = applicationContext.getBean(CodeAgent.class);
+                    AtomicBoolean cancelled = new AtomicBoolean(false);
 
                     // 并行提交所有子任务
                     List<CompletableFuture<com.chatbi.dto.SubTaskResult>> futures = new ArrayList<>();
@@ -690,8 +694,10 @@ public class SandboxToolsConfig {
 
                             final String[] cols = columns;
                             final String preview = dataPreview;
+                            final int taskIdx = i;
+                            final String taskTitle = title;
                             futures.add(CompletableFuture.supplyAsync(
-                                    () -> codeAgent.execute(description, dataRefId, cols, preview, holder),
+                                    () -> codeAgent.execute(description, dataRefId, cols, preview, holder, taskIdx, taskTitle, cancelled),
                                     executor));
                         } catch (Exception e) {
                             log.error("[DispatchParallel] 子任务 {} 构建失败: {}", idx, e.getMessage());
@@ -709,7 +715,8 @@ public class SandboxToolsConfig {
                             results.add(f.get().toMap());
                         }
                     } catch (TimeoutException e) {
-                        log.warn("[DispatchParallel] 部分子任务超时");
+                        log.warn("[DispatchParallel] 部分子任务超时，设置取消标志");
+                        cancelled.set(true);
                         for (int i = 0; i < futures.size(); i++) {
                             CompletableFuture<com.chatbi.dto.SubTaskResult> f = futures.get(i);
                             if (f.isDone()) {

@@ -22,6 +22,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
 /**
  * 单个子任务执行器：调用 LLM 生成 Python 代码，然后调用 executeCodeFunction 执行。
  * 不做 function calling 循环，只做一次性代码生成 + 执行。
@@ -68,37 +70,126 @@ public class CodeAgent {
      * @param columns         数据列名
      * @param dataPreview     数据预览（前几行）
      * @param holder          SSE 上下文持有者（跨线程共享）
+     * @param taskIndex       子任务索引（用于前端进度展示）
+     * @param title           子任务标题（用于前端进度展示）
      */
     public SubTaskResult execute(String taskDescription, String dataRefId,
                                   String[] columns, String dataPreview,
-                                  SseEmitterContext.Holder holder) {
+                                  SseEmitterContext.Holder holder,
+                                  int taskIndex, String title) {
+        return execute(taskDescription, dataRefId, columns, dataPreview, holder, taskIndex, title, null);
+    }
+
+    public SubTaskResult execute(String taskDescription, String dataRefId,
+                                  String[] columns, String dataPreview,
+                                  SseEmitterContext.Holder holder,
+                                  int taskIndex, String title,
+                                  java.util.concurrent.atomic.AtomicBoolean cancelled) {
         // 设置当前线程的 ThreadLocal（工具函数内部仍通过 ThreadLocal 读取）
         SseEmitterContext.setHolder(holder);
         try {
             log.info("[CodeAgent] 开始执行子任务: {}", taskDescription);
             long start = System.currentTimeMillis();
 
-            // 1. 调用 LLM 生成代码
+            // 1. 发送 generating 状态
+            sendSubtaskProgress(holder, taskIndex, title, "generating", null);
+
+            if (cancelled != null && cancelled.get()) {
+                log.info("[CodeAgent] 子任务已被取消(生成前): {}", taskDescription);
+                return SubTaskResult.failed(taskDescription, "已取消");
+            }
+
+            // 2. 调用 LLM 生成代码
             String code = generateCode(taskDescription, columns, dataPreview);
             if (code == null || code.isEmpty()) {
+                long duration = System.currentTimeMillis() - start;
+                sendSubtaskProgress(holder, taskIndex, title, "failed", duration);
                 return SubTaskResult.failed(taskDescription, "LLM 未生成有效代码");
             }
             log.info("[CodeAgent] 代码生成完成, 长度={}, 耗时={}ms",
                     code.length(), System.currentTimeMillis() - start);
 
-            // 2. 调用 executeCodeFunction 执行
+            if (cancelled != null && cancelled.get()) {
+                log.info("[CodeAgent] 子任务已被取消(执行前): {}", taskDescription);
+                return SubTaskResult.failed(taskDescription, "已取消");
+            }
+
+            // 3. 发送 executing 状态
+            sendSubtaskProgress(holder, taskIndex, title, "executing", null);
+
+            // 4. 调用 executeCodeFunction 执行
             String args = objectMapper.writeValueAsString(
                     Map.of("code", code, "data_ref_id", dataRefId));
             String result = executeCodeFunction.call(args);
 
-            log.info("[CodeAgent] 子任务执行完成: {}, 总耗时={}ms",
-                    taskDescription, System.currentTimeMillis() - start);
-            return SubTaskResult.success(taskDescription, result, code);
+            // 如果执行期间被取消，跳过结果（避免重复 SSE 事件）
+            if (cancelled != null && cancelled.get()) {
+                log.info("[CodeAgent] 子任务执行完成但已被取消，跳过结果: {}", taskDescription);
+                return SubTaskResult.failed(taskDescription, "已取消(执行后)");
+            }
+
+            // 瘦身结果：去掉 images base64（已通过 SSE 发送），截断超长 stdout
+            String slimResult = slimExecuteResult(result);
+
+            long duration = System.currentTimeMillis() - start;
+            log.info("[CodeAgent] 子任务执行完成: {}, 总耗时={}ms", taskDescription, duration);
+            sendSubtaskProgress(holder, taskIndex, title, "completed", duration);
+            return SubTaskResult.success(taskDescription, slimResult, null);
         } catch (Exception e) {
             log.error("[CodeAgent] 子任务执行失败: {}, error={}", taskDescription, e.getMessage(), e);
+            sendSubtaskProgress(holder, taskIndex, title, "failed", null);
             return SubTaskResult.failed(taskDescription, e.getMessage());
         } finally {
             SseEmitterContext.clear();
+        }
+    }
+
+    /**
+     * 瘦身 execute_code 返回结果：去掉 images base64，截断超长 stdout
+     * 这些数据已通过 SSE 实时发送到前端，不需要回传给 LLM
+     */
+    private String slimExecuteResult(String result) {
+        try {
+            var root = objectMapper.readTree(result);
+            if (!(root instanceof com.fasterxml.jackson.databind.node.ObjectNode obj)) return result;
+
+            // 去掉 images base64
+            if (obj.has("images")) {
+                var images = obj.get("images");
+                if (images.isArray() && !images.isEmpty()) {
+                    obj.put("images", "[已发送到前端，共" + images.size() + "张图]");
+                }
+            }
+            // 截断超长 stdout
+            if (obj.has("stdout")) {
+                String stdout = obj.get("stdout").asText();
+                if (stdout.length() > 1000) {
+                    obj.put("stdout", stdout.substring(0, 1000) + "...[已截断]");
+                }
+            }
+            return objectMapper.writeValueAsString(obj);
+        } catch (Exception e) {
+            return result;
+        }
+    }
+
+    /**
+     * 发送子任务细粒度进度事件
+     */
+    private void sendSubtaskProgress(SseEmitterContext.Holder holder, int taskIndex,
+                                      String title, String status, Long duration) {
+        if (holder == null) return;
+        try {
+            Map<String, Object> event = new LinkedHashMap<>();
+            event.put("taskIndex", taskIndex);
+            event.put("title", title);
+            event.put("status", status);
+            event.put("duration", duration);
+            holder.safeSend(SseEmitter.event()
+                    .name("subtask_progress")
+                    .data(objectMapper.writeValueAsString(event)));
+        } catch (Exception e) {
+            log.warn("[CodeAgent] 发送 subtask_progress 事件失败: {}", e.getMessage());
         }
     }
 
