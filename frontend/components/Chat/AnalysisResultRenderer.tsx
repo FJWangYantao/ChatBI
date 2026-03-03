@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import StepCard from './StepCard';
+import { MessageTag } from '@/app/page';
+import { AutoChart } from '@/components/Charts';
 
 // ─── 类型定义 ────────────────────────────────────────────────────────────────
 
@@ -34,7 +37,13 @@ interface MarkdownSection {
     content: string;
 }
 
-type Section = StatsSection | TableSection | TextSection | MarkdownSection;
+interface ChartSection {
+    type: 'chart';
+    title?: string;
+    chartTag: MessageTag;  // 图表的 tag 数据
+}
+
+type Section = StatsSection | TableSection | TextSection | MarkdownSection | ChartSection;
 
 interface StructuredContent {
     sections: Section[];
@@ -43,12 +52,14 @@ interface StructuredContent {
 interface AnalysisResultRendererProps {
     content: any;   // 兼容 Markdown 字符串、结构化 JSON 对象、流式占位对象
     title?: string;
+    allTags?: MessageTag[];  // 传入所有 tags，用于关联图表
 }
 
 // ─── 主组件 ──────────────────────────────────────────────────────────────────
 
-export default function AnalysisResultRenderer({ content, title }: AnalysisResultRendererProps) {
+export default function AnalysisResultRenderer({ content, title, allTags = [] }: AnalysisResultRendererProps) {
     const [collapsed, setCollapsed] = useState(false);
+    const [expandAll, setExpandAll] = useState(false);
 
     // 检测流式状态
     const isStreaming = content?._streaming === true;
@@ -123,6 +134,79 @@ export default function AnalysisResultRenderer({ content, title }: AnalysisResul
 
     const sections = structured.sections ?? [];
 
+    // 自动将 sections 分组为步骤，并关联图表
+    const steps = useMemo(() => {
+        const grouped: Array<{ title: string; icon: string; sections: Section[] }> = [];
+        let currentStep: { title: string; icon: string; sections: Section[] } | null = null;
+
+        // 找到所有图表 tags
+        const chartTags = allTags.filter(tag => tag.type === 'chart');
+        let chartIndex = 0;
+
+        sections.forEach((section, idx) => {
+            // 根据 section 类型自动分组
+            if (section.type === 'stats') {
+                // Stats 作为新步骤的开始
+                if (currentStep) grouped.push(currentStep);
+                currentStep = {
+                    title: section.title || '数据概览',
+                    icon: '📊',
+                    sections: [section]
+                };
+            } else if (section.type === 'table') {
+                if (!currentStep) {
+                    currentStep = {
+                        title: section.title || '数据详情',
+                        icon: '📋',
+                        sections: [section]
+                    };
+                } else {
+                    currentStep.sections.push(section);
+                }
+
+                // 表格后面尝试关联图表
+                if (chartIndex < chartTags.length) {
+                    const chartSection: ChartSection = {
+                        type: 'chart',
+                        title: chartTags[chartIndex].title,
+                        chartTag: chartTags[chartIndex]
+                    };
+                    currentStep.sections.push(chartSection);
+                    chartIndex++;
+                }
+            } else {
+                // text/markdown
+                if (!currentStep) {
+                    currentStep = {
+                        title: section.title || '分析说明',
+                        icon: '📝',
+                        sections: [section]
+                    };
+                } else {
+                    currentStep.sections.push(section);
+                }
+            }
+        });
+
+        if (currentStep) grouped.push(currentStep);
+
+        // 如果还有未关联的图表，创建独立的图表步骤
+        while (chartIndex < chartTags.length) {
+            grouped.push({
+                title: chartTags[chartIndex].title || '数据可视化',
+                icon: '📈',
+                sections: [{
+                    type: 'chart',
+                    title: chartTags[chartIndex].title,
+                    chartTag: chartTags[chartIndex]
+                }]
+            });
+            chartIndex++;
+        }
+
+        return grouped;
+    }, [sections, allTags]);
+
     return (
         <div className="analysis-result-card">
             {/* ── 标题栏 ── */}
@@ -130,29 +214,37 @@ export default function AnalysisResultRenderer({ content, title }: AnalysisResul
                 <div className="analysis-result-header-left">
                     <span className="analysis-result-icon">📋</span>
                     <span className="analysis-result-title">{title || '分析详情'}</span>
-                    <span className="analysis-result-badge">{sections.length} 个分析块</span>
+                    <span className="analysis-result-badge">{steps.length} 个分析步骤</span>
                 </div>
                 <button
-                    className="analysis-collapse-btn"
-                    onClick={() => setCollapsed(v => !v)}
-                    aria-label={collapsed ? '展开' : '折叠'}
+                    className="analysis-expand-all-btn"
+                    onClick={() => setExpandAll(v => !v)}
+                    aria-label={expandAll ? '全部折叠' : '全部展开'}
                 >
-                    <span className="analysis-collapse-icon">{collapsed ? '▼' : '▲'}</span>
-                    <span>{collapsed ? '展开' : '折叠'}</span>
+                    <span>{expandAll ? '全部折叠' : '全部展开'}</span>
+                    <span>{expandAll ? '▲' : '▼'}</span>
                 </button>
             </div>
 
             {/* ── 内容区 ── */}
-            {!collapsed && (
-                <div className="analysis-result-body">
-                    {sections.length === 0 && (
-                        <p className="analysis-empty">暂无详细分析内容</p>
-                    )}
-                    {sections.map((section, idx) => (
-                        <SectionRenderer key={idx} section={section} />
-                    ))}
-                </div>
-            )}
+            <div className="analysis-result-body">
+                {steps.length === 0 && (
+                    <p className="analysis-empty">暂无详细分析内容</p>
+                )}
+                {steps.map((step, idx) => (
+                    <StepCard
+                        key={idx}
+                        stepId={`step-${idx}`}
+                        stepTitle={step.title}
+                        stepIcon={step.icon}
+                        defaultExpanded={expandAll}
+                    >
+                        {step.sections.map((section, sIdx) => (
+                            <SectionRenderer key={sIdx} section={section} />
+                        ))}
+                    </StepCard>
+                ))}
+            </div>
         </div>
     );
 }
@@ -160,17 +252,13 @@ export default function AnalysisResultRenderer({ content, title }: AnalysisResul
 // ─── Section 分发渲染 ─────────────────────────────────────────────────────────
 
 function SectionRenderer({ section }: { section: Section }) {
+    // 不再显示 section 自己的标题，因为已经在 StepCard 中显示了
     return (
         <div className="analysis-section">
-            {section.title && (
-                <h4 className="analysis-section-title">
-                    <span className="analysis-section-title-bar" />
-                    {section.title}
-                </h4>
-            )}
             {section.type === 'stats' && <StatsRenderer section={section} />}
             {section.type === 'table' && <TableRenderer section={section} />}
             {(section.type === 'text' || section.type === 'markdown') && <TextRenderer section={section} />}
+            {section.type === 'chart' && <ChartRenderer section={section} />}
         </div>
     );
 }
@@ -298,6 +386,16 @@ function TextRenderer({ section }: { section: TextSection | MarkdownSection }) {
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {section.content}
             </ReactMarkdown>
+        </div>
+    );
+}
+
+// ─── Chart 渲染 ───────────────────────────────────────────────────────────────
+
+function ChartRenderer({ section }: { section: ChartSection }) {
+    return (
+        <div className="analysis-chart-wrapper">
+            <AutoChart tag={section.chartTag} />
         </div>
     );
 }

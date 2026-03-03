@@ -280,10 +280,10 @@
 
 /* 内容区 */
 .analysis-result-body {
-  padding: 28px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 36px;
+  gap: 20px;
   position: relative;
 }
 
@@ -308,7 +308,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   font-family: 'Outfit', sans-serif;
   color: hsl(var(--foreground));
@@ -387,7 +387,7 @@
 }
 
 .analysis-stat-value {
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 700;
   font-family: 'Outfit', sans-serif;
   word-break: break-word;
@@ -418,7 +418,7 @@
 }
 
 .analysis-th {
-  padding: 14px 18px;
+  padding: 10px 14px;
   text-align: left;
   font-size: 12px;
   font-weight: 600;
@@ -444,7 +444,7 @@
 }
 
 .analysis-td {
-  padding: 14px 18px;
+  padding: 10px 14px;
   color: hsl(var(--foreground));
   border-bottom: 1px solid hsl(var(--border) / 0.3);
   white-space: normal;
@@ -528,7 +528,7 @@
 }
 
 .prose th {
-  padding: 14px 18px;
+  padding: 10px 14px;
   text-align: left;
   font-weight: 600;
   font-family: 'Outfit', sans-serif;
@@ -549,7 +549,7 @@
 }
 
 .prose td {
-  padding: 14px 18px;
+  padding: 10px 14px;
   color: hsl(var(--foreground));
   font-variant-numeric: tabular-nums;
 }
@@ -558,4 +558,145 @@
 .prose td:first-child {
   text-align: left;
   font-weight: 400;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   步骤式折叠卡片样式
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* 步骤卡片容器 */
+.analysis-step-card {
+  border-radius: 12px;
+  border: 1px solid hsl(var(--border) / 0.5);
+  background: hsl(var(--background) / 0.8);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.analysis-step-card:hover {
+  border-color: hsl(var(--accent) / 0.3);
+}
+
+/* 步骤标题栏 */
+.analysis-step-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  cursor: pointer;
+  background: linear-gradient(135deg, hsl(var(--muted) / 0.3) 0%, hsl(var(--background)) 100%);
+  border-bottom: 1px solid hsl(var(--border) / 0.3);
+  transition: background-color 0.2s ease;
+}
+
+.analysis-step-header:hover {
+  background: linear-gradient(135deg, hsl(var(--muted) / 0.5) 0%, hsl(var(--background)) 100%);
+}
+
+.analysis-step-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.analysis-step-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.analysis-step-title {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Outfit', sans-serif;
+  color: hsl(var(--foreground));
+  letter-spacing: -0.01em;
+}
+
+.analysis-step-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: hsl(var(--background) / 0.5);
+  border: 1px solid hsl(var(--border) / 0.5);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.analysis-step-expand-btn:hover {
+  background: hsl(var(--accent) / 0.1);
+  border-color: hsl(var(--accent) / 0.5);
+}
+
+.analysis-step-expand-icon {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.2s ease;
+}
+
+.analysis-step-expanded .analysis-step-expand-icon {
+  transform: rotate(90deg);
+}
+
+/* 步骤摘要区（始终可见） */
+.analysis-step-summary {
+  padding: 14px 18px;
+  background: hsl(var(--accent) / 0.03);
+  border-bottom: 1px solid hsl(var(--border) / 0.3);
+}
+
+.analysis-step-conclusion {
+  font-size: 13px;
+  line-height: 1.6;
+  color: hsl(var(--foreground));
+  opacity: 0.9;
+}
+
+/* 步骤详情区（可折叠） */
+.analysis-step-details {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.analysis-step-details-collapsed {
+  display: none;
+}
+
+/* 全局展开/折叠按钮 */
+.analysis-expand-all-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: hsl(var(--foreground));
+  opacity: 0.7;
+  background: hsl(var(--background) / 0.5);
+  border: 1px solid hsl(var(--border) / 0.5);
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+
+.analysis-expand-all-btn:hover {
+  opacity: 1;
+  border-color: hsl(var(--accent) / 0.5);
+}
+
+/* 图表在步骤卡片中的样式 */
+.analysis-chart-wrapper {
+  width: 100%;
+  margin: 0;
+}
+
+.analysis-chart-wrapper > div {
+  border-radius: 12px;
+  overflow: hidden;
 }

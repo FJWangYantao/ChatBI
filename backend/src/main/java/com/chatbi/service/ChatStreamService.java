@@ -32,6 +32,8 @@ public class ChatStreamService {
     private final ReportAgent reportAgent;
     private final PlanningHeartbeatManager heartbeatManager;
     private final ObjectMapper objectMapper;
+    private final ReadSchemaStructureService schemaService;
+    private final SQLCorrectionAgent sqlCorrectionAgent;
 
     public ChatStreamService(
             ChatClient.Builder chatClientBuilder,
@@ -44,7 +46,9 @@ public class ChatStreamService {
             SuggestionAgent suggestionAgent,
             DiagnosticService diagnosticService,
             ReportAgent reportAgent,
-            PlanningHeartbeatManager heartbeatManager
+            PlanningHeartbeatManager heartbeatManager,
+            ReadSchemaStructureService schemaService,
+            SQLCorrectionAgent sqlCorrectionAgent
     ) {
         this.chatClient = chatClientBuilder.build();
         this.modelOptions = modelOptions;
@@ -58,6 +62,8 @@ public class ChatStreamService {
         this.reportAgent = reportAgent;
         this.heartbeatManager = heartbeatManager;
         this.objectMapper = new ObjectMapper();
+        this.schemaService = schemaService;
+        this.sqlCorrectionAgent = sqlCorrectionAgent;
     }
 
     /**
@@ -70,13 +76,28 @@ public class ChatStreamService {
         List<Map<String, Object>> collectedSteps = new ArrayList<>();
 
         try {
+            // 检测 /sql 前缀，进入查数模式
+            String actualMessage = message;
+            String agentType = forceAgentType;
+
+            if (message.startsWith("/sql ")) {
+                actualMessage = message.substring(5).trim();
+                agentType = "QUERY_MODE";
+            }
+
             // 1. 创建对话 / 保存用户消息
             if (conversationId == null || conversationId.isEmpty()) {
-                String title = message.length() <= 10 ? message : message.substring(0, Math.min(30, message.length())) + (message.length() > 30 ? "..." : "");
+                String title = actualMessage.length() <= 10 ? actualMessage : actualMessage.substring(0, Math.min(30, actualMessage.length())) + (actualMessage.length() > 30 ? "..." : "");
                 var newConv = conversationService.createConversation(title);
                 conversationId = newConv.getConversationId();
             }
             conversationService.saveMessage(conversationId, "user", message, null);
+
+            // 路由到查数模式
+            if ("QUERY_MODE".equals(agentType)) {
+                handleQueryMode(actualMessage, conversationId, emitter);
+                return;
+            }
 
             // 2. 特殊意图：生成报告（含 AI Insight）
             // 匹配 "生成报告"/"生成XX报告"/"总结对话"/"分析汇报" 等，或强制触发
@@ -313,12 +334,20 @@ public class ChatStreamService {
         } finally {
             heartbeatManager.stopHeartbeat(sessionId);
             tags.addAll(SseEmitterContext.drainCollectedTags());
+            // 注意：不要在这里清除 isDisconnected 标记，后续代码还需要检查
+        }
+
+        // 如果客户端已断开，直接返回
+        if (SseEmitterContext.isDisconnected()) {
+            log.info("[handleDataAnalysisStream] 客户端已断开，跳过后续处理");
             SseEmitterContext.clear();
+            return toolResult != null ? toolResult : "";
         }
 
         if (toolResult == null || toolResult.isBlank()) {
             String errorMsg = "分析未返回结果，请重新描述您的问题。";
             emitTextDeltaFull(emitter, errorMsg);
+            SseEmitterContext.clear();
             return errorMsg;
         }
 
@@ -369,6 +398,8 @@ public class ChatStreamService {
                     System.currentTimeMillis() - suggestStartTime, "skipped", null, collectedSteps);
         }
 
+        // 清理上下文
+        SseEmitterContext.clear();
         return conclusion;
     }
 
@@ -829,5 +860,138 @@ public class ChatStreamService {
         if (message.contains("总结对话") || message.contains("分析汇报")) return true;
         // "生成...报告" 模式（中间最多 20 个字）
         return message.matches(".*生成.{0,20}报告.*");
+    }
+
+    /**
+     * 处理查数模式：仅生成 SQL，不自动执行
+     */
+    private void handleQueryMode(String query, String conversationId, SseEmitter emitter) {
+        log.info("[QueryMode] ========== 开始处理查数模式 ==========");
+        log.info("[QueryMode] 查询: {}", query);
+        log.info("[QueryMode] ConversationId: {}", conversationId);
+
+        long startTime = System.currentTimeMillis();
+        try {
+            SseEmitterContext.setEmitter(emitter);
+            log.info("[QueryMode] SseEmitter 已设置");
+
+            // 1. 发送状态事件
+            log.info("[QueryMode] 准备发送状态事件");
+            emitStatus(emitter, "sql_generation", "正在生成 SQL...", 1, 2);
+            log.info("[QueryMode] 状态事件已发送");
+
+            // 2. 流式生成 SQL
+            String tagId = UUID.randomUUID().toString();
+            log.info("[QueryMode] 准备发送 tag_start，tagId: {}", tagId);
+            emitTagStart(emitter, tagId, "sql_editable", "生成的 SQL");
+            log.info("[QueryMode] tag_start 已发送");
+
+            StringBuilder sqlBuilder = new StringBuilder();
+
+            // 获取 Schema
+            log.info("[QueryMode] 开始获取数据库 Schema");
+            String schemaInfo = schemaService.getDatabaseSchema().getFormattedForAI();
+            log.info("[QueryMode] Schema 获取成功，长度: {}", schemaInfo.length());
+
+            String systemPrompt = buildSqlPrompt(query, schemaInfo);
+            log.info("[QueryMode] Prompt 构建完成，长度: {}", systemPrompt.length());
+
+            // 流式生成 SQL
+            log.info("[QueryMode] 开始调用 AI 生成 SQL");
+            try {
+                var sqlFlux = chatClient.prompt()
+                        .options(modelOptions.getOptions("text2sql"))
+                        .user(systemPrompt)
+                        .stream()
+                        .content();
+
+                sqlFlux.doOnNext(token -> {
+                    sqlBuilder.append(token);
+                    emitTagDelta(emitter, tagId, token);
+                }).blockLast();
+
+                log.info("[QueryMode] AI 调用完成，生成的 SQL 长度: {}", sqlBuilder.length());
+            } catch (Exception e) {
+                log.error("[QueryMode] SQL generation failed", e);
+                emitError(emitter, "sql_generation_failed", "SQL 生成失败: " + e.getMessage(), "sql_generation");
+                return;
+            }
+
+            String sql = sqlBuilder.toString();
+            log.info("[QueryMode] 原始 SQL: {}", sql.substring(0, Math.min(100, sql.length())));
+
+            if (sql.trim().isEmpty()) {
+                log.warn("[QueryMode] 生成的 SQL 为空");
+                emitError(emitter, "sql_generation_failed", "未能生成有效的 SQL", "sql_generation");
+                return;
+            }
+
+            // 3. SQL 纠错
+            log.info("[QueryMode] 开始 SQL 纠错");
+            var correctionResult = sqlCorrectionAgent.correctSQL(sql, query, null);
+            String finalSQL = correctionResult.getCorrectedSQL();
+            log.info("[QueryMode] SQL 纠错完成");
+
+            // 清理 SQL（去除 markdown 代码块标记）
+            finalSQL = finalSQL.trim()
+                    .replaceAll("^```sql\\s*", "")
+                    .replaceAll("^```\\s*", "")
+                    .replaceAll("\\s*```$", "")
+                    .trim();
+
+            // 4. 发送 tag_end（包含完整 SQL 和可编辑标识）
+            log.info("[QueryMode] 准备发送 tag_end");
+            Map<String, Object> sqlContent = Map.of(
+                    "sql", finalSQL,
+                    "editable", true,
+                    "query", query
+            );
+
+            emitTagEnd(emitter, tagId, "sql_editable", "生成的 SQL", sqlContent);
+            log.info("[QueryMode] tag_end 已发送");
+
+            // 5. 保存消息
+            log.info("[QueryMode] 保存消息到数据库");
+            MessageTag sqlTag = new MessageTag();
+            sqlTag.setType("sql_editable");
+            sqlTag.setTitle("生成的 SQL");
+            sqlTag.setContent(sqlContent);
+            conversationService.saveMessage(conversationId, "assistant", "", List.of(sqlTag));
+            log.info("[QueryMode] 消息已保存");
+
+            // 6. 发送完成事件
+            long totalDuration = System.currentTimeMillis() - startTime;
+            log.info("[QueryMode] 准备发送完成事件，总耗时: {}ms", totalDuration);
+            emitDone(emitter, conversationId, totalDuration);
+            log.info("[QueryMode] 完成事件已发送");
+            log.info("[QueryMode] ========== 查数模式处理完成 ==========");
+
+        } catch (Exception e) {
+            log.error("[QueryMode] Processing failed", e);
+            emitError(emitter, "query_mode_failed", "查数模式处理失败: " + e.getMessage(), "query_mode");
+        } finally {
+            SseEmitterContext.clear();
+            log.info("[QueryMode] SseEmitterContext 已清理");
+        }
+    }
+
+    /**
+     * 构建 SQL 生成 prompt
+     */
+    private String buildSqlPrompt(String dataQuery, String schemaInfo) {
+        return String.format("""
+            你是一个数据库专家。为了回答用户的分析问题，请生成一条 SQL 语句查询必要的数据。
+
+            用户需求：%s
+            数据库结构：
+            %s
+
+            要求：
+            1. 优先查询明细行数据（不使用聚合函数），让 Python 做后续统计分析。
+            2. 如果必须使用聚合函数（SUM/COUNT/AVG等），则 SELECT 中所有非聚合列都必须出现在 GROUP BY 中。
+            3. 不要在同一 SELECT 中混用聚合列和非聚合明细列（如 customer_id、gender），除非它们都在 GROUP BY 里。
+            4. 如果是时间序列分析，请确保包含日期字段。
+            5. 只返回 SQL，不要解释，不要 markdown 代码块。
+            """, dataQuery, schemaInfo);
     }
 }

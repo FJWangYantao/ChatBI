@@ -11,6 +11,7 @@ import remarkGfm from "remark-gfm";
 import { executeSql, fetchPagedData } from "@/lib/api/chat";
 import AnalysisResultRenderer from "./AnalysisResultRenderer";
 import MessageToolbar from "./MessageToolbar";
+import EditableSqlBlock from "./EditableSqlBlock";
 
 interface ChatWindowProps {
   messages: Message[];
@@ -173,10 +174,12 @@ function PaginatedTable({ tag }: { tag: MessageTag }) {
 function MessageTagRenderer({
   tag,
   messageId,
+  message,
   onUpdateMessage
 }: {
   tag: MessageTag;
   messageId?: string;
+  message?: Message;
   onUpdateMessage?: (messageId: string, newTags: MessageTag[]) => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -204,7 +207,24 @@ function MessageTagRenderer({
     }
   };
 
+  // 处理 SQL 执行结果（用于 sql_editable）
+  const handleSqlExecuteResult = (resultTag: MessageTag) => {
+    if (!messageId || !onUpdateMessage || !message) return;
+
+    // 将结果 tag 追加到当前消息的 tags 中
+    const newTags = [...(message.tags || []), resultTag];
+    onUpdateMessage(messageId, newTags);
+  };
+
   switch (tag.type) {
+    case "sql_editable":
+      return (
+        <EditableSqlBlock
+          tag={tag}
+          onExecuteResult={handleSqlExecuteResult}
+        />
+      );
+
     case "sql":
       return (
         <div className="rounded-2xl glass-card border border-border/50 p-5 glow-border overflow-hidden">
@@ -347,7 +367,7 @@ function MessageTagRenderer({
       );
 
     case "analysis_result":
-      return <AnalysisResultRenderer content={tag.content} title={tag.title} />;
+      return <AnalysisResultRenderer content={tag.content} title={tag.title} allTags={message?.tags || []} />;
 
     default:
       return (
@@ -493,6 +513,7 @@ function TaggedMessage({
             <MessageTagRenderer
               tag={activeTag}
               messageId={message.id}
+              message={message}
               onUpdateMessage={onUpdateMessage}
             />
           )}
@@ -506,6 +527,7 @@ function TaggedMessage({
 function getTagIcon(type: string): string {
   switch (type) {
     case "sql": return "🗃️";
+    case "sql_editable": return "🔍";
     case "table": return "📊";
     case "chart": return "📈";
     case "error": return "❌";
@@ -520,6 +542,7 @@ function getTagIcon(type: string): string {
 function getTagLabel(type: string): string {
   switch (type) {
     case "sql": return "SQL 语句";
+    case "sql_editable": return "生成的 SQL";
     case "table": return "数据表格";
     case "chart": return "数据图表";
     case "error": return "错误信息";
@@ -690,10 +713,23 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
 
                     {/* 标签化消息或有 tags 的消息 */}
                     {message.tags && message.tags.length > 0 ? (
-                      <TaggedMessage
-                        message={message}
-                        onUpdateMessage={onUpdateMessage}
-                      />
+                      // 查数模式：如果只有一个 sql_editable tag，直接渲染
+                      message.tags.length === 1 && message.tags[0].type === 'sql_editable' ? (
+                        <EditableSqlBlock
+                          tag={message.tags[0]}
+                          onExecuteResult={(resultTag) => {
+                            if (onUpdateMessage) {
+                              const newTags = [...message.tags, resultTag];
+                              onUpdateMessage(message.id, newTags);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <TaggedMessage
+                          message={message}
+                          onUpdateMessage={onUpdateMessage}
+                        />
+                      )
                     ) : (
                       <div className={`max-w-none break-words leading-relaxed ${message.role === "user"
                         ? "prose prose-sm max-w-none"
@@ -745,7 +781,7 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
                 ?.filter(t => t.type === 'analysis_result')
                 .map((tag, idx) => (
                   <div key={`analysis-${idx}`} className="w-full mt-4">
-                    <AnalysisResultRenderer content={tag.content} title={tag.title} />
+                    <AnalysisResultRenderer content={tag.content} title={tag.title} allTags={message.tags || []} />
                   </div>
                 ))
               }

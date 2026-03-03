@@ -6,8 +6,8 @@ import traceback
 import base64
 import pandas as pd
 import numpy as np
-import seaborn as sns
 from validator import validate_code
+from chart_extractor import extract_chart_data
 
 
 def _restricted_runner(code: str, data_json: str, result_queue: multiprocessing.Queue):
@@ -41,13 +41,18 @@ def _restricted_runner(code: str, data_json: str, result_queue: multiprocessing.
         matplotlib.use('Agg', force=True)
         import matplotlib.pyplot as plt
         local_scope['plt'] = plt
-        local_scope['sns'] = sns # sns depends on plt, so it's safer here too
-        
+
+        # 尝试导入 seaborn（可选）
+        try:
+            import seaborn as sns
+            local_scope['sns'] = sns
+        except ImportError:
+            pass  # seaborn 不是必需的
+
         # 清除之前的 figures (虽是新进程，但习惯上保持干净)
         plt.close('all')
     except Exception as e:
         error_buffer.write(f"Warning: Failed to initialize Matplotlib: {e}\n")
-    local_scope['sns'] = sns
     
     # 限制内建函数 (这里做一个简单的演示，生产环境需要更严格的构建)
     # 注意：真正安全的沙箱需要在此处构建一个非常干净的 __builtins__
@@ -59,7 +64,15 @@ def _restricted_runner(code: str, data_json: str, result_queue: multiprocessing.
         
         # 3. 捕获图表（方式一：内存中的 matplotlib figure）
         images = []
+        chart_data = None
         if plt.get_fignums():
+            # 先提取图表数据（用于交互式渲染）
+            try:
+                chart_data = extract_chart_data(plt)
+            except Exception as e:
+                error_buffer.write(f"Warning: Failed to extract chart data: {e}\n")
+
+            # 再生成 PNG（作为降级方案）
             for i in plt.get_fignums():
                 fig = plt.figure(i)
                 buf = io.BytesIO()
@@ -89,7 +102,8 @@ def _restricted_runner(code: str, data_json: str, result_queue: multiprocessing.
             'success': True,
             'stdout': output_buffer.getvalue(),
             'stderr': error_buffer.getvalue(),
-            'images': images
+            'images': images,
+            'chart_data': chart_data  # 新增：图表数据
         }
         result_queue.put(result)
 
@@ -99,12 +113,13 @@ def _restricted_runner(code: str, data_json: str, result_queue: multiprocessing.
         # 隐藏部分 traceback 路径信息，只显示最后几行
         tb_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
         clean_tb = "".join(tb_lines[-5:]) # 只取最后5行
-        
+
         result = {
             'success': False,
             'stdout': output_buffer.getvalue(),
             'stderr': error_buffer.getvalue() + "\n" + clean_tb,
-            'images': []
+            'images': [],
+            'chart_data': None
         }
         result_queue.put(result)
 
@@ -124,7 +139,8 @@ def execute_code(code: str, data_json: str = None, timeout: int = 30) -> dict:
             'success': False,
             'stdout': '',
             'stderr': "Security Validation Failed:\n" + "\n".join(errors),
-            'images': []
+            'images': [],
+            'chart_data': None
         }
 
     # 2. 启动子进程执行
@@ -152,14 +168,16 @@ def execute_code(code: str, data_json: str = None, timeout: int = 30) -> dict:
                 'success': False,
                 'stdout': '',
                 'stderr': f"Execution timed out after {timeout} seconds.",
-                'images': []
+                'images': [],
+                'chart_data': None
             }
         else:
              return {
                 'success': False,
                 'stdout': '',
                 'stderr': "Process execution failed silently (Crash or Kill).",
-                'images': []
+                'images': [],
+                'chart_data': None
             }
 
 if __name__ == "__main__":

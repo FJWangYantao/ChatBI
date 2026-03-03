@@ -37,6 +37,10 @@ export interface QueryResult {
   success?: boolean;
   error?: string;
   dataRefId?: string;
+  // Python sandbox 图表数据字段
+  type?: string;
+  data?: QueryResult;
+  config?: any;
 }
 
 /**

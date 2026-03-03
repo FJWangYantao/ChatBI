@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { MessageTag } from "@/app/page";
-import { QueryResult, DatasetAnalysis, analyzeDataset } from "@/lib/utils/dataAnalyzer";
+import { QueryResult, DatasetAnalysis, analyzeDataset, ChartType } from "@/lib/utils/dataAnalyzer";
 import { fetchPagedData } from "@/lib/api/chat";
 import { BarChartView } from "./BarChartView";
 import { LineChartView } from "./LineChartView";
@@ -165,23 +165,42 @@ export function AutoChart({ tag }: AutoChartProps) {
   // 从 metadata 中获取后端推荐的图表类型
   const recommendedChartType = (tag.metadata?.chartType as string) || null;
 
+  // 检查是否是从 Python sandbox 传来的图表数据（包含 type 字段）
+  const isPythonChart = queryResult.type && ['bar', 'line', 'pie', 'scatter'].includes(queryResult.type);
+
   // 分析数据（作为降级方案）
-  const analysis = useMemo(() => analyzeDataset(queryResult), [queryResult]);
+  const analysis = useMemo(() => {
+    // 如果是 Python 图表数据，直接使用其配置
+    if (isPythonChart) {
+      return {
+        recommendedChart: queryResult.type as ChartType,
+        numericColumns: [],
+        categoricalColumns: [],
+        totalRows: queryResult.data?.rows?.length || 0,
+        columns: [],
+        confidence: 1.0
+      } as DatasetAnalysis;
+    }
+    return analyzeDataset(queryResult);
+  }, [queryResult, isPythonChart]);
 
   // 使用后端推荐的图表类型，如果没有则使用前端分析的结果
-  const chartType = recommendedChartType || analysis.recommendedChart;
+  const chartType = isPythonChart ? queryResult.type : (recommendedChartType || analysis.recommendedChart);
 
   // 渲染图表
   const renderChart = () => {
+    // 如果是 Python 图表数据，使用其 data 字段
+    const chartData = isPythonChart ? (queryResult.data || queryResult) : queryResult;
+
     switch (chartType) {
       case 'bar':
-        return <BarChartView data={queryResult} analysis={analysis} />;
+        return <BarChartView data={chartData} analysis={analysis} config={queryResult.config} />;
       case 'line':
-        return <LineChartView data={queryResult} analysis={analysis} />;
+        return <LineChartView data={chartData} analysis={analysis} config={queryResult.config} />;
       case 'pie':
-        return <PieChartView data={queryResult} analysis={analysis} />;
+        return <PieChartView data={chartData} analysis={analysis} config={queryResult.config} />;
       case 'scatter':
-        return <ScatterChartView data={queryResult} analysis={analysis} />;
+        return <ScatterChartView data={chartData} analysis={analysis} config={queryResult.config} />;
       default:
         return (
           <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
@@ -229,7 +248,7 @@ export function AutoChart({ tag }: AutoChartProps) {
 
       {/* 内容区域 */}
       <div className="p-4">
-        {viewType === 'chart' ? renderChart() : <PaginatedTable tag={tag} queryResult={queryResult} />}
+        {viewType === 'chart' ? renderChart() : <PaginatedTable tag={tag} queryResult={isPythonChart ? (queryResult.data || queryResult) : queryResult} />}
       </div>
     </div>
   );

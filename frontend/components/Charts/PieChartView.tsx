@@ -9,9 +9,14 @@ import { useTheme } from "@/contexts/ThemeContext";
 interface PieChartViewProps {
   data: QueryResult;
   analysis: DatasetAnalysis;
+  config?: {
+    title?: string;
+    xLabel?: string;
+    yLabel?: string;
+  };
 }
 
-export function PieChartView({ data, analysis }: PieChartViewProps) {
+export function PieChartView({ data, analysis, config }: PieChartViewProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const colors = useMemo(() => getChartColors(isDark), [isDark]);
@@ -31,6 +36,11 @@ export function PieChartView({ data, analysis }: PieChartViewProps) {
 
   return (
     <div className="w-full">
+      {config?.title && (
+        <div className="text-center mb-4">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{config.title}</h3>
+        </div>
+      )}
       <ResponsiveContainer width="100%" height={300}>
         <PieChart margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
           <Pie
@@ -38,7 +48,7 @@ export function PieChartView({ data, analysis }: PieChartViewProps) {
             cx="50%"
             cy="50%"
             labelLine={false}
-            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(1)}%`}
+            label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(1)}%`}
             outerRadius={80}
             dataKey="value"
           >
@@ -53,8 +63,8 @@ export function PieChartView({ data, analysis }: PieChartViewProps) {
               borderRadius: '8px',
               color: colors.tooltip.text
             }}
-            formatter={(value: number) => [
-              `${value.toLocaleString()} (${((value / total) * 100).toFixed(1)}%)`,
+            formatter={(value: number | undefined) => [
+              `${(value || 0).toLocaleString()} (${(((value || 0) / total) * 100).toFixed(1)}%)`,
               '数值'
             ]}
             labelStyle={{ color: colors.tooltip.text }}

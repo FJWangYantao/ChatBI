@@ -9,9 +9,14 @@ import { useTheme } from "@/contexts/ThemeContext";
 interface LineChartViewProps {
   data: QueryResult;
   analysis: DatasetAnalysis;
+  config?: {
+    title?: string;
+    xLabel?: string;
+    yLabel?: string;
+  };
 }
 
-export function LineChartView({ data, analysis }: LineChartViewProps) {
+export function LineChartView({ data, analysis, config }: LineChartViewProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const colors = useMemo(() => getChartColors(isDark), [isDark]);
@@ -28,6 +33,11 @@ export function LineChartView({ data, analysis }: LineChartViewProps) {
 
   return (
     <div className="w-full">
+      {config?.title && (
+        <div className="text-center mb-4">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{config.title}</h3>
+        </div>
+      )}
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
@@ -38,8 +48,13 @@ export function LineChartView({ data, analysis }: LineChartViewProps) {
             textAnchor="end"
             height={80}
             fontSize={12}
+            label={config?.xLabel ? { value: config.xLabel, position: 'insideBottom', offset: -10 } : undefined}
           />
-          <YAxis stroke={colors.text} fontSize={12} />
+          <YAxis
+            stroke={colors.text}
+            fontSize={12}
+            label={config?.yLabel ? { value: config.yLabel, angle: -90, position: 'insideLeft' } : undefined}
+          />
           <Tooltip
             contentStyle={{
               backgroundColor: colors.tooltip.background,
@@ -47,7 +62,7 @@ export function LineChartView({ data, analysis }: LineChartViewProps) {
               borderRadius: '8px',
               color: colors.tooltip.text
             }}
-            formatter={(value: number) => [value.toLocaleString(), '数值']}
+            formatter={(value: number | undefined) => [value?.toLocaleString() || '0', '数值']}
             labelStyle={{ color: colors.tooltip.text }}
           />
           <Line

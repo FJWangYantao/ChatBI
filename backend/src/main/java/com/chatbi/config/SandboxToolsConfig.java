@@ -236,9 +236,30 @@ public class SandboxToolsConfig {
                                 }
                             }
 
-                            // 再发送图片 tag（瞬间完成，渲染在下方）
+                            // 再发送图片/图表 tag（瞬间完成，渲染在下方）
+                            Object chartDataObj = result.get("chart_data");
                             Object imagesObj = result.get("images");
-                            if (success && imagesObj instanceof List) {
+
+                            // 优先使用 chart_data（交互式图表）
+                            if (success && chartDataObj != null && chartDataObj instanceof Map) {
+                                Map<String, Object> chartData = (Map<String, Object>) chartDataObj;
+                                Map<String, Object> chartTag = new LinkedHashMap<>();
+                                chartTag.put("type", "chart");
+                                chartTag.put("content", chartData);
+                                chartTag.put("title", "数据可视化");
+                                chartTag.put("metadata", Map.of("source", "sandbox", "interactive", true));
+                                emitter.send(SseEmitter.event()
+                                        .name("tag")
+                                        .data(MAPPER.writeValueAsString(chartTag)));
+                                // 收集 tag 用于持久化
+                                SseEmitterContext.collectTag(new MessageTag(
+                                        "chart",
+                                        chartData,
+                                        "数据可视化",
+                                        Map.of("source", "sandbox", "interactive", true)));
+                            }
+                            // 降级方案：如果没有 chart_data 或提取失败，使用 PNG 图片
+                            else if (success && imagesObj instanceof List) {
                                 for (Object img : (List<?>) imagesObj) {
                                     String base64Img = img.toString();
                                     Map<String, Object> imageTag = new LinkedHashMap<>();

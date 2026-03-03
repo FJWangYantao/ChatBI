@@ -180,6 +180,12 @@ public class PlanningAgent {
                 // 手动执行工具，并瘦身响应再加入历史
                 List<ToolResponseMessage.ToolResponse> toolResponses = new ArrayList<>();
                 for (AssistantMessage.ToolCall toolCall : result.toolCalls) {
+                    // 检查客户端是否已断开
+                    if (SseEmitterContext.isDisconnected()) {
+                        log.info("[PlanningAgent] 客户端已断开，停止工具执行");
+                        return "";
+                    }
+
                     String toolResult = executeToolManually(toolCall);
                     String slimResult = slimToolResponse(toolCall.name(), toolResult);
                     toolResponses.add(new ToolResponseMessage.ToolResponse(
@@ -472,6 +478,12 @@ public class PlanningAgent {
                 new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
+                // 检查客户端是否已断开连接
+                if (SseEmitterContext.isDisconnected()) {
+                    log.info("[PlanningAgent] 检测到客户端断开，停止 SSE 流解析");
+                    break;
+                }
+
                 if (!line.startsWith("data:")) continue;
                 String data = line.substring(5).trim();
                 if (data.equals("[DONE]")) break;

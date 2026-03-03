@@ -9,9 +9,14 @@ import { useTheme } from "@/contexts/ThemeContext";
 interface ScatterChartViewProps {
   data: QueryResult;
   analysis: DatasetAnalysis;
+  config?: {
+    title?: string;
+    xLabel?: string;
+    yLabel?: string;
+  };
 }
 
-export function ScatterChartView({ data, analysis }: ScatterChartViewProps) {
+export function ScatterChartView({ data, analysis, config }: ScatterChartViewProps) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const colors = useMemo(() => getChartColors(isDark), [isDark]);
@@ -26,14 +31,19 @@ export function ScatterChartView({ data, analysis }: ScatterChartViewProps) {
     );
   }
 
-  // 获取坐标轴名称
+  // 获取坐标轴名称（优先使用 config，否则从 analysis 中获取）
   const numberCols = analysis.columns.filter(c => c.dataType === 'number');
-  const xLabel = numberCols[0]?.name || 'X';
-  const yLabel = numberCols[1]?.name || 'Y';
+  const xLabel = config?.xLabel || numberCols[0]?.name || 'X';
+  const yLabel = config?.yLabel || numberCols[1]?.name || 'Y';
   const hasZAxis = numberCols.length >= 3 && chartData.some(d => d.z !== undefined);
 
   return (
     <div className="w-full">
+      {config?.title && (
+        <div className="text-center mb-4">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">{config.title}</h3>
+        </div>
+      )}
       <ResponsiveContainer width="100%" height={300}>
         <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={colors.grid} />
@@ -68,7 +78,7 @@ export function ScatterChartView({ data, analysis }: ScatterChartViewProps) {
               borderRadius: '8px',
               color: colors.tooltip.text
             }}
-            formatter={(value: number, name: string) => [value.toLocaleString(), name]}
+            formatter={(value: number | undefined, name: string | undefined) => [(value || 0).toLocaleString(), name || '']}
             labelStyle={{ color: colors.tooltip.text }}
           />
           <Scatter name="数据点" data={chartData} fill="#3b82f6" />

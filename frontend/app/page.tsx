@@ -99,6 +99,17 @@ export default function Home() {
     conversationIdRef.current = currentConversationId;
   }, [currentConversationId]);
 
+  // 组件卸载时清理正在进行的请求
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        console.log('[Cleanup] 组件卸载，中止正在进行的请求');
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, []);
+
   // 加载对话历史
   const loadConversationHistory = async (conversationId: string) => {
     setLoading(true);
@@ -638,6 +649,9 @@ export default function Home() {
               )
             );
             setActiveCodeEntryId(null);
+
+            // 停止发送状态（关闭红色按钮）
+            setIsSending(false);
 
             // 刷新对话列表
             setRefreshTrigger((prev) => prev + 1);
