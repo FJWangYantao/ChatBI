@@ -1,6 +1,7 @@
 package com.chatbi.controller;
 
 import com.chatbi.config.SandboxToolsConfig;
+import com.chatbi.context.LLMConfigContext;
 import com.chatbi.dto.ChatRequest;
 import com.chatbi.dto.ChatResponse;
 import com.chatbi.dto.ChatResponseWithConversation;
@@ -103,8 +104,24 @@ public class ChatController {
 
         String trimmedMessage = message.trim();
         String agentType = request.getAgentType();
-        CompletableFuture.runAsync(() ->
-                chatStreamService.streamChat(trimmedMessage, conversationId, emitter, agentType), sseTaskExecutor);
+
+        // 保存当前线程的 LLM 配置，以便在异步线程中使用
+        LLMConfigContext.LLMConfig llmConfig = LLMConfigContext.get();
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                // 在异步线程中恢复 LLM 配置
+                if (llmConfig != null) {
+                    LLMConfigContext.set(llmConfig);
+                    log.info("[ChatController] 异步线程中恢复LLM配置: Provider={}, Model={}",
+                             llmConfig.getProvider(), llmConfig.getModelName());
+                }
+                chatStreamService.streamChat(trimmedMessage, conversationId, emitter, agentType);
+            } finally {
+                // 清理 ThreadLocal
+                LLMConfigContext.clear();
+            }
+        }, sseTaskExecutor);
 
         return emitter;
     }
@@ -123,6 +140,23 @@ public class ChatController {
         log.info("Text2SQL请求: messageLength={}", message.length());
         ChatResponse response = chatService.text2SQL(message.trim());
         log.info("Text2SQL响应: hasTags={}", response.getTags() != null && !response.getTags().isEmpty());
+        return response;
+    }
+
+    /**
+     * 非流式查数模式接口（包含完整流程：NER + MCP + Text2SQL）
+     * POST /api/chat/query-mode
+     */
+    @PostMapping("/query-mode")
+    public ChatResponse queryMode(@RequestBody ChatRequest request) {
+        String message = request.getMessage();
+        if (message == null || message.trim().isEmpty()) {
+            log.warn("QueryMode请求参数无效: messageLength=0");
+            return new ChatResponse("错误：请提供有效的问题内容", null);
+        }
+        log.info("QueryMode请求: messageLength={}", message.length());
+        ChatResponse response = chatService.queryModeNonStreaming(message.trim());
+        log.info("QueryMode响应: hasTags={}", response.getTags() != null && !response.getTags().isEmpty());
         return response;
     }
 

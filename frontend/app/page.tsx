@@ -9,6 +9,7 @@ import { CodeSidebar } from "@/components/CodeSidebar";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import MosaicLogo from "@/components/MosaicLogo";
+import LLMConfigModal from "@/components/LLMConfig/LLMConfigModal";
 import { DataSource } from "@/types/datasource";
 import { CodeEntry } from "@/types/code-sidebar";
 import { getActiveDataSource } from "@/lib/api/datasource";
@@ -93,6 +94,9 @@ export default function Home() {
   const [codeSidebarOpen, setCodeSidebarOpen] = useState(true);
   const [codeEntries, setCodeEntries] = useState<CodeEntry[]>([]);
   const [activeCodeEntryId, setActiveCodeEntryId] = useState<string | null>(null);
+
+  // LLM 配置弹窗状态
+  const [llmConfigModalOpen, setLlmConfigModalOpen] = useState(false);
 
   // 同步 conversationId 到 ref，避免闭包捕获过期值
   useEffect(() => {
@@ -813,6 +817,21 @@ export default function Home() {
                 <span>知识库</span>
               </button>
 
+              {/* LLM 配置按钮 */}
+              <button
+                onClick={() => setLlmConfigModalOpen(true)}
+                className="hidden md:flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl border border-border/50 hover:border-accent/50 hover:bg-accent/10 transition-all duration-200"
+                title="LLM 配置"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>LLM</span>
+              </button>
+
               <button
                 onClick={handleNewConversation}
                 className="hidden sm:flex px-5 py-2 text-sm font-medium gradient-btn text-white rounded-xl transition-all duration-200"
@@ -894,6 +913,12 @@ export default function Home() {
             activeEntryId={activeCodeEntryId}
           />
         </div>
+
+        {/* LLM 配置弹窗 */}
+        <LLMConfigModal
+          isOpen={llmConfigModalOpen}
+          onClose={() => setLlmConfigModalOpen(false)}
+        />
       </main>
     </ThemeProvider>
   );

@@ -3,6 +3,7 @@ package com.chatbi.service;
 import com.chatbi.config.ModelOptionsProvider;
 import com.chatbi.dto.CorrectionResult;
 import com.chatbi.dto.Entity;
+import com.chatbi.factory.DynamicChatClientFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,7 +23,7 @@ import java.util.stream.Collectors;
 @Service
 public class SQLCorrectionAgent {
 
-    private final ChatClient chatClient;
+    private final DynamicChatClientFactory chatClientFactory;
     private final ModelOptionsProvider modelOptions;
     private final SQLValidationService sqlValidationService;
 
@@ -38,10 +39,10 @@ public class SQLCorrectionAgent {
     @Value("${sql-correction.correction-confidence-threshold:0.8}")
     private double confidenceThreshold;
 
-    public SQLCorrectionAgent(ChatClient.Builder chatClientBuilder,
+    public SQLCorrectionAgent(DynamicChatClientFactory chatClientFactory,
                               ModelOptionsProvider modelOptions,
                               SQLValidationService sqlValidationService) {
-        this.chatClient = chatClientBuilder.build();
+        this.chatClientFactory = chatClientFactory;
         this.modelOptions = modelOptions;
         this.sqlValidationService = sqlValidationService;
     }
@@ -175,6 +176,7 @@ public class SQLCorrectionAgent {
                     如果SQL正确无需修正，请原样返回SQL语句。
                     """, userQuery, sql, entitiesStr);
 
+            ChatClient chatClient = chatClientFactory.createChatClient("sql-correction");
             String response = chatClient.prompt()
                     .options(modelOptions.getOptions("sql-correction"))
                     .user(prompt)

@@ -3,6 +3,8 @@
  * 使用 fetch + ReadableStream 解析 SSE（支持 POST 请求）
  */
 
+import { getLLMConfig } from '@/types/llm-config';
+
 export interface StreamCallbacks {
   onStatus?: (data: { stage: string; message: string; progress: number; totalSteps: number }) => void;
   onIntent?: (data: { category: string; categoryCn: string; categoryConfidence: number; subtype: string; subtypeConfidence: number; subtypeCn: string }) => void;
@@ -100,9 +102,26 @@ export async function streamChatMessage(
   signal?: AbortSignal,
   agentType?: string
 ): Promise<void> {
+  // 从 localStorage 读取 LLM 配置
+  const llmConfig = getLLMConfig();
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+
+  // 如果有自定义配置，添加到请求头
+  if (llmConfig) {
+    headers['X-LLM-Provider'] = llmConfig.provider;
+    headers['X-LLM-API-Key'] = llmConfig.apiKey;
+    headers['X-LLM-Model'] = llmConfig.modelName;
+    if (llmConfig.baseUrl) {
+      headers['X-LLM-Base-URL'] = llmConfig.baseUrl;
+    }
+  }
+
   const response = await fetch('/api/chat/stream', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ message, conversationId, agentType }),
     signal,
   });

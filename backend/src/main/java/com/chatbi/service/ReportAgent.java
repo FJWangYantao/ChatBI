@@ -4,6 +4,7 @@ import com.chatbi.config.ModelOptionsProvider;
 import com.chatbi.dto.ChatResponse;
 import com.chatbi.dto.MessageDTO;
 import com.chatbi.dto.MessageTag;
+import com.chatbi.factory.DynamicChatClientFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
 @Service
 public class ReportAgent {
 
-    private final ChatClient chatClient;
+    private final DynamicChatClientFactory chatClientFactory;
     private final ModelOptionsProvider modelOptions;
     private final ConversationService conversationService;
     private final ObjectMapper objectMapper;
@@ -27,11 +28,11 @@ public class ReportAgent {
     /** 传给 LLM 的数据上下文最大字符数 */
     private static final int MAX_DATA_CONTEXT_CHARS = 8000;
 
-    public ReportAgent(ChatClient.Builder chatClientBuilder,
+    public ReportAgent(DynamicChatClientFactory chatClientFactory,
                        ModelOptionsProvider modelOptions,
                        ConversationService conversationService,
                        ObjectMapper objectMapper) {
-        this.chatClient = chatClientBuilder.build();
+        this.chatClientFactory = chatClientFactory;
         this.modelOptions = modelOptions;
         this.conversationService = conversationService;
         this.objectMapper = objectMapper;
@@ -200,6 +201,7 @@ public class ReportAgent {
             4. 所有内容基于实际数据，不要编造数字
             """, queriesStr, sqlStr, dataStr, analysisStr);
 
+        ChatClient chatClient = chatClientFactory.createChatClient("report");
         return chatClient.prompt()
                 .options(modelOptions.getOptions("report"))
                 .user(prompt)
@@ -261,6 +263,7 @@ public class ReportAgent {
                 4. 所有内容基于实际数据，不要编造数字
                 """, question, analysisGoal, dataPreview);
 
+            ChatClient chatClient = chatClientFactory.createChatClient("report");
             String insightJson = chatClient.prompt()
                     .options(modelOptions.getOptions("report"))
                     .user(prompt)
@@ -304,6 +307,7 @@ public class ReportAgent {
             4. 忽略闲聊内容，只关注数据分析部分。
             """, transcript);
 
+        ChatClient chatClient = chatClientFactory.createChatClient("report");
         return chatClient.prompt()
                 .options(modelOptions.getOptions("report"))
                 .user(prompt)

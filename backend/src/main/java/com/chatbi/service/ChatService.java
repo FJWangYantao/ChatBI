@@ -32,6 +32,7 @@ public class ChatService {
     private final NERService nerService;
     private final SQLCorrectionAgent sqlCorrectionAgent;
     private final ModelPerformanceMonitor performanceMonitor;
+    private final Text2SQLAgent text2SQLAgent;
     // New Agents
     private final PlanningAgent planningAgent;
     private final ClarificationAgent clarificationAgent;
@@ -60,6 +61,7 @@ public class ChatService {
             NERService nerService,
             SQLCorrectionAgent sqlCorrectionAgent,
             ModelPerformanceMonitor performanceMonitor,
+            Text2SQLAgent text2SQLAgent,
             // New Agents
             PlanningAgent planningAgent,
             ClarificationAgent clarificationAgent,
@@ -78,6 +80,7 @@ public class ChatService {
         this.nerService = nerService;
         this.sqlCorrectionAgent = sqlCorrectionAgent;
         this.performanceMonitor = performanceMonitor;
+        this.text2SQLAgent = text2SQLAgent;
         // Assign New Agents
         this.planningAgent = planningAgent;
         this.clarificationAgent = clarificationAgent;
@@ -1320,5 +1323,66 @@ public class ChatService {
         if (message.contains("总结对话") || message.contains("分析汇报")) return true;
         // "生成...报告" 模式（中间最多 20 个字）
         return message.matches(".*生成.{0,20}报告.*");
+    }
+
+    /**
+     * 非流式查数模式 - 包含完整流程（NER + MCP + Text2SQL）
+     * 用于测试和评估
+     */
+    public ChatResponse queryModeNonStreaming(String question) {
+        log.info("[QueryModeNonStreaming] 开始处理查数请求: {}", question);
+
+        try {
+            // 1. 获取 Schema
+            String schemaInfo = schemaService.getDatabaseSchema().getFormattedForAI();
+            log.info("[QueryModeNonStreaming] Schema 获取成功，长度: {}", schemaInfo.length());
+
+            // 2. 使用 Text2SQLAgent 构建 Prompt（包含 MCP 增强）
+            String systemPrompt = text2SQLAgent.buildSqlPromptWithMCP(question, schemaInfo);
+            log.info("[QueryModeNonStreaming] Prompt 构建完成（含 MCP 增强），长度: {}", systemPrompt.length());
+
+            // 3. 生成 SQL
+            String sql = chatClient.prompt()
+                    .options(modelOptions.getOptions("text2sql"))
+                    .user(systemPrompt)
+                    .call()
+                    .content();
+
+            log.info("[QueryModeNonStreaming] AI 生成 SQL 完成，长度: {}", sql != null ? sql.length() : 0);
+
+            if (sql == null || sql.trim().isEmpty()) {
+                log.warn("[QueryModeNonStreaming] 生成的 SQL 为空");
+                return new ChatResponse("未能生成有效的 SQL", null);
+            }
+
+            // 4. SQL 纠错
+            var correctionResult = sqlCorrectionAgent.correctSQL(sql, question, null);
+            String finalSQL = correctionResult.getCorrectedSQL();
+            log.info("[QueryModeNonStreaming] SQL 纠错完成");
+
+            // 5. 清理 SQL（去除 markdown 代码块标记）
+            finalSQL = finalSQL.trim()
+                    .replaceAll("^```sql\\s*", "")
+                    .replaceAll("^```\\s*", "")
+                    .replaceAll("\\s*```$", "")
+                    .trim();
+
+            // 6. 构建响应
+            MessageTag sqlTag = new MessageTag();
+            sqlTag.setType("sql_editable");
+            sqlTag.setTitle("生成的 SQL");
+            sqlTag.setContent(Map.of(
+                    "sql", finalSQL,
+                    "editable", true,
+                    "query", question
+            ));
+
+            log.info("[QueryModeNonStreaming] 查数请求处理完成");
+            return new ChatResponse("", List.of(sqlTag));
+
+        } catch (Exception e) {
+            log.error("[QueryModeNonStreaming] 处理失败", e);
+            return new ChatResponse("查数模式处理失败: " + e.getMessage(), null);
+        }
     }
 }

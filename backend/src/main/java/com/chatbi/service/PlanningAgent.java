@@ -4,6 +4,7 @@ import com.chatbi.config.ModelOptionsProvider;
 import com.chatbi.context.SseEmitterContext;
 import com.chatbi.dto.NERResponse;
 import com.chatbi.dto.StreamingTagEvent;
+import com.chatbi.factory.DynamicChatClientFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -39,7 +40,7 @@ import java.util.stream.Collectors;
 @Service
 public class PlanningAgent {
 
-    private final ChatClient chatClient;
+    private final DynamicChatClientFactory chatClientFactory;
     private final ChatModel chatModel;
     private final ModelOptionsProvider modelOptions;
     private final NERService nerService;
@@ -81,7 +82,7 @@ public class PlanningAgent {
     @Value("${spring.ai.openai.base-url:https://api.deepseek.com}")
     private String apiBaseUrl;
 
-    public PlanningAgent(ChatClient.Builder chatClientBuilder,
+    public PlanningAgent(DynamicChatClientFactory chatClientFactory,
                          ChatModel chatModel,
                          ModelOptionsProvider modelOptions,
                          NERService nerService,
@@ -92,7 +93,7 @@ public class PlanningAgent {
                          @Qualifier("sandboxInfoFunction") FunctionCallback sandboxInfoFunction,
                          @Qualifier("queryDatabaseFunction") FunctionCallback queryDatabaseFunction,
                          @Qualifier("dispatchParallelTasksFunction") FunctionCallback dispatchParallelTasksFunction) {
-        this.chatClient = chatClientBuilder.build();
+        this.chatClientFactory = chatClientFactory;
         this.chatModel = chatModel;
         this.modelOptions = modelOptions;
         this.nerService = nerService;

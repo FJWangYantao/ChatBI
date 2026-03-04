@@ -1,6 +1,7 @@
 package com.chatbi.service;
 
 import com.chatbi.config.ModelOptionsProvider;
+import com.chatbi.factory.DynamicChatClientFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.scheduling.annotation.Async;
@@ -13,11 +14,11 @@ import java.util.concurrent.CompletableFuture;
 @Service
 public class SuggestionAgent {
 
-    private final ChatClient chatClient;
+    private final DynamicChatClientFactory chatClientFactory;
     private final ModelOptionsProvider modelOptions;
 
-    public SuggestionAgent(ChatClient.Builder chatClientBuilder, ModelOptionsProvider modelOptions) {
-        this.chatClient = chatClientBuilder.build();
+    public SuggestionAgent(DynamicChatClientFactory chatClientFactory, ModelOptionsProvider modelOptions) {
+        this.chatClientFactory = chatClientFactory;
         this.modelOptions = modelOptions;
     }
 
@@ -29,22 +30,23 @@ public class SuggestionAgent {
         try {
             String prompt = String.format("""
                 基于用户当前的问题和分析结果，推荐 3 个后续可能感兴趣的问题。
-                
+
                 当前问题：%s
                 结果摘要：%s
-                
+
                 要求：
                 1. 问题要具体、相关。
                 2. 尝试引导用户进行更深入的分析（如归因、预测、对比）。
                 3. 每行一个问题，不要标号。
                 """, currentQuestion, analysisResultSummary);
 
+            ChatClient chatClient = chatClientFactory.createChatClient("suggestion");
             String response = chatClient.prompt()
                     .options(modelOptions.getOptions("suggestion"))
                     .user(prompt)
                     .call()
                     .content();
-            
+
             if (response == null) return CompletableFuture.completedFuture(List.of());
 
             List<String> suggestions = List.of(response.split("\\n"));

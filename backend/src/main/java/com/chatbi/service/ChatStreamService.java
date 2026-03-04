@@ -3,6 +3,7 @@ package com.chatbi.service;
 import com.chatbi.config.ModelOptionsProvider;
 import com.chatbi.context.SseEmitterContext;
 import com.chatbi.dto.*;
+import com.chatbi.factory.DynamicChatClientFactory;
 import com.chatbi.service.enhancement.PromptEnhancementManager;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +21,7 @@ import java.util.regex.Pattern;
 @Service
 public class ChatStreamService {
 
-    private final ChatClient chatClient;
+    private final DynamicChatClientFactory chatClientFactory;
     private final ModelOptionsProvider modelOptions;
     private final ConversationService conversationService;
     private final IntentRecognitionService intentRecognitionService;
@@ -34,9 +35,10 @@ public class ChatStreamService {
     private final ObjectMapper objectMapper;
     private final ReadSchemaStructureService schemaService;
     private final SQLCorrectionAgent sqlCorrectionAgent;
+    private final Text2SQLAgent text2SQLAgent;
 
     public ChatStreamService(
-            ChatClient.Builder chatClientBuilder,
+            DynamicChatClientFactory chatClientFactory,
             ModelOptionsProvider modelOptions,
             ConversationService conversationService,
             IntentRecognitionService intentRecognitionService,
@@ -48,9 +50,10 @@ public class ChatStreamService {
             ReportAgent reportAgent,
             PlanningHeartbeatManager heartbeatManager,
             ReadSchemaStructureService schemaService,
-            SQLCorrectionAgent sqlCorrectionAgent
+            SQLCorrectionAgent sqlCorrectionAgent,
+            Text2SQLAgent text2SQLAgent
     ) {
-        this.chatClient = chatClientBuilder.build();
+        this.chatClientFactory = chatClientFactory;
         this.modelOptions = modelOptions;
         this.conversationService = conversationService;
         this.intentRecognitionService = intentRecognitionService;
@@ -64,6 +67,7 @@ public class ChatStreamService {
         this.objectMapper = new ObjectMapper();
         this.schemaService = schemaService;
         this.sqlCorrectionAgent = sqlCorrectionAgent;
+        this.text2SQLAgent = text2SQLAgent;
     }
 
     /**
@@ -243,6 +247,9 @@ public class ChatStreamService {
 
     private String handleGeneralChatStream(SseEmitter emitter, String message) throws IOException {
         emitStatus(emitter, "llm_generation", "正在生成回复...", 3, 7);
+
+        // 动态创建 ChatClient
+        ChatClient chatClient = chatClientFactory.createChatClient("chat");
 
         // 使用同步 .call()（WebClient 流式 SSL 握手与 OpenRouter 不兼容）
         // 然后通过 emitTextDeltaFull 分块推送，模拟流式效果
@@ -893,11 +900,13 @@ public class ChatStreamService {
             String schemaInfo = schemaService.getDatabaseSchema().getFormattedForAI();
             log.info("[QueryMode] Schema 获取成功，长度: {}", schemaInfo.length());
 
-            String systemPrompt = buildSqlPrompt(query, schemaInfo);
-            log.info("[QueryMode] Prompt 构建完成，长度: {}", systemPrompt.length());
+            // 使用 Text2SQLAgent 的 buildSqlPrompt 方法（包含 MCP 增强）
+            String systemPrompt = text2SQLAgent.buildSqlPromptWithMCP(query, schemaInfo);
+            log.info("[QueryMode] Prompt 构建完成（含 MCP 增强），长度: {}", systemPrompt.length());
 
-            // 流式生成 SQL
+            // 动态创建 ChatClient 并流式生成 SQL
             log.info("[QueryMode] 开始调用 AI 生成 SQL");
+            ChatClient chatClient = chatClientFactory.createChatClient("text2sql");
             try {
                 var sqlFlux = chatClient.prompt()
                         .options(modelOptions.getOptions("text2sql"))
@@ -976,22 +985,11 @@ public class ChatStreamService {
     }
 
     /**
-     * 构建 SQL 生成 prompt
+     * 构建 SQL 生成 prompt（已废弃，使用 Text2SQLAgent.buildSqlPromptWithMCP）
      */
+    @Deprecated
     private String buildSqlPrompt(String dataQuery, String schemaInfo) {
-        return String.format("""
-            你是一个数据库专家。为了回答用户的分析问题，请生成一条 SQL 语句查询必要的数据。
-
-            用户需求：%s
-            数据库结构：
-            %s
-
-            要求：
-            1. 优先查询明细行数据（不使用聚合函数），让 Python 做后续统计分析。
-            2. 如果必须使用聚合函数（SUM/COUNT/AVG等），则 SELECT 中所有非聚合列都必须出现在 GROUP BY 中。
-            3. 不要在同一 SELECT 中混用聚合列和非聚合明细列（如 customer_id、gender），除非它们都在 GROUP BY 里。
-            4. 如果是时间序列分析，请确保包含日期字段。
-            5. 只返回 SQL，不要解释，不要 markdown 代码块。
-            """, dataQuery, schemaInfo);
+        // 此方法已废弃，保留仅为兼容性
+        return text2SQLAgent.buildSqlPromptWithMCP(dataQuery, schemaInfo);
     }
 }

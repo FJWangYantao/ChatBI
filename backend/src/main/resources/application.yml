@@ -8,22 +8,21 @@ spring:
       max-file-size: 100MB
       max-request-size: 100MB
 
-  # AI 配置 - DeepSeek Official API
+  # AI 配置 - OpenRouter (Gemini)
   ai:
     openai:
-      api-key: ${DEEPSEEK_API_KEY}
-      # DeepSeek 官方 API 端点（Spring AI 会自动追加 /v1/chat/completions）
-      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${OPENROUTER_API_KEY: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}
+      # OpenRouter API 端点
+      base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api}
       chat:
         options:
-          # DeepSeek 官方模型名称（不需要 deepseek/ 前缀）
-          model: deepseek-chat
+          model: google/gemini-3.1-flash-lite-preview
           temperature: 0.1
-          
+
   # NER 服务专用配置
   ner-service:
     # NER 使用的模型（留空则使用主配置）
-    model-name: deepseek-chat
+    model-name: deepseek/deepseek-chat
     # NER 使用的 API Key（留空则使用主配置）
     api-key: ${NER_API_KEY:${DEEPSEEK_API_KEY}}
     # NER 温度（通常使用更低温度确保更稳定的输出）
@@ -33,8 +32,8 @@ spring:
 
   # 数据库配置（用于 Text2SQL）
   datasource:
-    # 主数据源 - 销售数据
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:sale_datas}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    # 主数据源 - 出货数据
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:shipment_data}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -59,22 +58,22 @@ spring:
 # 各 Agent 可选覆盖，不配置则用 default
 chatbi:
   model:
-    default: deepseek-chat
+    default: google/gemini-2.5-flash
     temperature: 0.1
     agents:
-      clarification:      # 澄清 Agent
-      planning:           # 规划 Agent
-      code: deepseek-chat              # 代码生成 Agent
-      forecast:           # 预测 Agent
-      report:             # 报告 Agent
-      suggestion:         # 推荐问题 Agent
-      sql-correction:     # SQL 纠错 Agent（不配置则用 sql-correction.model-name）
-      text2sql:           # Text2SQL Agent
-      ner:                # NER 降级 LLM（不配置则用 spring.ner-service.model-name）
-      chat:               # ChatService 主流程
-      diagnostic:         # 归因分析 Agent
-      formatting:         # 排版 Agent
-      code-agent:         # 并行代码生成 Agent
+      clarification: # 澄清 Agent
+      planning: # 规划 Agent
+      code: deepseek-chat # 代码生成 Agent
+      forecast: # 预测 Agent
+      report: # 报告 Agent
+      suggestion: # 推荐问题 Agent
+      sql-correction: # SQL 纠错 Agent（不配置则用 sql-correction.model-name）
+      text2sql: # Text2SQL Agent
+      ner: # NER 降级 LLM（不配置则用 spring.ner-service.model-name）
+      chat: # ChatService 主流程
+      diagnostic: # 归因分析 Agent
+      formatting: # 排版 Agent
+      code-agent: # 并行代码生成 Agent
 
 # 服务器配置
 server:
@@ -175,8 +174,18 @@ logging:
   level:
     root: INFO
     com.chatbi: INFO
+    com.chatbi.interceptor: WARN
+    com.chatbi.factory: WARN
+    com.chatbi.service.Text2SQLAgent: INFO
+    com.chatbi.service.MCPKnowledgeService: INFO
     org.springframework.ai: WARN
     org.springframework.web: INFO
     org.springframework.http: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] %-5level %logger{36} - %msg%n"
+
+# HTTP 代理配置（用于访问国际 AI 模型如 Gemini）
+http:
+  proxyHost: ${HTTP_PROXY_HOST:127.0.0.1}
+  proxyPort: ${HTTP_PROXY_PORT:7890}
+
