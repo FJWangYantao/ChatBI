@@ -52,8 +52,8 @@ public class DynamicChatClientFactory {
                       customConfig.getBaseUrl() : getDefaultBaseUrl(customConfig.getProvider());
             model = customConfig.getModelName();
 
-            log.info("[DynamicChatClientFactory] 使用自定义配置 - Provider: {}, Model: {}, BaseURL: {}",
-                     customConfig.getProvider(), model, baseUrl);
+            log.info("[DynamicChatClientFactory] 使用自定义配置 - Provider: {}, Model: {}, BaseURL: {}, 前端传入BaseURL: {}",
+                     customConfig.getProvider(), model, baseUrl, customConfig.getBaseUrl());
         } else {
             // 使用默认配置
             apiKey = defaultApiKey;
@@ -70,7 +70,21 @@ public class DynamicChatClientFactory {
             log.warn("[DynamicChatClientFactory] 代理配置已忽略 - 当前 Spring AI 版本不支持代理配置");
         }
 
-        OpenAiChatModel chatModel = new OpenAiChatModel(openAiApi);
+        // DeepSeek 不支持某些 OpenAI 特有的参数
+        boolean isDeepSeek = (customConfig != null && "deepseek".equalsIgnoreCase(customConfig.getProvider()));
+        
+        OpenAiChatModel chatModel;
+        if (isDeepSeek) {
+            // 为 DeepSeek 创建特殊配置的 ChatModel
+            OpenAiChatOptions deepseekOptions = OpenAiChatOptions.builder()
+                    .withModel(model)
+                    .withTemperature(defaultTemperature)
+                    .build();
+            chatModel = new OpenAiChatModel(openAiApi, deepseekOptions);
+            log.info("[DynamicChatClientFactory] 为 DeepSeek 创建特殊配置的 ChatModel");
+        } else {
+            chatModel = new OpenAiChatModel(openAiApi);
+        }
 
         OpenAiChatOptions options = OpenAiChatOptions.builder()
                 .withModel(model)
@@ -85,7 +99,7 @@ public class DynamicChatClientFactory {
     private String getDefaultBaseUrl(String provider) {
         return switch (provider) {
             case "deepseek" -> "https://api.deepseek.com";
-            case "openrouter" -> "https://openrouter.ai/api";  // 移除 /v1，Spring AI 会自动添加
+            case "openrouter" -> "https://openrouter.ai/api";
             default -> defaultBaseUrl;
         };
     }

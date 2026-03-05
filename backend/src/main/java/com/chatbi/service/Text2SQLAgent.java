@@ -1,13 +1,25 @@
 package com.chatbi.service;
 
+import com.chatbi.config.LLMConfigProvider;
 import com.chatbi.config.ModelOptionsProvider;
+import com.chatbi.context.LLMConfigContext;
 import com.chatbi.dto.CorrectionResult;
 import com.chatbi.factory.DynamicChatClientFactory;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +35,9 @@ public class Text2SQLAgent {
     private final SQLCorrectionAgent sqlCorrectionAgent;
     private final DynamicJdbcTemplateProvider jdbcTemplateProvider;
     private final MCPKnowledgeService mcpKnowledgeService;
+    private final LLMConfigProvider configProvider;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final HttpClient httpClient = HttpClient.newHttpClient();
 
     // 最近一次生成的最终 SQL（纠错后），供外部获取用于 tag_end
     private volatile String lastGeneratedSQL;
@@ -32,13 +47,15 @@ public class Text2SQLAgent {
                          ReadSchemaStructureService schemaService,
                          SQLCorrectionAgent sqlCorrectionAgent,
                          DynamicJdbcTemplateProvider jdbcTemplateProvider,
-                         MCPKnowledgeService mcpKnowledgeService) {
+                         MCPKnowledgeService mcpKnowledgeService,
+                         LLMConfigProvider configProvider) {
         this.chatClientFactory = chatClientFactory;
         this.modelOptions = modelOptions;
         this.schemaService = schemaService;
         this.sqlCorrectionAgent = sqlCorrectionAgent;
         this.jdbcTemplateProvider = jdbcTemplateProvider;
         this.mcpKnowledgeService = mcpKnowledgeService;
+        this.configProvider = configProvider;
     }
 
     /**
@@ -47,7 +64,6 @@ public class Text2SQLAgent {
     public List<Map<String, Object>> fetchData(String dataQuery) {
         return fetchDataWithStreaming(dataQuery, delta -> {});
     }
-
     /**
      * 流式获取数据：SQL 生成过程中每个 token 实时回调
      * @param dataQuery 自然语言查询描述
@@ -63,33 +79,47 @@ public class Text2SQLAgent {
         // 2. 构建 prompt
         String systemPrompt = buildSqlPrompt(dataQuery, schemaInfo);
 
-        // 3. 动态创建 ChatClient 并流式生成 SQL
-        ChatClient chatClient = chatClientFactory.createChatClient("text2sql");
+        // 3. 检测 provider，决定使用哪种调用方式
+        LLMConfigContext.LLMConfig config = LLMConfigContext.get();
+        boolean isDeepSeek = (config != null && "deepseek".equalsIgnoreCase(config.getProvider()));
+
         StringBuilder sqlBuilder = new StringBuilder();
         try {
-            Flux<String> sqlFlux = chatClient.prompt()
-                    .options(modelOptions.getOptions("text2sql"))
-                    .user(systemPrompt)
-                    .stream()
-                    .content();
+            if (isDeepSeek) {
+                // DeepSeek: 使用直接 HTTP 调用
+                log.info("[Text2SQLAgent] 使用 DeepSeek HTTP 直接调用");
+                String sql = generateSqlWithHttpClient(systemPrompt, onSqlDelta);
+                sqlBuilder.append(sql);
+            } else {
+                // 其他 provider: 使用 Spring AI ChatClient
+                log.info("[Text2SQLAgent] 使用 Spring AI ChatClient");
+                ChatClient chatClient = chatClientFactory.createChatClient("text2sql");
+                Flux<String> sqlFlux = chatClient.prompt()
+                        .options(modelOptions.getOptions("text2sql"))
+                        .user(systemPrompt)
+                        .stream()
+                        .content();
 
-            sqlFlux.doOnNext(token -> {
-                sqlBuilder.append(token);
-                onSqlDelta.accept(token);
-            }).blockLast();
+                sqlFlux.doOnNext(token -> {
+                    sqlBuilder.append(token);
+                    onSqlDelta.accept(token);
+                }).blockLast();
+            }
         } catch (Exception e) {
-            log.error("[Text2SQLAgent] Streaming SQL generation failed: {}", e.getMessage(), e);
-            return Collections.emptyList();
+            log.error("[Text2SQLAgent] Streaming SQL generation failed: {}", e.getMessage());
+            throw new RuntimeException("SQL 生成失败: " + e.getMessage(), e);
         }
 
-        String sql = sqlBuilder.toString();
-        if (sql.trim().isEmpty()) {
+        String rawSql = sqlBuilder.toString().trim();
+        log.info("[Text2SQLAgent] Raw SQL generated: {}", rawSql);
+
+        if (rawSql.isEmpty()) {
             log.warn("[Text2SQLAgent] Failed to generate SQL");
             return Collections.emptyList();
         }
 
         // 4. 纠错
-        CorrectionResult correctionResult = sqlCorrectionAgent.correctSQL(sql, dataQuery, null);
+        CorrectionResult correctionResult = sqlCorrectionAgent.correctSQL(rawSql, dataQuery, null);
         String finalSQL = correctionResult.getCorrectedSQL();
         this.lastGeneratedSQL = finalSQL;
         log.info("[Text2SQLAgent] Final SQL: {}", finalSQL);
@@ -278,6 +308,89 @@ public class Text2SQLAgent {
             log.error("[Text2SQLAgent] MCP 上下文增强失败：{}", e.getMessage());
             // 降级：返回 null，使用原始 prompt
             return null;
+        }
+    }
+
+    /**
+     * 使用 HttpClient 直接调用 DeepSeek API 生成 SQL（流式）
+     */
+    private String generateSqlWithHttpClient(String prompt, Consumer<String> onSqlDelta) {
+        LLMConfigContext.LLMConfig config = LLMConfigContext.get();
+        
+        String model = (config != null && config.getModelName() != null) 
+                ? config.getModelName() : "deepseek-chat";
+        String apiKey = configProvider.getApiKey();
+        String baseUrl = configProvider.getBaseUrl().replaceAll("/+$", "");
+        if (!baseUrl.endsWith("/v1")) {
+            baseUrl = baseUrl + "/v1";
+        }
+        String url = baseUrl + "/chat/completions";
+
+        try {
+            // 构建请求体
+            ObjectNode body = objectMapper.createObjectNode();
+            body.put("model", model);
+            body.put("temperature", 0.1);
+            body.put("stream", true);
+            
+            // 构建 messages
+            ObjectNode userMessage = objectMapper.createObjectNode();
+            userMessage.put("role", "user");
+            userMessage.put("content", prompt);
+            body.set("messages", objectMapper.createArrayNode().add(userMessage));
+
+            log.info("[Text2SQLAgent] HTTP 请求 DeepSeek API: model={}, url={}", model, url);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + apiKey)
+                    .POST(HttpRequest.BodyPublishers.ofString(
+                            objectMapper.writeValueAsString(body), StandardCharsets.UTF_8))
+                    .build();
+
+            HttpResponse<java.io.InputStream> response = httpClient.send(
+                    request, HttpResponse.BodyHandlers.ofInputStream());
+
+            if (response.statusCode() != 200) {
+                String errBody = new String(response.body().readAllBytes(), StandardCharsets.UTF_8);
+                log.error("[Text2SQLAgent] DeepSeek API 返回错误 {}: {}", response.statusCode(), errBody);
+                throw new RuntimeException("DeepSeek API error: " + response.statusCode());
+            }
+
+            // 解析流式响应
+            StringBuilder sqlBuilder = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.startsWith("data: ")) {
+                        String data = line.substring(6).trim();
+                        if ("[DONE]".equals(data)) {
+                            break;
+                        }
+                        try {
+                            JsonNode chunk = objectMapper.readTree(data);
+                            JsonNode delta = chunk.path("choices").path(0).path("delta");
+                            if (delta.has("content")) {
+                                String content = delta.get("content").asText();
+                                sqlBuilder.append(content);
+                                onSqlDelta.accept(content);
+                            }
+                        } catch (Exception e) {
+                            log.warn("[Text2SQLAgent] 解析 SSE chunk 失败: {}", e.getMessage());
+                        }
+                    }
+                }
+            }
+
+            String sql = sqlBuilder.toString();
+            log.info("[Text2SQLAgent] HTTP 调用完成，生成 SQL 长度: {}", sql.length());
+            return sql;
+
+        } catch (Exception e) {
+            log.error("[Text2SQLAgent] HTTP 调用失败: {}", e.getMessage(), e);
+            throw new RuntimeException("DeepSeek HTTP 调用失败: " + e.getMessage(), e);
         }
     }
 }

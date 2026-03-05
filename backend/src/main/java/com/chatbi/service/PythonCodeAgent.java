@@ -1,5 +1,6 @@
 package com.chatbi.service;
 
+import com.chatbi.config.LLMConfigProvider;
 import com.chatbi.config.ModelOptionsProvider;
 import com.chatbi.context.SseEmitterContext;
 import com.chatbi.dto.SubTaskResult;
@@ -30,22 +31,19 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  */
 @Slf4j
 @Service
-public class CodeAgent {
+public class PythonCodeAgent {
 
     private final ModelOptionsProvider modelOptions;
     private final FunctionCallback executeCodeFunction;
+    private final LLMConfigProvider configProvider;
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient;
 
-    @Value("${spring.ai.openai.api-key}")
-    private String apiKey;
-
-    @Value("${spring.ai.openai.base-url:https://api.deepseek.com}")
-    private String apiBaseUrl;
-
-    public CodeAgent(ModelOptionsProvider modelOptions,
+    public PythonCodeAgent(ModelOptionsProvider modelOptions,
+                     LLMConfigProvider configProvider,
                      @Qualifier("executeCodeFunction") FunctionCallback executeCodeFunction) {
         this.modelOptions = modelOptions;
+        this.configProvider = configProvider;
         this.executeCodeFunction = executeCodeFunction;
         this.objectMapper = new ObjectMapper();
         this.httpClient = buildHttpClient();
@@ -145,6 +143,91 @@ public class CodeAgent {
     }
 
     /**
+     * 流式生成 Python 代码（供 PlanningAgent 的 generate_code 工具调用）
+     *
+     * @param taskDescription 任务描述
+     * @param columns         数据列名
+     * @param dataPreview     数据预览（前几行）
+     * @param onCodeDelta     流式回调（每个 token）
+     * @return 完整的 Python 代码
+     */
+    public String generateCodeStreaming(String taskDescription,
+                                       String[] columns,
+                                       String dataPreview,
+                                       java.util.function.Consumer<String> onCodeDelta) {
+        log.info("[PythonCodeAgent] 开始流式生成代码，任务: {}", taskDescription);
+
+        String model = modelOptions.getOptions("code-agent").getModel();
+        String prompt = buildCodeGenPrompt(taskDescription, columns, dataPreview);
+
+        try {
+            var body = objectMapper.createObjectNode();
+            body.put("model", model);
+            body.put("temperature", 0.1);
+            body.put("stream", true);
+
+            var messages = objectMapper.createArrayNode();
+            messages.add(objectMapper.createObjectNode()
+                    .put("role", "user")
+                    .put("content", prompt));
+            body.set("messages", messages);
+
+            String url = configProvider.getBaseUrl().replaceAll("/+$", "") + "/chat/completions";
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+                    .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + configProvider.getApiKey())
+                    .POST(HttpRequest.BodyPublishers.ofString(
+                            objectMapper.writeValueAsString(body), StandardCharsets.UTF_8))
+                    .build();
+
+            StringBuilder fullCode = new StringBuilder();
+            HttpResponse<java.io.InputStream> response = httpClient.send(request,
+                    HttpResponse.BodyHandlers.ofInputStream());
+
+            if (response.statusCode() != 200) {
+                log.error("[PythonCodeAgent] LLM API error {}: {}",
+                        response.statusCode(), new String(response.body().readAllBytes(), StandardCharsets.UTF_8));
+                return null;
+            }
+
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.startsWith("data: ")) {
+                        String data = line.substring(6).trim();
+                        if ("[DONE]".equals(data)) break;
+                        if (data.isEmpty()) continue;
+
+                        var json = objectMapper.readTree(data);
+                        var delta = json.path("choices").path(0).path("delta");
+                        String content = delta.path("content").asText("");
+
+                        if (!content.isEmpty()) {
+                            fullCode.append(content);
+                            if (onCodeDelta != null) {
+                                try {
+                                    onCodeDelta.accept(content);
+                                } catch (Exception e) {
+                                    log.warn("[PythonCodeAgent] 流式回调失败: {}", e.getMessage());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            String code = extractCodeBlock(fullCode.toString());
+            log.info("[PythonCodeAgent] 代码生成完成，长度: {} 字符", code != null ? code.length() : 0);
+            return code;
+
+        } catch (Exception e) {
+            log.error("[PythonCodeAgent] 代码生成失败: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
      * 瘦身 execute_code 返回结果：去掉 images base64，截断超长 stdout
      * 这些数据已通过 SSE 实时发送到前端，不需要回传给 LLM
      */
@@ -212,10 +295,10 @@ public class CodeAgent {
                     .put("content", prompt));
             body.set("messages", messages);
 
-            String url = apiBaseUrl.replaceAll("/+$", "") + "/chat/completions";
+            String url = configProvider.getBaseUrl().replaceAll("/+$", "") + "/chat/completions";
             HttpRequest request = HttpRequest.newBuilder(URI.create(url))
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Authorization", "Bearer " + configProvider.getApiKey())
                     .POST(HttpRequest.BodyPublishers.ofString(
                             objectMapper.writeValueAsString(body), StandardCharsets.UTF_8))
                     .build();

@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import ThemeToggle from "@/components/ThemeToggle";
 import MosaicLogo from "@/components/MosaicLogo";
 import LLMConfigModal from "@/components/LLMConfig/LLMConfigModal";
+import ModelInfoDisplay from "@/components/ModelInfoDisplay";
 import { DataSource } from "@/types/datasource";
 import { CodeEntry } from "@/types/code-sidebar";
 import { getActiveDataSource } from "@/lib/api/datasource";
@@ -862,6 +863,7 @@ export default function Home() {
                   </span>
                 )}
               </button>
+              <ModelInfoDisplay />
               <ThemeToggle />
             </div>
           </div>

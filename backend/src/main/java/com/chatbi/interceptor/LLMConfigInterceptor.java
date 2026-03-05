@@ -37,8 +37,8 @@ public class LLMConfigInterceptor implements HandlerInterceptor {
             config.setBaseUrl(baseUrl);
             LLMConfigContext.set(config);
 
-            log.info("[LLMConfigInterceptor] ✅ 检测到自定义LLM配置 - Provider: {}, Model: {}, BaseURL: {}",
-                     provider, model, baseUrl);
+            log.info("[LLMConfigInterceptor] ✅ 检测到自定义LLM配置 - Provider: {}, Model: {}, BaseURL: {}, 原始BaseURL: {}",
+                     provider, model, baseUrl != null ? baseUrl : "null", baseUrl);
         } else {
             log.info("[LLMConfigInterceptor] ⚠️ 未检测到完整的自定义LLM配置，将使用默认配置");
         }

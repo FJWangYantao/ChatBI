@@ -254,7 +254,6 @@ public class ChatStreamService {
         // 使用同步 .call()（WebClient 流式 SSL 握手与 OpenRouter 不兼容）
         // 然后通过 emitTextDeltaFull 分块推送，模拟流式效果
         String response = chatClient.prompt()
-                .options(modelOptions.getOptions("chat"))
                 .user(message)
                 .call()
                 .content();

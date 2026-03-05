@@ -4,7 +4,7 @@ import com.chatbi.context.SseEmitterContext;
 import com.chatbi.dto.MessageTag;
 import com.chatbi.dto.StreamingTagEvent;
 import com.chatbi.service.ChatStreamService;
-import com.chatbi.service.CodeAgent;
+import com.chatbi.service.PythonCodeAgent;
 import com.chatbi.service.FormattingAgent;
 import com.chatbi.service.MCPSandboxService;
 import com.chatbi.service.Text2SQLAgent;
@@ -299,6 +299,120 @@ public class SandboxToolsConfig {
                     }
 
                     return result;
+                })
+                .inputType(Map.class)
+                .build();
+    }
+
+    @Bean("generateCodeFunction")
+    public FunctionCallback generateCodeFunction(
+            ApplicationContext applicationContext) {
+
+        return FunctionCallback.builder()
+                .description("生成 Python 数据分析代码。根据任务描述和数据信息，自动生成可执行的 Python 代码。\n\n" +
+                        "参数:\n" +
+                        "- task_description: 任务描述（必填）\n" +
+                        "- data_ref_id: query_database 返回的数据引用 ID（必填）\n\n" +
+                        "返回:\n" +
+                        "- success: 是否成功\n" +
+                        "- code: 生成的 Python 代码\n" +
+                        "- message: 提示信息\n\n" +
+                        "注意：生成代码后，需要调用 execute_code 工具执行代码。")
+                .function("generate_code", (Function<Map<String, Object>, Map<String, Object>>) params -> {
+                    String taskDescription = toStr(params.get("task_description"));
+                    String dataRefId = toStr(params.get("data_ref_id"));
+
+                    log.info("[GenerateCode] 收到请求，task_description={}, data_ref_id={}",
+                            taskDescription, dataRefId);
+
+                    Map<String, Object> result = new LinkedHashMap<>();
+
+                    // 参数验证
+                    if (taskDescription == null || taskDescription.isEmpty()) {
+                        result.put("success", false);
+                        result.put("error", "task_description 不能为空");
+                        return result;
+                    }
+                    if (dataRefId == null || dataRefId.isEmpty()) {
+                        result.put("success", false);
+                        result.put("error", "data_ref_id 不能为空");
+                        return result;
+                    }
+
+                    // 从 DATA_STORE 获取数据
+                    DataEntry entry = DATA_STORE.get(dataRefId);
+                    if (entry == null) {
+                        result.put("success", false);
+                        result.put("error", "data_ref_id 无效或已过期，请先调用 query_database 获取数据");
+                        return result;
+                    }
+
+                    try {
+                        // 解析数据获取列名和预览
+                        List<Map<String, Object>> dataList = MAPPER.readValue(entry.data,
+                                MAPPER.getTypeFactory().constructCollectionType(List.class, Map.class));
+
+                        if (dataList == null || dataList.isEmpty()) {
+                            result.put("success", false);
+                            result.put("error", "数据为空");
+                            return result;
+                        }
+
+                        // 获取列名
+                        String[] columns = dataList.get(0).keySet().toArray(new String[0]);
+
+                        // 生成数据预览（前5行）
+                        int previewRows = Math.min(5, dataList.size());
+                        StringBuilder preview = new StringBuilder();
+                        for (int i = 0; i < previewRows; i++) {
+                            preview.append(dataList.get(i).toString());
+                            if (i < previewRows - 1) preview.append("\n");
+                        }
+                        String dataPreview = preview.toString();
+
+                        // 获取 PythonCodeAgent
+                        PythonCodeAgent pythonCodeAgent = applicationContext.getBean(PythonCodeAgent.class);
+
+                        // 获取 SSE 上下文用于流式输出
+                        SseEmitterContext.Holder holder = SseEmitterContext.getHolder();
+
+                        // 流式生成代码
+                        String code = pythonCodeAgent.generateCodeStreaming(
+                                taskDescription,
+                                columns,
+                                dataPreview,
+                                token -> {
+                                    // 流式发送代码片段到前端
+                                    if (holder != null) {
+                                        try {
+                                            holder.safeSend(SseEmitter.event()
+                                                    .name("code_delta")
+                                                    .data(token));
+                                        } catch (Exception e) {
+                                            log.warn("[GenerateCode] SSE 发送失败: {}", e.getMessage());
+                                        }
+                                    }
+                                });
+
+                        if (code == null || code.isEmpty()) {
+                            result.put("success", false);
+                            result.put("error", "LLM 未生成有效代码，请检查任务描述是否清晰");
+                            return result;
+                        }
+
+                        log.info("[GenerateCode] 代码生成成功，长度: {} 字符", code.length());
+
+                        result.put("success", true);
+                        result.put("code", code);
+                        result.put("message", "代码生成成功，请使用 execute_code 工具执行");
+                        return result;
+
+                    } catch (Exception e) {
+                        log.error("[GenerateCode] 代码生成失败: {}", e.getMessage(), e);
+                        result.put("success", false);
+                        result.put("error", "代码生成失败: " + e.getMessage());
+                        return result;
+                    }
                 })
                 .inputType(Map.class)
                 .build();
@@ -669,7 +783,7 @@ public class SandboxToolsConfig {
                         }
                     }
 
-                    CodeAgent codeAgent = applicationContext.getBean(CodeAgent.class);
+                    PythonCodeAgent pythonCodeAgent = applicationContext.getBean(PythonCodeAgent.class);
                     AtomicBoolean cancelled = new AtomicBoolean(false);
 
                     // 并行提交所有子任务
@@ -718,7 +832,7 @@ public class SandboxToolsConfig {
                             final int taskIdx = i;
                             final String taskTitle = title;
                             futures.add(CompletableFuture.supplyAsync(
-                                    () -> codeAgent.execute(description, dataRefId, cols, preview, holder, taskIdx, taskTitle, cancelled),
+                                    () -> pythonCodeAgent.execute(description, dataRefId, cols, preview, holder, taskIdx, taskTitle, cancelled),
                                     executor));
                         } catch (Exception e) {
                             log.error("[DispatchParallel] 子任务 {} 构建失败: {}", idx, e.getMessage());

@@ -13,12 +13,20 @@ const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8080';
 export async function POST(request: Request) {
   const body = await request.json();
 
+  // 转发 LLM 配置请求头
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'Accept': 'text/event-stream',
+  };
+
+  ['X-LLM-Provider', 'X-LLM-API-Key', 'X-LLM-Model', 'X-LLM-Base-URL'].forEach(key => {
+    const value = request.headers.get(key);
+    if (value) headers[key] = value;
+  });
+
   const backendResponse = await fetch(`${BACKEND_URL}/api/chat/stream`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'text/event-stream',
-    },
+    headers,
     body: JSON.stringify(body),
   });
 

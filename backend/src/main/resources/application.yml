@@ -8,15 +8,15 @@ spring:
       max-file-size: 100MB
       max-request-size: 100MB
 
-  # AI 配置 - OpenRouter (Gemini)
+  # AI 配置 - 支持 OpenRouter 和 DeepSeek 切换
+  # 切换方式：设置环境变量 AI_PROVIDER=deepseek 或 openrouter
   ai:
     openai:
-      api-key: ${OPENROUTER_API_KEY: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}
-      # OpenRouter API 端点
-      base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api}
+      api-key: ${AI_API_KEY:placeholder}
+      base-url: ${AI_BASE_URL:https://api.openai.com}
       chat:
         options:
-          model: google/gemini-3.1-flash-lite-preview
+          model: ${AI_MODEL:google/gemini-3.1-flash-lite-preview}
           temperature: 0.1
 
   # NER 服务专用配置
@@ -174,8 +174,8 @@ logging:
   level:
     root: INFO
     com.chatbi: INFO
-    com.chatbi.interceptor: WARN
-    com.chatbi.factory: WARN
+    com.chatbi.interceptor: INFO
+    com.chatbi.factory: INFO
     com.chatbi.service.Text2SQLAgent: INFO
     com.chatbi.service.MCPKnowledgeService: INFO
     org.springframework.ai: WARN

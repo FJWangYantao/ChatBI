@@ -1,6 +1,7 @@
 package com.chatbi.service;
 
 import com.chatbi.config.ModelOptionsProvider;
+import com.chatbi.config.LLMConfigProvider;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -40,16 +41,14 @@ public class FormattingAgent {
 
     private final ChatStreamService chatStreamService;
     private final ModelOptionsProvider modelOptions;
+    private final LLMConfigProvider configProvider;
 
-    @Value("${spring.ai.openai.api-key}")
-    private String apiKey;
-
-    @Value("${spring.ai.openai.base-url:https://api.deepseek.com}")
-    private String apiBaseUrl;
-
-    public FormattingAgent(ChatStreamService chatStreamService, ModelOptionsProvider modelOptions) {
+    public FormattingAgent(ChatStreamService chatStreamService,
+                          ModelOptionsProvider modelOptions,
+                          LLMConfigProvider configProvider) {
         this.chatStreamService = chatStreamService;
         this.modelOptions = modelOptions;
+        this.configProvider = configProvider;
     }
 
     /**
@@ -172,12 +171,12 @@ public class FormattingAgent {
         ));
 
         String json = objectMapper.writeValueAsString(requestBody);
-        String url = apiBaseUrl.replaceAll("/+$", "") + "/v1/chat/completions";
+        String url = configProvider.getBaseUrl().replaceAll("/+$", "") + "/v1/chat/completions";
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
+                .header("Authorization", "Bearer " + configProvider.getApiKey())
                 .timeout(REQUEST_TIMEOUT)
                 .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
                 .build();
@@ -233,12 +232,12 @@ public class FormattingAgent {
         ));
 
         String json = objectMapper.writeValueAsString(requestBody);
-        String url = apiBaseUrl.replaceAll("/+$", "") + "/v1/chat/completions";
+        String url = configProvider.getBaseUrl().replaceAll("/+$", "") + "/v1/chat/completions";
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
+                .header("Authorization", "Bearer " + configProvider.getApiKey())
                 .timeout(REQUEST_TIMEOUT)
                 .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
                 .build();
@@ -284,12 +283,12 @@ public class FormattingAgent {
         requestBody.put("response_format", Map.of("type", "json_object"));
 
         String json = objectMapper.writeValueAsString(requestBody);
-        String url = apiBaseUrl.replaceAll("/+$", "") + "/v1/chat/completions";
+        String url = configProvider.getBaseUrl().replaceAll("/+$", "") + "/v1/chat/completions";
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
+                .header("Authorization", "Bearer " + configProvider.getApiKey())
                 .timeout(REQUEST_TIMEOUT)
                 .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
                 .build();

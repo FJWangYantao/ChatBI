@@ -1,7 +1,9 @@
 package com.chatbi.service;
 
+import com.chatbi.config.LLMConfigProvider;
 import com.chatbi.config.ModelOptionsProvider;
 import com.chatbi.context.SseEmitterContext;
+import com.chatbi.context.LLMConfigContext;
 import com.chatbi.dto.NERResponse;
 import com.chatbi.dto.StreamingTagEvent;
 import com.chatbi.factory.DynamicChatClientFactory;
@@ -46,6 +48,7 @@ public class PlanningAgent {
     private final NERService nerService;
     private final ReadSchemaStructureService schemaService;
     private final FunctionCallback executeCodeFunction;
+    private final FunctionCallback generateCodeFunction;
     private final FunctionCallback fixCodeFunction;
     private final FunctionCallback validateCodeFunction;
     private final FunctionCallback sandboxInfoFunction;
@@ -76,18 +79,16 @@ public class PlanningAgent {
         TokenLimitExceededException(String msg) { super(msg); }
     }
 
-    @Value("${spring.ai.openai.api-key}")
-    private String apiKey;
-
-    @Value("${spring.ai.openai.base-url:https://api.deepseek.com}")
-    private String apiBaseUrl;
+    private final LLMConfigProvider configProvider;
 
     public PlanningAgent(DynamicChatClientFactory chatClientFactory,
                          ChatModel chatModel,
                          ModelOptionsProvider modelOptions,
                          NERService nerService,
                          ReadSchemaStructureService schemaService,
+                         LLMConfigProvider configProvider,
                          @Qualifier("executeCodeFunction") FunctionCallback executeCodeFunction,
+                         @Qualifier("generateCodeFunction") FunctionCallback generateCodeFunction,
                          @Qualifier("fixCodeFunction") FunctionCallback fixCodeFunction,
                          @Qualifier("validateCodeFunction") FunctionCallback validateCodeFunction,
                          @Qualifier("sandboxInfoFunction") FunctionCallback sandboxInfoFunction,
@@ -98,7 +99,9 @@ public class PlanningAgent {
         this.modelOptions = modelOptions;
         this.nerService = nerService;
         this.schemaService = schemaService;
+        this.configProvider = configProvider;
         this.executeCodeFunction = executeCodeFunction;
+        this.generateCodeFunction = generateCodeFunction;
         this.fixCodeFunction = fixCodeFunction;
         this.validateCodeFunction = validateCodeFunction;
         this.sandboxInfoFunction = sandboxInfoFunction;
@@ -108,6 +111,7 @@ public class PlanningAgent {
         // 构建工具名称到回调的映射
         this.toolMap = new HashMap<>();
         toolMap.put("query_database", queryDatabaseFunction);
+        toolMap.put("generate_code", generateCodeFunction);
         toolMap.put("execute_code", executeCodeFunction);
         toolMap.put("fix_code", fixCodeFunction);
         toolMap.put("validate_code", validateCodeFunction);
@@ -144,7 +148,7 @@ public class PlanningAgent {
         OpenAiChatOptions baseOptions = modelOptions.getOptions("planning");
         OpenAiChatOptions options = OpenAiChatOptions.fromOptions(baseOptions);
         options.setFunctionCallbacks(List.of(
-                queryDatabaseFunction, executeCodeFunction, fixCodeFunction,
+                queryDatabaseFunction, generateCodeFunction, executeCodeFunction, fixCodeFunction,
                 validateCodeFunction, sandboxInfoFunction, dispatchParallelTasksFunction));
         options.setProxyToolCalls(true);
 
@@ -378,7 +382,7 @@ public class PlanningAgent {
      */
     private ArrayNode buildToolsArray() {
         ArrayNode tools = objectMapper.createArrayNode();
-        for (FunctionCallback fc : List.of(queryDatabaseFunction, executeCodeFunction,
+        for (FunctionCallback fc : List.of(queryDatabaseFunction, generateCodeFunction, executeCodeFunction,
                 fixCodeFunction, validateCodeFunction, sandboxInfoFunction, dispatchParallelTasksFunction)) {
             try {
                 ObjectNode fn = objectMapper.createObjectNode()
@@ -406,8 +410,17 @@ public class PlanningAgent {
             OpenAiChatOptions options,
             Consumer<String> onTextDelta,
             Consumer<StreamingTagEvent> onTagEvent) {
-
+        
+        // 获取前端配置
+        LLMConfigContext.LLMConfig config = LLMConfigContext.get();
+        
+        // 优先使用前端传来的 model
         String model = options.getModel() != null ? options.getModel() : "deepseek-chat";
+        if (config != null && config.getModelName() != null && !config.getModelName().isEmpty()) {
+            model = config.getModelName();
+            log.info("[PlanningAgent] 使用前端配置的 model: {}", model);
+        }
+        
         double temperature = options.getTemperature() != null ? options.getTemperature() : 0.1;
 
         try {
@@ -417,13 +430,19 @@ public class PlanningAgent {
             body.put("temperature", temperature);
             body.put("stream", true);
             body.set("messages", convertMessagesToOpenAI(messages));
+            // 发送 tools 参数（所有 provider 都支持）
             body.set("tools", buildToolsArray());
-
-            String url = apiBaseUrl.replaceAll("/+$", "") + "/chat/completions";
+            String provider = (config != null) ? config.getProvider() : "openrouter";
+            log.info("[PlanningAgent] Provider: {}, 发送 tools 参数", provider);
+            String baseUrl = configProvider.getBaseUrl().replaceAll("/+$", "");
+            if (!baseUrl.endsWith("/v1")) {
+                baseUrl = baseUrl + "/v1";
+            }
+            String url = baseUrl + "/chat/completions";
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Authorization", "Bearer " + configProvider.getApiKey())
                     .POST(HttpRequest.BodyPublishers.ofString(
                             objectMapper.writeValueAsString(body), StandardCharsets.UTF_8))
                     .build();
@@ -610,6 +629,12 @@ public class PlanningAgent {
             Consumer<String> onTextDelta) {
 
         log.info("[PlanningAgent] Using Spring AI stream fallback");
+
+        // 使用动态配置的 ChatClient，但需要转换为 ChatModel
+        // 由于 ChatClient 不暴露 ChatModel，我们直接用注入的 chatModel
+        // 注意：这个 fallback 可能不会使用前端配置，建议优先修复主流程
+        log.warn("[PlanningAgent] Fallback 使用静态注入的 chatModel，可能不会使用前端配置");
+
         Prompt prompt = new Prompt(messages, options);
         StringBuilder textBuffer = new StringBuilder();
         Map<Integer, String> tcIds = new HashMap<>();

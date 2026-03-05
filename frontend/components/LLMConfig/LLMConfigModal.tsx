@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { LLMConfig, MODEL_PRESETS, PROVIDER_BASE_URLS, getLLMConfig, saveLLMConfig, clearLLMConfig } from '@/types/llm-config';
+import { LLMConfig, MODEL_PRESETS, PROVIDER_BASE_URLS, getLLMConfig, saveLLMConfig, clearLLMConfig, getAllLLMConfigs } from '@/types/llm-config';
 
 interface LLMConfigModalProps {
   isOpen: boolean;
@@ -34,12 +34,19 @@ export default function LLMConfigModal({ isOpen, onClose }: LLMConfigModalProps)
     }
   }, [isOpen]);
 
-  // 当提供商改变时，更新默认模型
+  // 当提供商改变时，加载对应的配置
   useEffect(() => {
-    if (provider === 'deepseek' && !modelName) {
-      setModelName('deepseek-chat');
-    } else if (provider === 'openrouter' && !modelName) {
-      setModelName('deepseek/deepseek-chat');
+    const allConfigs = getAllLLMConfigs();
+    if (allConfigs && allConfigs[provider]) {
+      const config = allConfigs[provider]!;
+      setApiKey(config.apiKey);
+      setModelName(config.modelName);
+      setBaseUrl(config.baseUrl || PROVIDER_BASE_URLS[provider]);
+    } else {
+      // 没有保存的配置，使用默认值
+      setApiKey('');
+      setModelName(provider === 'deepseek' ? 'deepseek-chat' : 'deepseek/deepseek-chat');
+      setBaseUrl(PROVIDER_BASE_URLS[provider]);
     }
   }, [provider]);
 
@@ -53,17 +60,19 @@ export default function LLMConfigModal({ isOpen, onClose }: LLMConfigModalProps)
       provider,
       apiKey: apiKey.trim(),
       modelName: modelName.trim(),
-      baseUrl: baseUrl.trim() || undefined,
+      baseUrl: baseUrl.trim() || PROVIDER_BASE_URLS[provider],
     };
 
     saveLLMConfig(config);
-    onClose();
+    alert('配置已保存，页面将刷新以应用新配置');
+    window.location.reload();
   };
 
   const handleClear = () => {
     if (confirm('确定要清除配置并使用后端默认配置吗？')) {
       clearLLMConfig();
-      onClose();
+      alert('配置已清除，页面将刷新');
+      window.location.reload();
     }
   };
 
