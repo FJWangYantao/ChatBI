@@ -16,20 +16,50 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class LLMConfigInterceptor implements HandlerInterceptor {
 
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        // OPTIONS 预检请求直接放行
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
+
+        // 打印所有请求头用于诊断
+        log.error("[LLMConfigInterceptor] ========== 所有请求头 ==========");
+        java.util.Enumeration<String> headerNames = request.getHeaderNames();
+        while (headerNames.hasMoreElements()) {
+            String headerName = headerNames.nextElement();
+            String headerValue = request.getHeader(headerName);
+            log.error("[LLMConfigInterceptor] {}: {}", headerName,
+                     headerName.toLowerCase().contains("key") ? "***" : headerValue);
+        }
+        log.error("[LLMConfigInterceptor] =====================================");
+
+        // 浏览器直接请求时，请求头是标准大小写格式
         String provider = request.getHeader("X-LLM-Provider");
         String apiKey = request.getHeader("X-LLM-API-Key");
         String model = request.getHeader("X-LLM-Model");
         String baseUrl = request.getHeader("X-LLM-Base-URL");
 
-        // 打印所有请求头用于调试
-        log.info("[LLMConfigInterceptor] 请求路径: {}", request.getRequestURI());
-        log.info("[LLMConfigInterceptor] X-LLM-Provider: {}", provider);
-        log.info("[LLMConfigInterceptor] X-LLM-API-Key: {}", apiKey != null ? "***" : null);
-        log.info("[LLMConfigInterceptor] X-LLM-Model: {}", model);
-        log.info("[LLMConfigInterceptor] X-LLM-Base-URL: {}", baseUrl);
+        log.error("[LLMConfigInterceptor] 请求路径: {}", request.getRequestURI());
+        log.error("[LLMConfigInterceptor] X-LLM-Provider: {}", provider);
+        log.error("[LLMConfigInterceptor] X-LLM-API-Key: {}", apiKey != null ? "***" : null);
+        log.error("[LLMConfigInterceptor] X-LLM-Model: {}", model);
+        log.error("[LLMConfigInterceptor] X-LLM-Base-URL: {}", baseUrl);
 
-        if (provider != null && apiKey != null && model != null) {
+        // 只对聊天接口强制要求前端配置
+        String requestPath = request.getRequestURI();
+        boolean isChatEndpoint = requestPath.contains("/chat/stream") ||
+                                 requestPath.contains("/chat/message") ||
+                                 requestPath.contains("/chat/execute-sql");
+
+        if (isChatEndpoint) {
+            if (provider == null || apiKey == null || model == null) {
+                log.error("[LLMConfigInterceptor] ❌ 聊天接口必须提供完整的LLM配置 (Provider, API Key, Model)");
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"error\":\"请先在设置中配置 LLM 供应商和 API Key\"}");
+                return false;
+            }
+
             LLMConfigContext.LLMConfig config = new LLMConfigContext.LLMConfig();
             config.setProvider(provider);
             config.setApiKey(apiKey);
@@ -37,10 +67,8 @@ public class LLMConfigInterceptor implements HandlerInterceptor {
             config.setBaseUrl(baseUrl);
             LLMConfigContext.set(config);
 
-            log.info("[LLMConfigInterceptor] ✅ 检测到自定义LLM配置 - Provider: {}, Model: {}, BaseURL: {}",
+            log.info("[LLMConfigInterceptor] ✅ 使用前端配置 - Provider: {}, Model: {}, BaseURL: {}",
                      provider, model, baseUrl);
-        } else {
-            log.info("[LLMConfigInterceptor] ⚠️ 未检测到完整的自定义LLM配置，将使用默认配置");
         }
 
         return true;

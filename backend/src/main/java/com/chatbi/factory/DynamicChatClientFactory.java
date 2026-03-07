@@ -36,35 +36,30 @@ public class DynamicChatClientFactory {
     private int proxyPort;
 
     /**
-     * 创建 ChatClient，优先使用 ThreadLocal 中的配置
+     * 创建 ChatClient，必须使用 ThreadLocal 中的前端配置
      */
     public ChatClient createChatClient(String agentName) {
         LLMConfigContext.LLMConfig customConfig = LLMConfigContext.get();
 
-        String apiKey;
-        String baseUrl;
-        String model;
-
-        if (customConfig != null) {
-            // 使用前端传来的配置
-            apiKey = customConfig.getApiKey();
-            baseUrl = customConfig.getBaseUrl() != null ?
-                      customConfig.getBaseUrl() : getDefaultBaseUrl(customConfig.getProvider());
-            model = customConfig.getModelName();
-
-            log.info("[DynamicChatClientFactory] 使用自定义配置 - Provider: {}, Model: {}, BaseURL: {}",
-                     customConfig.getProvider(), model, baseUrl);
-        } else {
-            // 使用默认配置
-            apiKey = defaultApiKey;
-            baseUrl = defaultBaseUrl;
-            model = defaultModel;
-
-            log.info("[DynamicChatClientFactory] 使用默认配置 - Model: {}, BaseURL: {}", model, baseUrl);
+        if (customConfig == null) {
+            throw new IllegalStateException("未检测到前端 LLM 配置，请先在设置中配置 LLM 供应商和 API Key");
         }
 
-        // 创建 OpenAiApi（暂时不使用代理，因为构造函数签名问题）
+        // 使用前端传来的配置
+        String apiKey = customConfig.getApiKey();
+        String baseUrl = customConfig.getBaseUrl() != null ?
+                  customConfig.getBaseUrl() : getDefaultBaseUrl(customConfig.getProvider());
+        String model = customConfig.getModelName();
+
+        log.error("[DynamicChatClientFactory] ========== 开始创建 ChatClient ==========");
+        log.error("[DynamicChatClientFactory] 使用前端配置 - Provider: {}, Model: {}, BaseURL: {}",
+                 customConfig.getProvider(), model, baseUrl);
+
+        // 创建 OpenAiApi
         OpenAiApi openAiApi = new OpenAiApi(baseUrl, apiKey);
+
+        log.error("[DynamicChatClientFactory] 创建 OpenAiApi - BaseURL: {}, ApiKey: {}",
+                 baseUrl, apiKey != null ? "***" : "null");
 
         if (proxyHost != null && proxyPort > 0) {
             log.warn("[DynamicChatClientFactory] 代理配置已忽略 - 当前 Spring AI 版本不支持代理配置");
@@ -77,6 +72,10 @@ public class DynamicChatClientFactory {
                 .withTemperature(defaultTemperature)
                 .build();
 
+        log.error("[DynamicChatClientFactory] 创建 ChatClient - Model: {}, Temperature: {}",
+                 model, defaultTemperature);
+        log.error("[DynamicChatClientFactory] ========================================");
+
         return ChatClient.builder(chatModel)
                 .defaultOptions(options)
                 .build();
@@ -85,8 +84,8 @@ public class DynamicChatClientFactory {
     private String getDefaultBaseUrl(String provider) {
         return switch (provider) {
             case "deepseek" -> "https://api.deepseek.com";
-            case "openrouter" -> "https://openrouter.ai/api";  // 移除 /v1，Spring AI 会自动添加
-            default -> defaultBaseUrl;
+            case "openrouter" -> "https://openrouter.ai/api/v1";
+            default -> "https://api.openai.com/v1";
         };
     }
 }

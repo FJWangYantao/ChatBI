@@ -1,7 +1,19 @@
-'use client';
+﻿'use client';
 
-import { useState, useEffect } from 'react';
-import { LLMConfig, MODEL_PRESETS, PROVIDER_BASE_URLS, getLLMConfig, saveLLMConfig, clearLLMConfig } from '@/types/llm-config';
+import { useEffect, useState } from 'react';
+import {
+  LLMConfig,
+  LLMProvider,
+  MODEL_PRESETS,
+  PROVIDER_BASE_URLS,
+  clearLLMConfig,
+  getDefaultLLMConfig,
+  getDefaultModelName,
+  getLLMConfig,
+  getLLMConfigStore,
+  getRawProviderConfig,
+  saveLLMConfig,
+} from '@/types/llm-config';
 
 interface LLMConfigModalProps {
   isOpen: boolean;
@@ -9,39 +21,53 @@ interface LLMConfigModalProps {
 }
 
 export default function LLMConfigModal({ isOpen, onClose }: LLMConfigModalProps) {
-  const [provider, setProvider] = useState<'openrouter' | 'deepseek'>('deepseek');
+  const [provider, setProvider] = useState<LLMProvider>('deepseek');
   const [apiKey, setApiKey] = useState('');
   const [modelName, setModelName] = useState('');
   const [baseUrl, setBaseUrl] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // 加载现有配置
   useEffect(() => {
-    if (isOpen) {
-      const config = getLLMConfig();
-      if (config) {
-        setProvider(config.provider);
-        setApiKey(config.apiKey);
-        setModelName(config.modelName);
-        setBaseUrl(config.baseUrl || '');
-      } else {
-        // 设置默认值
-        setProvider('deepseek');
-        setApiKey('');
-        setModelName('deepseek-chat');
-        setBaseUrl('');
-      }
+    if (!isOpen) return;
+
+    // 读取当前激活的供应商配置
+    const store = getLLMConfigStore();
+    const activeProvider = store?.activeProvider || 'deepseek';
+    const rawConfig = getRawProviderConfig(activeProvider);
+
+    setProvider(activeProvider);
+
+    if (rawConfig) {
+      // 有历史配置，恢复之前保存的值
+      setApiKey(rawConfig.apiKey || '');
+      setModelName(rawConfig.modelName || getDefaultModelName(activeProvider));
+      setBaseUrl(rawConfig.baseUrl || '');
+    } else {
+      // 无历史配置，显示空白表单
+      setApiKey('');
+      setModelName(getDefaultModelName(activeProvider));
+      setBaseUrl('');
     }
   }, [isOpen]);
 
-  // 当提供商改变时，更新默认模型
-  useEffect(() => {
-    if (provider === 'deepseek' && !modelName) {
-      setModelName('deepseek-chat');
-    } else if (provider === 'openrouter' && !modelName) {
-      setModelName('deepseek/deepseek-chat');
+  const handleProviderChange = (nextProvider: LLMProvider) => {
+    setProvider(nextProvider);
+
+    // 直接读取该供应商的原始配置
+    const rawConfig = getRawProviderConfig(nextProvider);
+
+    if (rawConfig) {
+      // 该供应商有历史配置，恢复之前保存的值
+      setApiKey(rawConfig.apiKey || '');
+      setModelName(rawConfig.modelName || getDefaultModelName(nextProvider));
+      setBaseUrl(rawConfig.baseUrl || '');
+    } else {
+      // 该供应商从未配置过，显示空白表单（modelName 使用默认值）
+      setApiKey('');
+      setModelName(getDefaultModelName(nextProvider));
+      setBaseUrl('');
     }
-  }, [provider]);
+  };
 
   const handleSave = () => {
     if (!apiKey.trim() || !modelName.trim()) {
@@ -61,8 +87,34 @@ export default function LLMConfigModal({ isOpen, onClose }: LLMConfigModalProps)
   };
 
   const handleClear = () => {
-    if (confirm('确定要清除配置并使用后端默认配置吗？')) {
-      clearLLMConfig();
+    if (confirm(`确定清除 ${provider} 的本地配置吗？`)) {
+      clearLLMConfig(provider);
+
+      // 清除后，检查是否还有其他供应商的配置
+      const store = getLLMConfigStore();
+      if (!store) {
+        // 所有配置都被清空了，显示默认供应商的空白表单
+        setProvider('deepseek');
+        setApiKey('');
+        setModelName(getDefaultModelName('deepseek'));
+        setBaseUrl('');
+      } else {
+        // 还有其他供应商的配置，切换到激活的供应商
+        const activeProvider = store.activeProvider;
+        const rawConfig = getRawProviderConfig(activeProvider);
+
+        setProvider(activeProvider);
+        if (rawConfig) {
+          setApiKey(rawConfig.apiKey || '');
+          setModelName(rawConfig.modelName || getDefaultModelName(activeProvider));
+          setBaseUrl(rawConfig.baseUrl || '');
+        } else {
+          setApiKey('');
+          setModelName(getDefaultModelName(activeProvider));
+          setBaseUrl('');
+        }
+      }
+
       onClose();
     }
   };
@@ -79,20 +131,21 @@ export default function LLMConfigModal({ isOpen, onClose }: LLMConfigModalProps)
       >
         <h2 className="text-xl font-semibold mb-4">LLM 配置</h2>
 
-        {/* 提供商选择 */}
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">提供商</label>
+          <label className="block text-sm font-medium mb-2">供应商</label>
           <select
             value={provider}
-            onChange={(e) => setProvider(e.target.value as 'openrouter' | 'deepseek')}
+            onChange={(e) => handleProviderChange(e.target.value as LLMProvider)}
             className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent"
           >
             <option value="deepseek">DeepSeek</option>
             <option value="openrouter">OpenRouter</option>
           </select>
+          <p className="text-xs text-muted-foreground mt-1">
+            每个供应商会分别保存自己的 API Key、模型和 Base URL。
+          </p>
         </div>
 
-        {/* API Key */}
         <div className="mb-4">
           <label className="block text-sm font-medium mb-2">API Key</label>
           <input
@@ -104,7 +157,6 @@ export default function LLMConfigModal({ isOpen, onClose }: LLMConfigModalProps)
           />
         </div>
 
-        {/* 模型名称 */}
         <div className="mb-4">
           <label className="block text-sm font-medium mb-2">模型名称</label>
           {provider === 'deepseek' ? (
@@ -135,7 +187,6 @@ export default function LLMConfigModal({ isOpen, onClose }: LLMConfigModalProps)
           )}
         </div>
 
-        {/* 高级选项 */}
         <div className="mb-4">
           <button
             onClick={() => setShowAdvanced(!showAdvanced)}
@@ -155,20 +206,18 @@ export default function LLMConfigModal({ isOpen, onClose }: LLMConfigModalProps)
                 className="w-full px-3 py-2 bg-background/50 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-accent text-sm"
               />
               <p className="text-xs text-muted-foreground mt-1">
-                留空使用默认端点
+                留空则使用该供应商默认地址。
               </p>
             </div>
           )}
         </div>
 
-        {/* 说明 */}
         <div className="mb-4 p-3 bg-accent/10 rounded-lg">
           <p className="text-xs text-muted-foreground">
-            配置保存在浏览器本地，每次请求时会传递给后端。如果不配置，将使用后端默认配置。
+            配置保存在浏览器本地。切换供应商时，会自动带出该供应商上次保存的完整配置。
           </p>
         </div>
 
-        {/* 按钮 */}
         <div className="flex gap-2">
           <button
             onClick={handleSave}
@@ -180,7 +229,7 @@ export default function LLMConfigModal({ isOpen, onClose }: LLMConfigModalProps)
             onClick={handleClear}
             className="px-4 py-2 bg-destructive/20 text-destructive rounded-lg hover:bg-destructive/30 transition-colors"
           >
-            清除
+            清除当前供应商
           </button>
           <button
             onClick={onClose}

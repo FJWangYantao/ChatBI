@@ -67,8 +67,8 @@ public class Text2SQLAgent {
         ChatClient chatClient = chatClientFactory.createChatClient("text2sql");
         StringBuilder sqlBuilder = new StringBuilder();
         try {
+            // 注意：不再调用 .options()，使用 createChatClient 中设置的 defaultOptions（前端配置）
             Flux<String> sqlFlux = chatClient.prompt()
-                    .options(modelOptions.getOptions("text2sql"))
                     .user(systemPrompt)
                     .stream()
                     .content();

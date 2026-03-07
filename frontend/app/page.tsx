@@ -684,15 +684,20 @@ export default function Home() {
       console.error('流式聊天失败:', error);
 
       const isTimeout = error.name === 'AbortError' || error.code === 'ABORT_ERR';
+      const isConfigError = error.message?.includes('请先在设置中配置');
 
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantId
             ? {
                 ...msg,
-                content: msg.content || (isTimeout
-                  ? '请求超时，后端处理时间过长。请稍后重试。'
-                  : '抱歉，连接后端服务失败。请确保后端服务已启动（http://localhost:8080）'),
+                content: msg.content || (
+                  isConfigError
+                    ? error.message
+                    : isTimeout
+                      ? '请求超时，后端处理时间过长。请稍后重试。'
+                      : '抱歉，连接后端服务失败。请确保后端服务已启动（http://localhost:8080）'
+                ),
                 isStreaming: false,
                 streamingStage: undefined,
                 streamingMessage: undefined,

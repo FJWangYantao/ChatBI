@@ -248,13 +248,13 @@ public class ChatStreamService {
     private String handleGeneralChatStream(SseEmitter emitter, String message) throws IOException {
         emitStatus(emitter, "llm_generation", "正在生成回复...", 3, 7);
 
-        // 动态创建 ChatClient
+        // 动态创建 ChatClient（已包含前端配置的 model 和 temperature）
         ChatClient chatClient = chatClientFactory.createChatClient("chat");
 
         // 使用同步 .call()（WebClient 流式 SSL 握手与 OpenRouter 不兼容）
         // 然后通过 emitTextDeltaFull 分块推送，模拟流式效果
+        // 注意：不再调用 .options()，使用 createChatClient 中设置的 defaultOptions
         String response = chatClient.prompt()
-                .options(modelOptions.getOptions("chat"))
                 .user(message)
                 .call()
                 .content();

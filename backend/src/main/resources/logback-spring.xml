@@ -42,6 +42,19 @@
         </encoder>
     </appender>
 
+    <!-- Agent 工作流日志 -->
+    <appender name="AGENT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/agents/agent-workflow.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/agents/agent-workflow.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%X{traceId:-}] %-25logger{0} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
     <!-- 默认：仅控制台 -->
     <root level="INFO">
         <appender-ref ref="CONSOLE"/>
@@ -56,4 +69,22 @@
             <appender-ref ref="ERROR_FILE"/>
         </root>
     </springProfile>
+
+    <!-- Agent 相关类的日志输出到专用文件（开发和生产环境都启用） -->
+    <logger name="com.chatbi.service.PlanningAgent" level="INFO" additivity="false">
+        <appender-ref ref="AGENT_FILE"/>
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+    <logger name="com.chatbi.service.CodeAgent" level="INFO" additivity="false">
+        <appender-ref ref="AGENT_FILE"/>
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+    <logger name="com.chatbi.service.FormattingAgent" level="INFO" additivity="false">
+        <appender-ref ref="AGENT_FILE"/>
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+    <logger name="com.chatbi.service.Text2SQLAgent" level="INFO" additivity="false">
+        <appender-ref ref="AGENT_FILE"/>
+        <appender-ref ref="CONSOLE"/>
+    </logger>
 </configuration>

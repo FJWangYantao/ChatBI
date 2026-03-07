@@ -1,15 +1,20 @@
+﻿export type LLMProvider = 'deepseek' | 'openrouter';
+
 export interface LLMConfig {
-  provider: 'openrouter' | 'deepseek';
+  provider: LLMProvider;
   apiKey: string;
   modelName: string;
-  baseUrl?: string; // 可选，用于自定义端点
+  baseUrl?: string;
 }
 
-// localStorage key
+interface LLMConfigStore {
+  activeProvider: LLMProvider;
+  configs: Partial<Record<LLMProvider, Omit<LLMConfig, 'provider'>>>;
+}
+
 export const LLM_CONFIG_KEY = 'chatbi_llm_config';
 
-// 预设模型列表
-export const MODEL_PRESETS = {
+export const MODEL_PRESETS: Record<LLMProvider, Array<{ value: string; label: string }>> = {
   deepseek: [
     { value: 'deepseek-chat', label: 'DeepSeek Chat (推荐)' },
     { value: 'deepseek-reasoner', label: 'DeepSeek Reasoner (R1)' },
@@ -22,32 +27,153 @@ export const MODEL_PRESETS = {
   ]
 };
 
-// API 端点映射
-export const PROVIDER_BASE_URLS = {
+export const PROVIDER_BASE_URLS: Record<LLMProvider, string> = {
   deepseek: 'https://api.deepseek.com',
   openrouter: 'https://openrouter.ai/api/v1'
 };
 
-// 辅助函数：从 localStorage 读取配置
-export function getLLMConfig(): LLMConfig | null {
-  if (typeof window === 'undefined') return null;
-  const stored = localStorage.getItem(LLM_CONFIG_KEY);
-  if (!stored) return null;
+export function getDefaultModelName(provider: LLMProvider): string {
+  return MODEL_PRESETS[provider][0]?.value || '';
+}
+
+export function getDefaultLLMConfig(provider: LLMProvider = 'deepseek'): LLMConfig {
+  return {
+    provider,
+    apiKey: '',
+    modelName: getDefaultModelName(provider),
+    baseUrl: undefined,
+  };
+}
+
+function isProvider(value: unknown): value is LLMProvider {
+  return value === 'deepseek' || value === 'openrouter';
+}
+
+function normalizeConfig(provider: LLMProvider, config?: Partial<Omit<LLMConfig, 'provider'>> | null): LLMConfig {
+  return {
+    provider,
+    apiKey: config?.apiKey || '',
+    modelName: config?.modelName || getDefaultModelName(provider),
+    baseUrl: config?.baseUrl || undefined,
+  };
+}
+
+function parseStore(stored: string): LLMConfigStore | null {
   try {
-    return JSON.parse(stored);
+    const parsed = JSON.parse(stored) as Partial<LLMConfigStore & LLMConfig>;
+
+    if (parsed && typeof parsed === 'object' && 'configs' in parsed) {
+      const activeProvider = isProvider(parsed.activeProvider) ? parsed.activeProvider : 'deepseek';
+      const configs = parsed.configs && typeof parsed.configs === 'object' ? parsed.configs : {};
+      return {
+        activeProvider,
+        configs: {
+          deepseek: configs.deepseek,
+          openrouter: configs.openrouter,
+        },
+      };
+    }
+
+    if (parsed && isProvider(parsed.provider)) {
+      const legacyConfig = normalizeConfig(parsed.provider, parsed);
+      return {
+        activeProvider: legacyConfig.provider,
+        configs: {
+          [legacyConfig.provider]: {
+            apiKey: legacyConfig.apiKey,
+            modelName: legacyConfig.modelName,
+            baseUrl: legacyConfig.baseUrl,
+          },
+        },
+      };
+    }
   } catch {
     return null;
   }
+
+  return null;
 }
 
-// 辅助函数：保存配置到 localStorage
+export function getLLMConfigStore(): LLMConfigStore | null {
+  if (typeof window === 'undefined') return null;
+  const stored = localStorage.getItem(LLM_CONFIG_KEY);
+  if (!stored) return null;
+  return parseStore(stored);
+}
+
+export function getLLMConfig(provider?: LLMProvider): LLMConfig | null {
+  const store = getLLMConfigStore();
+  if (!store) return null;
+
+  const targetProvider = provider || store.activeProvider;
+  if (!isProvider(targetProvider)) return null;
+
+  return normalizeConfig(targetProvider, store.configs[targetProvider]);
+}
+
+/**
+ * 直接读取指定供应商的原始配置（不做 normalize）
+ * 返回 undefined 表示该供应商从未配置过
+ */
+export function getRawProviderConfig(provider: LLMProvider): Omit<LLMConfig, 'provider'> | undefined {
+  const store = getLLMConfigStore();
+  if (!store) return undefined;
+  return store.configs[provider];
+}
+
 export function saveLLMConfig(config: LLMConfig): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(LLM_CONFIG_KEY, JSON.stringify(config));
+
+  const store = getLLMConfigStore() || {
+    activeProvider: config.provider,
+    configs: {},
+  };
+
+  const nextStore: LLMConfigStore = {
+    activeProvider: config.provider,
+    configs: {
+      ...store.configs,
+      [config.provider]: {
+        apiKey: config.apiKey,
+        modelName: config.modelName,
+        baseUrl: config.baseUrl,
+      },
+    },
+  };
+
+  localStorage.setItem(LLM_CONFIG_KEY, JSON.stringify(nextStore));
 }
 
-// 辅助函数：清除配置
-export function clearLLMConfig(): void {
+export function clearLLMConfig(provider?: LLMProvider): void {
   if (typeof window === 'undefined') return;
-  localStorage.removeItem(LLM_CONFIG_KEY);
+
+  if (!provider) {
+    localStorage.removeItem(LLM_CONFIG_KEY);
+    return;
+  }
+
+  const store = getLLMConfigStore();
+  if (!store) return;
+
+  const nextConfigs = { ...store.configs };
+  delete nextConfigs[provider];
+
+  const remainingProviders = (Object.keys(nextConfigs) as LLMProvider[]).filter((key) => {
+    const config = nextConfigs[key];
+    return !!(config && (config.apiKey || config.modelName || config.baseUrl));
+  });
+
+  if (remainingProviders.length === 0) {
+    localStorage.removeItem(LLM_CONFIG_KEY);
+    return;
+  }
+
+  const nextActiveProvider = store.activeProvider === provider
+    ? remainingProviders[0]
+    : store.activeProvider;
+
+  localStorage.setItem(LLM_CONFIG_KEY, JSON.stringify({
+    activeProvider: nextActiveProvider,
+    configs: nextConfigs,
+  } satisfies LLMConfigStore));
 }

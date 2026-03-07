@@ -57,9 +57,12 @@ public class CodeAgent {
         if (proxyHost != null && !proxyHost.isEmpty() && proxyPort != null) {
             return HttpClient.newBuilder()
                     .proxy(ProxySelector.of(new InetSocketAddress(proxyHost, Integer.parseInt(proxyPort))))
+                    .connectTimeout(java.time.Duration.ofSeconds(30))
                     .build();
         }
-        return HttpClient.newHttpClient();
+        return HttpClient.newBuilder()
+                .connectTimeout(java.time.Duration.ofSeconds(30))
+                .build();
     }
 
     /**
@@ -216,6 +219,7 @@ public class CodeAgent {
             HttpRequest request = HttpRequest.newBuilder(URI.create(url))
                     .header("Content-Type", "application/json")
                     .header("Authorization", "Bearer " + apiKey)
+                    .timeout(java.time.Duration.ofMinutes(3))
                     .POST(HttpRequest.BodyPublishers.ofString(
                             objectMapper.writeValueAsString(body), StandardCharsets.UTF_8))
                     .build();

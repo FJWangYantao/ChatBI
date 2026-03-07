@@ -3,19 +3,49 @@
  * 使用 fetch + ReadableStream 解析 SSE（支持 POST 请求）
  */
 
-import { getLLMConfig } from '@/types/llm-config';
+import { getLLMConfig, PROVIDER_BASE_URLS } from "@/types/llm-config";
 
 export interface StreamCallbacks {
-  onStatus?: (data: { stage: string; message: string; progress: number; totalSteps: number }) => void;
-  onIntent?: (data: { category: string; categoryCn: string; categoryConfidence: number; subtype: string; subtypeConfidence: number; subtypeCn: string }) => void;
+  onStatus?: (data: {
+    stage: string;
+    message: string;
+    progress: number;
+    totalSteps: number;
+  }) => void;
+  onIntent?: (data: {
+    category: string;
+    categoryCn: string;
+    categoryConfidence: number;
+    subtype: string;
+    subtypeConfidence: number;
+    subtypeCn: string;
+  }) => void;
   onTextDelta?: (data: { delta: string }) => void;
-  onTag?: (data: { type: string; content: any; title?: string; metadata?: any }) => void;
+  onTag?: (data: {
+    type: string;
+    content: any;
+    title?: string;
+    metadata?: any;
+  }) => void;
   onTagStart?: (data: { id: string; type: string; title: string }) => void;
   onTagDelta?: (data: { id: string; delta: string }) => void;
-  onTagEnd?: (data: { id: string; tag: { type: string; content: any; title?: string; metadata?: any } }) => void;
+  onTagEnd?: (data: {
+    id: string;
+    tag: { type: string; content: any; title?: string; metadata?: any };
+  }) => void;
   onSuggestions?: (data: { items: string[] }) => void;
-  onReasoning?: (data: { step: string; content: string; stepIndex: number }) => void;
-  onStepResult?: (data: { stepName: string; stepLabel: string; duration: number; status: string; result: any }) => void;
+  onReasoning?: (data: {
+    step: string;
+    content: string;
+    stepIndex: number;
+  }) => void;
+  onStepResult?: (data: {
+    stepName: string;
+    stepLabel: string;
+    duration: number;
+    status: string;
+    result: any;
+  }) => void;
   onCodeExecution?: (data: {
     executionId: string;
     stage: string;
@@ -25,8 +55,18 @@ export interface StreamCallbacks {
     success?: boolean;
     executionTime?: number;
   }) => void;
-  onSubtaskStatus?: (data: { status: string; total: number; titles?: string[]; success_count?: number }) => void;
-  onSubtaskProgress?: (data: { taskIndex: number; title: string; status: string; duration?: number }) => void;
+  onSubtaskStatus?: (data: {
+    status: string;
+    total: number;
+    titles?: string[];
+    success_count?: number;
+  }) => void;
+  onSubtaskProgress?: (data: {
+    taskIndex: number;
+    title: string;
+    status: string;
+    duration?: number;
+  }) => void;
   onDone?: (data: { conversationId: string; totalDuration: number }) => void;
   onError?: (data: { code: string; message: string; stage: string }) => void;
 }
@@ -34,61 +74,65 @@ export interface StreamCallbacks {
 /**
  * 解析 SSE 文本流，调用对应 callback
  */
-function processSSELine(eventType: string, dataStr: string, callbacks: StreamCallbacks) {
+function processSSELine(
+  eventType: string,
+  dataStr: string,
+  callbacks: StreamCallbacks,
+) {
   try {
     const data = JSON.parse(dataStr);
     switch (eventType) {
-      case 'status':
+      case "status":
         callbacks.onStatus?.(data);
         break;
-      case 'intent':
+      case "intent":
         callbacks.onIntent?.(data);
         break;
-      case 'text_delta':
+      case "text_delta":
         callbacks.onTextDelta?.(data);
         break;
-      case 'tag':
+      case "tag":
         callbacks.onTag?.(data);
         break;
-      case 'suggestions':
+      case "suggestions":
         callbacks.onSuggestions?.(data);
         break;
-      case 'reasoning':
+      case "reasoning":
         callbacks.onReasoning?.(data);
         break;
-      case 'step_result':
+      case "step_result":
         callbacks.onStepResult?.(data);
         break;
-      case 'tag_start':
+      case "tag_start":
         callbacks.onTagStart?.(data);
         break;
-      case 'tag_delta':
+      case "tag_delta":
         callbacks.onTagDelta?.(data);
         break;
-      case 'tag_end':
+      case "tag_end":
         callbacks.onTagEnd?.(data);
         break;
-      case 'code_execution':
-        console.log('[SSE] code_execution 事件到达:', data);
+      case "code_execution":
+        console.log("[SSE] code_execution 事件到达:", data);
         callbacks.onCodeExecution?.(data);
         break;
-      case 'subtask_status':
-        console.log('[SSE] subtask_status 事件到达:', data);
+      case "subtask_status":
+        console.log("[SSE] subtask_status 事件到达:", data);
         callbacks.onSubtaskStatus?.(data);
         break;
-      case 'subtask_progress':
-        console.log('[SSE] subtask_progress 事件到达:', data);
+      case "subtask_progress":
+        console.log("[SSE] subtask_progress 事件到达:", data);
         callbacks.onSubtaskProgress?.(data);
         break;
-      case 'done':
+      case "done":
         callbacks.onDone?.(data);
         break;
-      case 'error':
+      case "error":
         callbacks.onError?.(data);
         break;
     }
   } catch (e) {
-    console.warn('SSE 解析失败:', eventType, dataStr, e);
+    console.warn("SSE 解析失败:", eventType, dataStr, e);
   }
 }
 
@@ -100,27 +144,43 @@ export async function streamChatMessage(
   conversationId: string | null,
   callbacks: StreamCallbacks,
   signal?: AbortSignal,
-  agentType?: string
+  agentType?: string,
 ): Promise<void> {
   // 从 localStorage 读取 LLM 配置
   const llmConfig = getLLMConfig();
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json'
-  };
+  console.log('[ChatStream] 读取到的配置:', llmConfig);
 
-  // 如果有自定义配置，添加到请求头
-  if (llmConfig) {
-    headers['X-LLM-Provider'] = llmConfig.provider;
-    headers['X-LLM-API-Key'] = llmConfig.apiKey;
-    headers['X-LLM-Model'] = llmConfig.modelName;
-    if (llmConfig.baseUrl) {
-      headers['X-LLM-Base-URL'] = llmConfig.baseUrl;
-    }
+  // 如果没有配置，抛出错误
+  if (!llmConfig || !llmConfig.apiKey) {
+    console.error('[ChatStream] 配置不完整:', { llmConfig });
+    throw new Error("请先在设置中配置 LLM 供应商和 API Key");
   }
 
-  const response = await fetch('/api/chat/stream', {
-    method: 'POST',
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-LLM-Provider": llmConfig.provider,
+    "X-LLM-API-Key": llmConfig.apiKey,
+    "X-LLM-Model": llmConfig.modelName,
+  };
+
+  // 添加 Base URL（如果有配置则使用配置，否则使用默认值）
+  const baseUrl = llmConfig.baseUrl || PROVIDER_BASE_URLS[llmConfig.provider];
+  if (baseUrl) {
+    headers["X-LLM-Base-URL"] = baseUrl;
+  }
+
+  console.log('[ChatStream] 发送的请求头:', {
+    provider: headers["X-LLM-Provider"],
+    model: headers["X-LLM-Model"],
+    baseUrl: headers["X-LLM-Base-URL"] || '(未设置)',
+    hasApiKey: !!headers["X-LLM-API-Key"],
+    apiKeyLength: headers["X-LLM-API-Key"]?.length
+  });
+
+  // 直接调用后端 API，绕过 Next.js rewrites（rewrites 不会转发自定义请求头）
+  const response = await fetch("http://localhost:8080/api/chat/stream", {
+    method: "POST",
     headers,
     body: JSON.stringify({ message, conversationId, agentType }),
     signal,
@@ -132,12 +192,12 @@ export async function streamChatMessage(
 
   const reader = response.body?.getReader();
   if (!reader) {
-    throw new Error('Response body is not readable');
+    throw new Error("Response body is not readable");
   }
 
   const decoder = new TextDecoder();
-  let buffer = '';
-  let currentEvent = '';
+  let buffer = "";
+  let currentEvent = "";
 
   try {
     while (true) {
@@ -147,20 +207,20 @@ export async function streamChatMessage(
       buffer += decoder.decode(value, { stream: true });
 
       // 按行解析 SSE 协议
-      const lines = buffer.split('\n');
+      const lines = buffer.split("\n");
       // 最后一行可能不完整，保留在 buffer 中
-      buffer = lines.pop() || '';
+      buffer = lines.pop() || "";
 
       for (const line of lines) {
-        if (line.startsWith('event:')) {
+        if (line.startsWith("event:")) {
           currentEvent = line.slice(6).trim();
-        } else if (line.startsWith('data:')) {
+        } else if (line.startsWith("data:")) {
           const dataStr = line.slice(5).trim();
           if (currentEvent && dataStr) {
             processSSELine(currentEvent, dataStr, callbacks);
           }
           // 每对 event+data 之后重置
-          currentEvent = '';
+          currentEvent = "";
         }
         // 忽略空行和注释行
       }
@@ -168,16 +228,16 @@ export async function streamChatMessage(
 
     // 处理 buffer 中可能残留的数据
     if (buffer.trim()) {
-      const remainingLines = buffer.split('\n');
+      const remainingLines = buffer.split("\n");
       for (const line of remainingLines) {
-        if (line.startsWith('event:')) {
+        if (line.startsWith("event:")) {
           currentEvent = line.slice(6).trim();
-        } else if (line.startsWith('data:')) {
+        } else if (line.startsWith("data:")) {
           const dataStr = line.slice(5).trim();
           if (currentEvent && dataStr) {
             processSSELine(currentEvent, dataStr, callbacks);
           }
-          currentEvent = '';
+          currentEvent = "";
         }
       }
     }

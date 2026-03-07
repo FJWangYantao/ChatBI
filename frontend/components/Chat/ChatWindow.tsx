@@ -1,4 +1,4 @@
-import { Message, MessageTag } from "@/app/page";
+﻿import { Message, MessageTag } from "@/app/page";
 import { useState, useEffect, useRef, useMemo } from "react";
 import LoadingSpinner from "./LoadingSpinner";
 import StepTimeline from "./StepTimeline";
@@ -719,7 +719,7 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
                           tag={message.tags[0]}
                           onExecuteResult={(resultTag) => {
                             if (onUpdateMessage) {
-                              const newTags = [...message.tags, resultTag];
+                              const newTags = [...(message.tags || []), resultTag];
                               onUpdateMessage(message.id, newTags);
                             }
                           }}
@@ -838,3 +838,4 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
     </div>
   );
 }
+

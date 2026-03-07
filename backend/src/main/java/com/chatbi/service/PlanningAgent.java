@@ -1,6 +1,7 @@
 package com.chatbi.service;
 
 import com.chatbi.config.ModelOptionsProvider;
+import com.chatbi.context.LLMConfigContext;
 import com.chatbi.context.SseEmitterContext;
 import com.chatbi.dto.NERResponse;
 import com.chatbi.dto.StreamingTagEvent;
@@ -61,9 +62,12 @@ public class PlanningAgent {
         if (proxyHost != null && !proxyHost.isEmpty() && proxyPort != null) {
             return HttpClient.newBuilder()
                     .proxy(ProxySelector.of(new InetSocketAddress(proxyHost, Integer.parseInt(proxyPort))))
+                    .connectTimeout(java.time.Duration.ofSeconds(30))
                     .build();
         }
-        return HttpClient.newHttpClient();
+        return HttpClient.newBuilder()
+                .connectTimeout(java.time.Duration.ofSeconds(30))
+                .build();
     }
 
     // Token 限制相关常量
@@ -407,8 +411,20 @@ public class PlanningAgent {
             Consumer<String> onTextDelta,
             Consumer<StreamingTagEvent> onTagEvent) {
 
-        String model = options.getModel() != null ? options.getModel() : "deepseek-chat";
+        // 必须使用前端传递的配置
+        LLMConfigContext.LLMConfig customConfig = LLMConfigContext.get();
+        if (customConfig == null) {
+            throw new IllegalStateException("未检测到前端 LLM 配置，请先在设置中配置 LLM 供应商和 API Key");
+        }
+
+        String effectiveApiKey = customConfig.getApiKey();
+        String effectiveBaseUrl = customConfig.getBaseUrl() != null
+                ? customConfig.getBaseUrl() : getDefaultBaseUrl(customConfig.getProvider());
+        String model = customConfig.getModelName();
         double temperature = options.getTemperature() != null ? options.getTemperature() : 0.1;
+
+        log.info("[PlanningAgent] 使用前端配置 - Model: {}, BaseURL: {}, Provider: {}",
+                model, effectiveBaseUrl, customConfig.getProvider());
 
         try {
             // 构建请求体
@@ -419,20 +435,29 @@ public class PlanningAgent {
             body.set("messages", convertMessagesToOpenAI(messages));
             body.set("tools", buildToolsArray());
 
-            String url = apiBaseUrl.replaceAll("/+$", "") + "/chat/completions";
+            String requestBody = objectMapper.writeValueAsString(body);
+            log.info("[PlanningAgent] 发送请求: model={}, url={}, bodyLength={}, messagesCount={}, toolsCount={}",
+                    model, effectiveBaseUrl, requestBody.length(), messages.size(),
+                    body.get("tools") != null ? body.get("tools").size() : 0);
+
+            String url = effectiveBaseUrl.replaceAll("/+$", "") + "/chat/completions";
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + apiKey)
-                    .POST(HttpRequest.BodyPublishers.ofString(
-                            objectMapper.writeValueAsString(body), StandardCharsets.UTF_8))
+                    .header("Authorization", "Bearer " + effectiveApiKey)
+                    .timeout(java.time.Duration.ofMinutes(5))
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody, StandardCharsets.UTF_8))
                     .build();
 
+            log.info("[PlanningAgent] 开始发送 HTTP 请求...");
             HttpResponse<java.io.InputStream> response = httpClient.send(
                     request, HttpResponse.BodyHandlers.ofInputStream());
+            log.info("[PlanningAgent] 收到响应: statusCode={}", response.statusCode());
 
             if (response.statusCode() != 200) {
                 String errBody = new String(response.body().readAllBytes(), StandardCharsets.UTF_8);
+                log.error("[PlanningAgent] API 返回错误: statusCode={}, body={}",
+                        response.statusCode(), truncateString(errBody, 500));
                 // Token 超限快速失败，不走 fallback（fallback 也会 400）
                 if (response.statusCode() == 400
                         && errBody.contains("maximum context length")) {
@@ -446,13 +471,15 @@ public class PlanningAgent {
                 throw new RuntimeException("API returned " + response.statusCode());
             }
 
+            log.info("[PlanningAgent] 开始解析 SSE 流...");
             return parseSSEStream(response.body(), onTextDelta, onTagEvent);
 
         } catch (TokenLimitExceededException e) {
+            log.error("[PlanningAgent] Token 超限异常", e);
             throw e; // Token 超限直接抛出，不走 fallback
         } catch (Exception e) {
-            log.warn("[PlanningAgent] Raw streaming failed, falling back to Spring AI: {}",
-                    truncateString(e.getMessage(), 200));
+            log.warn("[PlanningAgent] Raw streaming failed, falling back to Spring AI: {}, exceptionType={}",
+                    truncateString(e.getMessage(), 200), e.getClass().getSimpleName(), e);
             return fallbackStreamRound(messages, options, onTextDelta);
         }
     }
@@ -475,10 +502,22 @@ public class PlanningAgent {
         Map<Integer, String> codeTagIds = new HashMap<>();
         Map<Integer, Boolean> tagStartSent = new HashMap<>();
 
+        int lineCount = 0;
+        int dataChunkCount = 0;
+        log.info("[PlanningAgent] 开始读取 SSE 流...");
+
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
+                lineCount++;
+
+                // 记录前几行的原始内容用于调试
+                if (lineCount <= 5) {
+                    log.info("[PlanningAgent] SSE 原始行 {}: {}", lineCount,
+                            line.length() > 200 ? line.substring(0, 200) + "..." : line);
+                }
+
                 // 检查客户端是否已断开连接
                 if (SseEmitterContext.isDisconnected()) {
                     log.info("[PlanningAgent] 检测到客户端断开，停止 SSE 流解析");
@@ -487,9 +526,13 @@ public class PlanningAgent {
 
                 if (!line.startsWith("data:")) continue;
                 String data = line.substring(5).trim();
-                if (data.equals("[DONE]")) break;
+                if (data.equals("[DONE]")) {
+                    log.info("[PlanningAgent] 收到 [DONE] 标记，流结束");
+                    break;
+                }
                 if (data.isEmpty()) continue;
 
+                dataChunkCount++;
                 JsonNode chunk = objectMapper.readTree(data);
                 JsonNode choices = chunk.get("choices");
                 if (choices == null || choices.isEmpty()) continue;
@@ -535,6 +578,13 @@ public class PlanningAgent {
                     }
                 }
             }
+        }
+
+        log.info("[PlanningAgent] SSE 流解析完成: lineCount={}, dataChunkCount={}, textLength={}, toolCallsCount={}",
+                lineCount, dataChunkCount, textBuffer.length(), tcIds.size());
+
+        if (dataChunkCount == 0) {
+            log.warn("[PlanningAgent] 警告：SSE 流中没有有效的 data 块，可能是格式不兼容");
         }
 
         // 发送 tag_end
@@ -609,7 +659,7 @@ public class PlanningAgent {
             OpenAiChatOptions options,
             Consumer<String> onTextDelta) {
 
-        log.info("[PlanningAgent] Using Spring AI stream fallback");
+        log.info("[PlanningAgent] Using Spring AI stream fallback, messagesCount={}", messages.size());
         Prompt prompt = new Prompt(messages, options);
         StringBuilder textBuffer = new StringBuilder();
         Map<Integer, String> tcIds = new HashMap<>();
@@ -637,9 +687,12 @@ public class PlanningAgent {
                     }
                 }
             }).blockLast();
+
+            log.info("[PlanningAgent] Spring AI stream 完成: textLength={}, toolCallsCount={}",
+                    textBuffer.length(), tcIds.size());
         } catch (Exception e) {
-            log.warn("[PlanningAgent] Spring AI stream also failed: {}",
-                    truncateString(e.getMessage(), 200));
+            log.warn("[PlanningAgent] Spring AI stream also failed: {}, exceptionType={}",
+                    truncateString(e.getMessage(), 200), e.getClass().getSimpleName(), e);
             return fallbackCallRound(messages, options, onTextDelta);
         }
 
@@ -956,5 +1009,16 @@ public class PlanningAgent {
             数据库结构：
             %s
             """, question, entitiesStr, schemaInfo);
+    }
+
+    /**
+     * 根据供应商获取默认 Base URL
+     */
+    private String getDefaultBaseUrl(String provider) {
+        return switch (provider) {
+            case "deepseek" -> "https://api.deepseek.com";
+            case "openrouter" -> "https://openrouter.ai/api/v1";
+            default -> "https://api.openai.com/v1";
+        };
     }
 }
