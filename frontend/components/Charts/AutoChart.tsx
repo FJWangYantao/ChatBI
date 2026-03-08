@@ -159,8 +159,27 @@ function PaginatedTable({ tag, queryResult }: { tag: MessageTag; queryResult: Qu
 }
 
 export function AutoChart({ tag }: AutoChartProps) {
-  const queryResult = tag.content as QueryResult;
   const [viewType, setViewType] = useState<'chart' | 'table'>('chart');
+
+  // 检查是否有推荐的图表类型（新格式）
+  const hasRecommendation = tag.metadata?.source === 'recommendation';
+  const recommendation = hasRecommendation ? tag.content.recommendation : null;
+  const rawData = hasRecommendation ? tag.content.data : tag.content;
+
+  // 解析 queryResult
+  const queryResult = useMemo(() => {
+    if (hasRecommendation) {
+      // 新格式：从推荐数据中构建 QueryResult
+      return {
+        columns: rawData.length > 0 ? Object.keys(rawData[0]) : [],
+        rows: rawData,
+        totalRows: rawData.length,
+      } as QueryResult;
+    } else {
+      // 旧格式
+      return rawData as QueryResult;
+    }
+  }, [rawData, hasRecommendation]);
 
   // 从 metadata 中获取后端推荐的图表类型
   const recommendedChartType = (tag.metadata?.chartType as string) || null;
@@ -170,6 +189,17 @@ export function AutoChart({ tag }: AutoChartProps) {
 
   // 分析数据（作为降级方案）
   const analysis = useMemo(() => {
+    // 如果有新的推荐格式，使用推荐的配置
+    if (hasRecommendation && recommendation) {
+      // 先进行完整分析，然后覆盖推荐的字段
+      const baseAnalysis = analyzeDataset(queryResult);
+      return {
+        ...baseAnalysis,
+        recommendedChart: recommendation.chartType as ChartType,
+        dimensionCol: recommendation.xField || queryResult.columns?.[0] || '',
+        measureCol: recommendation.yField || queryResult.columns?.[1] || '',
+      } as DatasetAnalysis;
+    }
     // 如果是 Python 图表数据，直接使用其配置
     if (isPythonChart) {
       return {
@@ -182,10 +212,12 @@ export function AutoChart({ tag }: AutoChartProps) {
       } as DatasetAnalysis;
     }
     return analyzeDataset(queryResult);
-  }, [queryResult, isPythonChart]);
+  }, [queryResult, isPythonChart, hasRecommendation, recommendation]);
 
-  // 使用后端推荐的图表类型，如果没有则使用前端分析的结果
-  const chartType = isPythonChart ? queryResult.type : (recommendedChartType || analysis.recommendedChart);
+  // 使用推荐的图表类型
+  const chartType = hasRecommendation && recommendation
+    ? recommendation.chartType
+    : (isPythonChart ? queryResult.type : (recommendedChartType || analysis.recommendedChart));
 
   // 渲染图表
   const renderChart = () => {

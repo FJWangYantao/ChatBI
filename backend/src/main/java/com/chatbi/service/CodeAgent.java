@@ -278,13 +278,24 @@ public class CodeAgent {
 
             **要求**:
             - 数据已自动加载为 df (pandas DataFrame)，直接使用即可
-            - 仅使用允许的库：pandas, numpy, matplotlib, seaborn, sklearn, scipy, json, re, math, datetime, collections, itertools, functools, io, base64
-            - 绘图设置中文字体: plt.rcParams['font.sans-serif'] = ['SimHei']
-            - 保存图表: plt.savefig('output.png', dpi=100, bbox_inches='tight')
-            - 打印关键统计结果到 stdout
-            - 表格输出使用 print(df.to_string(index=False))
+            - 你的任务是生成纯数据计算代码，不要生成任何图表绘制代码
+            - 仅使用允许的库：pandas, numpy, json, datetime, collections, itertools, functools, re, math
+            - 最终结果必须是 DataFrame 或 dict 格式
+            - 使用 print() 输出 JSON 格式的结果
+            - 输出格式：print(result.to_json(orient='records', force_ascii=False, date_format='iso'))
+            - 如果结果是 Series，先用 reset_index() 转为 DataFrame
+            - 如果需要输出多个结果，分别打印多个 JSON
             - 每个输出块之前用 === 标题 === 格式打印标题
             - 只输出 Python 代码，用 ```python ``` 包裹
+
+            **示例**:
+            # 计算各产品销售额
+            result = df.groupby('product')['amount'].sum().reset_index()
+            result.columns = ['产品', '销售额']
+            print("=== 各产品销售额 ===")
+            print(result.to_json(orient='records', force_ascii=False))
+
+            输出：[{"产品":"A","销售额":1000}, {"产品":"B","销售额":2000}]
             """,
                 taskDescription,
                 String.join(", ", columns),

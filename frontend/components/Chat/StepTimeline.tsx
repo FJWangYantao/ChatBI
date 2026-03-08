@@ -87,7 +87,7 @@ export default function StepTimeline({
   currentMessage,
   isStreaming,
 }: StepTimelineProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true); // 默认折叠
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
   const wasStreamingRef = useRef(false);
 
@@ -115,6 +115,13 @@ export default function StepTimeline({
       return () => clearTimeout(timer);
     }
     wasStreamingRef.current = !!isStreaming;
+  }, [isStreaming]);
+
+  // 流式中自动展开
+  useEffect(() => {
+    if (isStreaming) {
+      setCollapsed(false);
+    }
   }, [isStreaming]);
 
   // 流式中自动展开新步骤

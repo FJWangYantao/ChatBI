@@ -42,7 +42,7 @@
     position: relative;
   }
 
-  /* 网格背景 - 优化性能 */
+  /* 网格背景 - 大幅淡化，减少视觉干扰 */
   body::before {
     content: '';
     position: fixed;
@@ -54,31 +54,12 @@
       linear-gradient(hsl(var(--grid-color)) 1px, transparent 1px),
       linear-gradient(90deg, hsl(var(--grid-color)) 1px, transparent 1px);
     background-size: 50px 50px;
-    opacity: 0.2;
+    opacity: 0.05;
     pointer-events: none;
     z-index: 0;
-    will-change: opacity;
   }
 
-  /* 渐变光晕 - 优化性能，减少动画复杂度 */
-  body::after {
-    content: '';
-    position: fixed;
-    top: -30%;
-    right: -10%;
-    width: 60%;
-    height: 60%;
-    background: radial-gradient(circle, hsl(var(--accent) / 0.08) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-    will-change: transform;
-    animation: float 30s ease-in-out infinite;
-  }
-
-  @keyframes float {
-    0%, 100% { transform: translate(0, 0); }
-    50% { transform: translate(-20px, -20px); }
-  }
+  /* 移除浮动光晕动画 - 减少视觉疲劳 */
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', sans-serif;
@@ -111,12 +92,12 @@
     box-shadow: 0 0 10px hsl(var(--accent-glow));
   }
 
-  /* 玻璃态卡片效果 - 优化性能 */
+  /* 玻璃态卡片效果 - 简化效果，减少模糊 */
   .glass-card {
-    background: hsl(var(--background) / 0.7);
-    backdrop-filter: blur(8px);
+    background: hsl(var(--background) / 0.85);
+    backdrop-filter: blur(4px);
     border: 1px solid hsl(var(--border) / 0.5);
-    box-shadow: 0 4px 16px hsl(var(--foreground) / 0.06);
+    box-shadow: 0 2px 8px hsl(var(--foreground) / 0.04);
   }
 
   /* 发光边框 - 简化效果 */

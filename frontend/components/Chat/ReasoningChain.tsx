@@ -9,7 +9,7 @@ interface ReasoningChainProps {
 }
 
 export default function ReasoningChain({ steps, isStreaming }: ReasoningChainProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(false); // 默认折叠
 
   if (!steps || steps.length === 0) return null;
 
@@ -17,7 +17,7 @@ export default function ReasoningChain({ steps, isStreaming }: ReasoningChainPro
     <div className="mb-3">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 text-xs font-medium opacity-70 hover:opacity-100 transition-opacity duration-200 py-1.5 px-3 rounded-xl glass-card border border-border/50 hover:border-accent/30"
+        className="flex items-center gap-2 text-xs font-medium opacity-70 hover:opacity-100 transition-opacity duration-200 py-1.5 px-3 rounded-lg glass-card border border-border/50 hover:border-accent/20"
       >
         <span className="text-sm">🧠</span>
         <span>思考过程 ({steps.length} 步)</span>

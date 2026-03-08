@@ -67,6 +67,16 @@ export interface StreamCallbacks {
     status: string;
     duration?: number;
   }) => void;
+  onChartRecommendation?: (data: {
+    type: string;
+    data: string;
+    recommendation: {
+      chartType: string;
+      xField?: string;
+      yField?: string;
+      title?: string;
+    };
+  }) => void;
   onDone?: (data: { conversationId: string; totalDuration: number }) => void;
   onError?: (data: { code: string; message: string; stage: string }) => void;
 }
@@ -123,6 +133,10 @@ function processSSELine(
       case "subtask_progress":
         console.log("[SSE] subtask_progress 事件到达:", data);
         callbacks.onSubtaskProgress?.(data);
+        break;
+      case "chart_recommendation":
+        console.log("[SSE] chart_recommendation 事件到达:", data);
+        callbacks.onChartRecommendation?.(data);
         break;
       case "done":
         callbacks.onDone?.(data);

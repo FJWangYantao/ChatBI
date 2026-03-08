@@ -78,7 +78,7 @@ function StatusIndicator({ status }: { status: SubtaskInfo["status"] }) {
 }
 
 export default function SubtaskPanel({ subtasks, isStreaming }: SubtaskPanelProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true); // 默认折叠
   const wasStreamingRef = useRef(false);
   // 记录每个子任务进入 active 状态的时间，用于实时计时
   const activeStartRef = useRef<Record<number, number>>({});
@@ -103,8 +103,11 @@ export default function SubtaskPanel({ subtasks, isStreaming }: SubtaskPanelProp
     });
   }, [subtasks]);
 
-  // 流式结束后 1.5s 自动折叠
+  // 流式中自动展开，流式结束后 1.5s 自动折叠
   useEffect(() => {
+    if (isStreaming) {
+      setCollapsed(false);
+    }
     if (wasStreamingRef.current && !isStreaming) {
       const timer = setTimeout(() => setCollapsed(true), 1500);
       return () => clearTimeout(timer);

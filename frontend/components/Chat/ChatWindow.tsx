@@ -366,8 +366,9 @@ function MessageTagRenderer({
         </div>
       );
 
+    // analysis_result 在气泡外单独渲染，这里不处理
     case "analysis_result":
-      return <AnalysisResultRenderer content={tag.content} title={tag.title} allTags={message?.tags || []} />;
+      return null;
 
     default:
       return (
@@ -624,7 +625,7 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
 
   return (
     <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
-      <div className="mx-auto max-w-5xl w-full px-8 py-8 space-y-8">
+      <div className="mx-auto max-w-5xl w-full px-8 py-10 space-y-10">
         {messages.map((message) => (
           <div
             key={message.id}
@@ -633,8 +634,8 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
           >
             {/* 头像 */}
             <div
-              className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl font-medium text-sm transition-all duration-300 ${message.role === "user"
-                ? "glass-card glow-border text-accent"
+              className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl font-medium text-sm transition-all duration-200 ${message.role === "user"
+                ? "bg-accent/15 border border-accent/30 text-accent"
                 : "glass-card border border-border/50"
                 }`}
             >
@@ -657,9 +658,9 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
 
               {/* 气泡 */}
               <div
-                className={`rounded-3xl px-6 py-5 transition-all duration-300 ${message.role === "user"
-                  ? "glass-card glow-border"
-                  : "glass-card border border-border/50 hover:border-accent/30"
+                className={`rounded-2xl px-5 py-4 transition-all duration-200 ${message.role === "user"
+                  ? "bg-accent/10 border border-accent/20"
+                  : "glass-card border border-border/50 hover:border-accent/20"
                   } ${message.role === "assistant" && message.tags?.some(t => t.type === 'analysis_result') ? 'w-full' : ''}`}
               >
                 {/* 编辑态 */}
@@ -822,13 +823,13 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
         {isSending && messages.length > 0 && messages[messages.length - 1].role === "user" && (
           <div className="flex gap-4">
             {/* AI 头像占位 */}
-            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl glass-card border border-border/50 font-medium text-sm">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl glass-card border border-border/50 font-medium text-sm">
               AI
             </div>
 
             {/* 加载动画 */}
             <div className="flex flex-col items-start">
-              <div className="rounded-3xl px-6 py-5 glass-card border border-border/50">
+              <div className="rounded-2xl px-5 py-4 glass-card border border-border/50">
                 <LoadingSpinner />
               </div>
             </div>

@@ -234,48 +234,37 @@ public class SandboxToolsConfig {
                                             "分析详情",
                                             null));
                                 }
-                            }
 
-                            // 再发送图片/图表 tag（瞬间完成，渲染在下方）
-                            Object chartDataObj = result.get("chart_data");
-                            Object imagesObj = result.get("images");
+                                // 调用图表推荐 Agent
+                                try {
+                                    // 提取 JSON 数据（查找 stdout 中的 JSON 数组）
+                                    log.info("[ChartRecommendation] stdout 内容: {}", stdout);
+                                    String jsonData = extractJsonFromStdout(stdout);
+                                    log.info("[ChartRecommendation] 提取的 JSON: {}", jsonData);
+                                    if (jsonData != null && !jsonData.isEmpty()) {
+                                        com.chatbi.service.ChartRecommendationAgent chartAgent =
+                                            applicationContext.getBean(com.chatbi.service.ChartRecommendationAgent.class);
 
-                            // 优先使用 chart_data（交互式图表）
-                            if (success && chartDataObj != null && chartDataObj instanceof Map) {
-                                Map<String, Object> chartData = (Map<String, Object>) chartDataObj;
-                                Map<String, Object> chartTag = new LinkedHashMap<>();
-                                chartTag.put("type", "chart");
-                                chartTag.put("content", chartData);
-                                chartTag.put("title", "数据可视化");
-                                chartTag.put("metadata", Map.of("source", "sandbox", "interactive", true));
-                                emitter.send(SseEmitter.event()
-                                        .name("tag")
-                                        .data(MAPPER.writeValueAsString(chartTag)));
-                                // 收集 tag 用于持久化
-                                SseEmitterContext.collectTag(new MessageTag(
-                                        "chart",
-                                        chartData,
-                                        "数据可视化",
-                                        Map.of("source", "sandbox", "interactive", true)));
-                            }
-                            // 降级方案：如果没有 chart_data 或提取失败，使用 PNG 图片
-                            else if (success && imagesObj instanceof List) {
-                                for (Object img : (List<?>) imagesObj) {
-                                    String base64Img = img.toString();
-                                    Map<String, Object> imageTag = new LinkedHashMap<>();
-                                    imageTag.put("type", "image");
-                                    imageTag.put("content", "data:image/png;base64," + base64Img);
-                                    imageTag.put("title", "分析图表");
-                                    imageTag.put("metadata", Map.of("source", "sandbox"));
-                                    emitter.send(SseEmitter.event()
-                                            .name("tag")
-                                            .data(MAPPER.writeValueAsString(imageTag)));
-                                    // 收集 tag 用于持久化
-                                    SseEmitterContext.collectTag(new MessageTag(
-                                            "image",
-                                            "data:image/png;base64," + base64Img,
-                                            "分析图表",
-                                            Map.of("source", "sandbox")));
+                                        // 获取用户问题（从 params 或上下文中）
+                                        String userQuestion = toStr(params.getOrDefault("user_question", "数据分析"));
+
+                                        Map<String, Object> recommendation = chartAgent.recommend(userQuestion, jsonData);
+
+                                        // 发送图表推荐 SSE 事件
+                                        Map<String, Object> chartRecommendationEvent = new LinkedHashMap<>();
+                                        chartRecommendationEvent.put("type", "chart_recommendation");
+                                        chartRecommendationEvent.put("data", jsonData);
+                                        chartRecommendationEvent.put("recommendation", recommendation);
+                                        emitter.send(SseEmitter.event()
+                                                .name("chart_recommendation")
+                                                .data(MAPPER.writeValueAsString(chartRecommendationEvent)));
+
+                                        log.info("[ChartRecommendation] 推荐图表类型: {}", recommendation.get("chartType"));
+                                    } else {
+                                        log.warn("[ChartRecommendation] 未能从 stdout 中提取 JSON 数据");
+                                    }
+                                } catch (Exception e) {
+                                    log.error("[ChartRecommendation] 图表推荐失败", e);
                                 }
                             }
                         } catch (Exception e) {
@@ -784,5 +773,32 @@ public class SandboxToolsConfig {
                 })
                 .inputType(Map.class)
                 .build();
+    }
+
+    /**
+     * 从 stdout 中提取 JSON 数据
+     * 查找第一个完整的 JSON 数组 [...]
+     */
+    private static String extractJsonFromStdout(String stdout) {
+        if (stdout == null || stdout.isEmpty()) return null;
+
+        // 查找 JSON 数组的起始位置
+        int start = stdout.indexOf('[');
+        if (start < 0) return null;
+
+        // 查找匹配的结束位置
+        int depth = 0;
+        for (int i = start; i < stdout.length(); i++) {
+            char c = stdout.charAt(i);
+            if (c == '[') depth++;
+            else if (c == ']') {
+                depth--;
+                if (depth == 0) {
+                    return stdout.substring(start, i + 1);
+                }
+            }
+        }
+
+        return null;
     }
 }

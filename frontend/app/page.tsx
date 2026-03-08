@@ -500,6 +500,29 @@ export default function Home() {
             );
           },
 
+          onChartRecommendation: (data) => {
+            // 收到图表推荐，创建 chart tag
+            console.log("[ChartRecommendation] 收到推荐:", data);
+            const chartTag: MessageTag = {
+              type: 'chart',
+              content: {
+                data: JSON.parse(data.data),
+                recommendation: data.recommendation,
+              },
+              title: data.recommendation.title || '数据图表',
+              metadata: { source: 'recommendation' },
+            };
+            tagsAccumulator.push(chartTag);
+
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantId
+                  ? { ...msg, tags: [...tagsAccumulator] }
+                  : msg
+              )
+            );
+          },
+
           onSuggestions: (data) => {
             setMessages((prev) =>
               prev.map((msg) =>
