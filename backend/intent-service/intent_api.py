@@ -144,7 +144,7 @@ async def lifespan(app: FastAPI):
             num_subtypes=checkpoint['config'].get('num_subtypes', 15)
         ).to(device)
 
-        model.load_state_dict(checkpoint['model_state_dict'])
+        model.load_state_dict(checkpoint['model_state_dict'], strict=False)
         model.eval()
 
         logger.info("[OK] 模型加载成功")

@@ -166,7 +166,7 @@ async def lifespan(app: FastAPI):
             num_labels=num_labels,
         ).to(device)
 
-        model.load_state_dict(checkpoint['model_state_dict'])
+        model.load_state_dict(checkpoint['model_state_dict'], strict=False)
         model.eval()
 
         logger.info("[OK] NER 模型加载成功")

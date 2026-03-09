@@ -1,0 +1,38 @@
+# ============================================
+# ChatBI Project Python Dependencies
+# ============================================
+
+# Web Framework
+fastapi==0.115.0
+uvicorn==0.32.0
+pydantic==2.9.0
+python-multipart==0.0.7
+
+# Deep Learning
+torch==2.1.0
+transformers==4.35.0
+pytorch-crf==0.7.2
+
+# Data Processing
+pandas==2.2.0
+numpy==1.26.3
+scikit-learn==1.4.0
+scipy==1.12.0
+
+# Data Visualization
+matplotlib==3.8.2
+seaborn==0.13.2
+
+# Database
+sqlalchemy==2.0.35
+aiosqlite==0.20.0
+
+# NER Evaluation
+seqeval==1.2.2
+
+# Utilities
+tqdm==4.66.1
+requests==2.31.0
+python-dotenv==1.0.1
+python-dateutil==2.9.0
+openpyxl>=3.0.0
