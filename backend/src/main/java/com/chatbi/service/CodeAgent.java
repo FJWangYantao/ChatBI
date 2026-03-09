@@ -267,7 +267,7 @@ public class CodeAgent {
 
     private String buildCodeGenPrompt(String taskDescription, String[] columns, String dataPreview) {
         return String.format("""
-            你是一个 Python 数据分析代码生成器。根据以下任务描述，生成可直接执行的 Python 代码。
+            你是一个 Python 数据分析代码生成器。根据任务描述，生成有洞察力的数据分析代码。
 
             **任务**: %s
 
@@ -276,26 +276,72 @@ public class CodeAgent {
             **数据预览（前几行）**:
             %s
 
-            **要求**:
-            - 数据已自动加载为 df (pandas DataFrame)，直接使用即可
-            - 你的任务是生成纯数据计算代码，不要生成任何图表绘制代码
-            - 仅使用允许的库：pandas, numpy, json, datetime, collections, itertools, functools, re, math
-            - 最终结果必须是 DataFrame 或 dict 格式
-            - 使用 print() 输出 JSON 格式的结果
-            - 输出格式：print(result.to_json(orient='records', force_ascii=False, date_format='iso'))
-            - 如果结果是 Series，先用 reset_index() 转为 DataFrame
-            - 如果需要输出多个结果，分别打印多个 JSON
-            - 每个输出块之前用 === 标题 === 格式打印标题
-            - 只输出 Python 代码，用 ```python ``` 包裹
+            **核心要求**:
+            1. **深度分析，而非简单统计**
+               - 禁止只输出行数、列数等基础信息
+               - 必须提供有业务价值的洞察（占比、排名、趋势、异常等）
 
-            **示例**:
-            # 计算各产品销售额
-            result = df.groupby('product')['amount'].sum().reset_index()
-            result.columns = ['产品', '销售额']
-            print("=== 各产品销售额 ===")
-            print(result.to_json(orient='records', force_ascii=False))
+            2. **根据数据类型选择分析方法**:
+               - 分类/分布数据 → 计算各类别的数量、占比、排名、Top N
+               - 数值数据 → 计算总计、平均值、最大最小值、标准差
+               - 时间序列 → 计算增长率、环比、同比、趋势
+               - 对比数据 → 计算差异、比率、相关性
 
-            输出：[{"产品":"A","销售额":1000}, {"产品":"B","销售额":2000}]
+            3. **多层次输出结构**（按顺序输出）:
+
+               a) 关键指标（用于卡片展示）
+               print("=== 关键指标 ===")
+               print(json.dumps({"总计": 100, "平均值": 25.5, "最大值": 50}, ensure_ascii=False))
+
+               b) 详细数据（用于表格展示，必须包含百分比/排名等衍生指标）
+               print("=== 详细数据 ===")
+               # 添加百分比列
+               df_result['占比'] = (df_result['数量'] / df_result['数量'].sum() * 100).round(2).astype(str) + '%%'
+               print(df_result.to_json(orient='records', force_ascii=False))
+
+               c) 分析洞察（用自然语言描述发现）
+               print("=== 分析洞察 ===")
+               insights = "发现1：美国占比最高达40%%；发现2：前两名合计占80%%"
+               print(json.dumps({"content": insights}, ensure_ascii=False))
+
+            4. **技术规范**:
+               - 仅使用允许的库：pandas, numpy, json, datetime, collections, itertools, functools, re, math
+               - 不要生成图表绘制代码
+               - 数据已加载为 df (pandas DataFrame)
+               - 只输出 Python 代码，用 ```python ``` 包裹
+
+            **完整示例**（国家分布分析）:
+            ```python
+            import json
+
+            # 1. 关键指标
+            total = len(df)
+            unique_countries = df['country'].nunique()
+            top_country = df['country'].value_counts().index[0]
+            top_count = df['country'].value_counts().values[0]
+
+            print("=== 关键指标 ===")
+            print(json.dumps({
+                "总记录数": total,
+                "覆盖国家数": unique_countries,
+                "最多国家": f"{top_country} ({top_count}条)"
+            }, ensure_ascii=False))
+
+            # 2. 详细数据（带占比和排名）
+            country_stats = df['country'].value_counts().reset_index()
+            country_stats.columns = ['国家', '数量']
+            country_stats['占比'] = (country_stats['数量'] / total * 100).round(2).astype(str) + '%%'
+            country_stats['排名'] = range(1, len(country_stats) + 1)
+
+            print("=== 详细数据 ===")
+            print(country_stats.to_json(orient='records', force_ascii=False))
+
+            # 3. 分析洞察
+            top2_pct = (country_stats['数量'].head(2).sum() / total * 100).round(1)
+            print("=== 分析洞察 ===")
+            insights = f"{top_country}占比最高（{country_stats.iloc[0]['占比']}），前2名合计占{top2_pct}%%"
+            print(json.dumps({"content": insights}, ensure_ascii=False))
+            ```
             """,
                 taskDescription,
                 String.join(", ", columns),
