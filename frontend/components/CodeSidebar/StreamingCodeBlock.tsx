@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface StreamingCodeBlockProps {
   code: string;
@@ -14,6 +14,14 @@ export default function StreamingCodeBlock({
   isStreaming,
 }: StreamingCodeBlockProps) {
   const [copied, setCopied] = useState(false);
+  const preRef = useRef<HTMLPreElement>(null);
+
+  // 当代码内容变化且正在流式传输时，自动滚动到底部
+  useEffect(() => {
+    if (isStreaming && preRef.current) {
+      preRef.current.scrollTop = preRef.current.scrollHeight;
+    }
+  }, [code, isStreaming]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(code);
@@ -40,7 +48,7 @@ export default function StreamingCodeBlock({
         </button>
       </div>
       {/* 代码区：直接渲染真实流式内容 */}
-      <pre className="p-3 text-sm overflow-x-auto max-h-[400px] overflow-y-auto font-mono leading-relaxed">
+      <pre ref={preRef} className="p-3 text-sm overflow-x-auto max-h-[400px] overflow-y-auto font-mono leading-relaxed">
         <code>{code}</code>
         {isStreaming && (
           <span className="inline-block w-2 h-4 bg-accent animate-pulse ml-0.5 align-middle" />

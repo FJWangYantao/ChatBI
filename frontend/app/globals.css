@@ -165,17 +165,17 @@
 /* 卡片容器 - 优化性能 */
 .analysis-result-card {
   width: 100%;
-  border-radius: 16px;
-  border: 1px solid hsl(var(--border) / 0.5);
-  background: hsl(var(--background) / 0.8);
-  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+  backdrop-filter: none;
   overflow: hidden;
-  box-shadow: 0 4px 16px hsl(var(--foreground) / 0.06);
-  transition: border-color 0.2s ease;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: none;
 }
 
 .analysis-result-card:hover {
-  border-color: hsl(var(--accent) / 0.3);
+  border-color: #e5e7eb;
 }
 
 /* 标题栏 */
@@ -183,9 +183,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid hsl(var(--border) / 0.5);
-  background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--background)) 100%);
+  padding: 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
   position: relative;
 }
 
@@ -195,8 +195,8 @@
   left: 0;
   top: 0;
   bottom: 0;
-  width: 3px;
-  background: linear-gradient(180deg, hsl(var(--accent)) 0%, hsl(var(--purple)) 100%);
+  width: 0;
+  background: none;
 }
 
 .analysis-result-header-left {
@@ -206,26 +206,26 @@
 }
 
 .analysis-result-icon {
-  font-size: 18px;
-  filter: drop-shadow(0 0 8px hsl(var(--accent) / 0.3));
+  font-size: 24px;
+  filter: none;
 }
 
 .analysis-result-title {
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
   font-family: 'Outfit', sans-serif;
-  color: hsl(var(--foreground));
+  color: #111827;
   letter-spacing: -0.01em;
 }
 
 .analysis-result-badge {
-  font-size: 11px;
+  font-size: 12px;
   padding: 4px 10px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, hsl(var(--accent) / 0.15) 0%, hsl(var(--purple) / 0.15) 100%);
-  color: hsl(var(--accent));
+  border-radius: 9999px;
+  background: #f3f4f6;
+  color: #4b5563;
   font-weight: 500;
-  border: 1px solid hsl(var(--accent) / 0.2);
+  border: none;
 }
 
 /* 折叠按钮 - 优化性能 */
@@ -233,21 +233,22 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
-  color: hsl(var(--foreground));
-  opacity: 0.7;
-  background: hsl(var(--background) / 0.5);
-  border: 1px solid hsl(var(--border) / 0.5);
+  font-size: 14px;
+  color: #374151;
+  opacity: 1;
+  background: transparent;
+  border: none;
   border-radius: 8px;
-  padding: 6px 14px;
+  padding: 6px 12px;
   cursor: pointer;
-  transition: opacity 0.2s ease, border-color 0.2s ease;
-  backdrop-filter: blur(4px);
+  transition: background-color 0.15s ease;
+  backdrop-filter: none;
 }
 
 .analysis-collapse-btn:hover {
   opacity: 1;
-  border-color: hsl(var(--accent) / 0.5);
+  background-color: #f3f4f6;
+  border-color: transparent;
 }
 
 .analysis-collapse-icon {
@@ -261,27 +262,27 @@
 
 /* 内容区 */
 .analysis-result-body {
-  padding: 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   position: relative;
 }
 
 /* 空状态 */
 .analysis-empty {
   font-size: 14px;
-  color: hsl(var(--foreground));
-  opacity: 0.5;
+  color: #9ca3af;
+  opacity: 1;
   text-align: center;
-  padding: 40px 20px;
+  padding: 32px 20px;
 }
 
 /* Section 容器 - 移除动画 */
 .analysis-section {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 /* Section 标题 */
@@ -311,7 +312,7 @@
 .analysis-stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
+  gap: 16px;
 }
 
 @media (max-width: 768px) {
@@ -327,14 +328,12 @@
 }
 
 .analysis-stat-card {
-  border-radius: 12px;
-  border: 1px solid hsl(var(--border) / 0.5);
-  padding: 20px;
-  background: linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted) / 0.5) 100%);
-  backdrop-filter: blur(4px);
-  transition: border-color 0.2s ease, transform 0.2s ease;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 24px;
+  background: #ffffff;
+  transition: box-shadow 0.2s ease;
   position: relative;
-  overflow: hidden;
 }
 
 .analysis-stat-card::before {
@@ -343,40 +342,35 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, hsl(var(--accent)) 0%, hsl(var(--purple)) 100%);
+  height: 0;
+  background: none;
   opacity: 0;
-  transition: opacity 0.2s ease;
 }
 
 .analysis-stat-card:hover {
-  border-color: hsl(var(--accent) / 0.4);
-  transform: translateY(-2px);
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
 }
 
 .analysis-stat-card:hover::before {
-  opacity: 1;
+  opacity: 0;
 }
 
 .analysis-stat-label {
   font-size: 12px;
   font-weight: 500;
-  margin-bottom: 10px;
-  opacity: 0.7;
+  margin-bottom: 8px;
+  color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .analysis-stat-value {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 600;
   font-family: 'Outfit', sans-serif;
   word-break: break-word;
   line-height: 1.2;
-  background: linear-gradient(135deg, hsl(var(--foreground)) 0%, hsl(var(--accent)) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #111827;
 }
 
 /* 表格 */

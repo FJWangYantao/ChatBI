@@ -1,18 +1,12 @@
 package com.chatbi.service;
 
 import com.chatbi.config.ModelOptionsProvider;
+import com.chatbi.factory.DynamicChatClientFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
-import java.net.InetSocketAddress;
-import java.net.ProxySelector;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -23,34 +17,15 @@ import java.util.Map;
 @Service
 public class ChartRecommendationAgent {
 
+    private final DynamicChatClientFactory chatClientFactory;
     private final ModelOptionsProvider modelOptions;
     private final ObjectMapper objectMapper;
-    private final HttpClient httpClient;
 
-    @Value("${spring.ai.openai.api-key}")
-    private String apiKey;
-
-    @Value("${spring.ai.openai.base-url:https://api.deepseek.com}")
-    private String apiBaseUrl;
-
-    public ChartRecommendationAgent(ModelOptionsProvider modelOptions) {
+    public ChartRecommendationAgent(DynamicChatClientFactory chatClientFactory,
+                                    ModelOptionsProvider modelOptions) {
+        this.chatClientFactory = chatClientFactory;
         this.modelOptions = modelOptions;
         this.objectMapper = new ObjectMapper();
-        this.httpClient = buildHttpClient();
-    }
-
-    private static HttpClient buildHttpClient() {
-        String proxyHost = System.getProperty("https.proxyHost");
-        String proxyPort = System.getProperty("https.proxyPort");
-        if (proxyHost != null && !proxyHost.isEmpty() && proxyPort != null) {
-            return HttpClient.newBuilder()
-                    .proxy(ProxySelector.of(new InetSocketAddress(proxyHost, Integer.parseInt(proxyPort))))
-                    .connectTimeout(java.time.Duration.ofSeconds(30))
-                    .build();
-        }
-        return HttpClient.newBuilder()
-                .connectTimeout(java.time.Duration.ofSeconds(30))
-                .build();
     }
 
     /**
@@ -120,37 +95,11 @@ public class ChartRecommendationAgent {
     }
 
     private String callLLM(String prompt) throws Exception {
-        // 获取模型配置
-        String model = modelOptions.getOptions("chart-recommendation").getModel();
-
-        Map<String, Object> requestBody = new LinkedHashMap<>();
-        requestBody.put("model", model);
-        requestBody.put("messages", new Object[]{
-                Map.of("role", "user", "content", prompt)
-        });
-        requestBody.put("temperature", 0.0);
-        requestBody.put("max_tokens", 500);
-
-        String jsonBody = objectMapper.writeValueAsString(requestBody);
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(apiBaseUrl + "/chat/completions"))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
-                .POST(HttpRequest.BodyPublishers.ofString(jsonBody, StandardCharsets.UTF_8))
-                .timeout(java.time.Duration.ofSeconds(60))
-                .build();
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-
-        if (response.statusCode() != 200) {
-            throw new RuntimeException("LLM 调用失败: " + response.statusCode() + " " + response.body());
-        }
-
-        Map<String, Object> responseMap = objectMapper.readValue(response.body(), Map.class);
-        Map<String, Object> firstChoice = ((java.util.List<Map<String, Object>>) responseMap.get("choices")).get(0);
-        Map<String, Object> message = (Map<String, Object>) firstChoice.get("message");
-        return (String) message.get("content");
+        ChatClient chatClient = chatClientFactory.createChatClient("chart-recommendation");
+        return chatClient.prompt()
+                .user(prompt)
+                .call()
+                .content();
     }
 
     private Map<String, Object> parseRecommendation(String llmResponse) {

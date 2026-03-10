@@ -1,25 +1,19 @@
 package com.chatbi.service;
 
 import com.chatbi.config.ModelOptionsProvider;
+import com.chatbi.factory.DynamicChatClientFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.openai.OpenAiChatOptions;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
 import com.chatbi.context.SseEmitterContext;
 import com.chatbi.dto.StreamingTagEvent;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
 import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 /**
  * 后置排版 Agent：将 Python stdout 原始输出通过 LLM 转换为 Markdown，
@@ -34,20 +28,14 @@ public class FormattingAgent {
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(60);
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
-
+    private final DynamicChatClientFactory chatClientFactory;
     private final ChatStreamService chatStreamService;
     private final ModelOptionsProvider modelOptions;
 
-    @Value("${spring.ai.openai.api-key}")
-    private String apiKey;
-
-    @Value("${spring.ai.openai.base-url:https://api.deepseek.com}")
-    private String apiBaseUrl;
-
-    public FormattingAgent(ChatStreamService chatStreamService, ModelOptionsProvider modelOptions) {
+    public FormattingAgent(DynamicChatClientFactory chatClientFactory,
+                          ChatStreamService chatStreamService,
+                          ModelOptionsProvider modelOptions) {
+        this.chatClientFactory = chatClientFactory;
         this.chatStreamService = chatStreamService;
         this.modelOptions = modelOptions;
     }
@@ -80,6 +68,27 @@ public class FormattingAgent {
 
         // fallback
         return chatStreamService.parseAnalysisOutput(stdout);
+    }
+
+    /**
+     * 流式版本（结构化 JSON 输出）：通过 tagCallback 发送 tag_start/end 事件，
+     * 前端使用 AnalysisResultRenderer 渲染结构化内容。
+     */
+    public void formatAnalysisOutputStructured(String stdout, Consumer<StreamingTagEvent> tagCallback) {
+        String tagId = "analysis-" + UUID.randomUUID().toString().substring(0, 8);
+
+        if (stdout == null || stdout.trim().isEmpty()) {
+            return;
+        }
+
+        // 发送 tag_start
+        tagCallback.accept(StreamingTagEvent.start(tagId, "analysis_result", "分析详情"));
+
+        // 生成结构化 JSON
+        Map<String, Object> analysisOutput = formatAnalysisOutput(stdout);
+
+        // 发送 tag_end（携带结构化 JSON 内容）
+        tagCallback.accept(StreamingTagEvent.end(tagId, "analysis_result", "分析详情", analysisOutput));
     }
 
     /**
@@ -160,59 +169,20 @@ public class FormattingAgent {
         String systemPrompt = buildMarkdownSystemPrompt();
         String userMessage = "请将以下 Python 输出格式化为 Markdown：\n\n" + stdout;
 
-        OpenAiChatOptions opts = modelOptions.getOptions("formatting");
-        Map<String, Object> requestBody = new LinkedHashMap<>();
-        requestBody.put("model", opts.getModel());
-        requestBody.put("temperature", opts.getTemperature());
-        requestBody.put("max_tokens", 4000);
-        requestBody.put("stream", true);
-        requestBody.put("messages", List.of(
-                Map.of("role", "system", "content", systemPrompt),
-                Map.of("role", "user", "content", userMessage)
-        ));
+        ChatClient chatClient = chatClientFactory.createChatClient("formatting");
 
-        String json = objectMapper.writeValueAsString(requestBody);
-        String url = apiBaseUrl.replaceAll("/+$", "") + "/v1/chat/completions";
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
-                .timeout(REQUEST_TIMEOUT)
-                .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
-                .build();
-
-        HttpResponse<Stream<String>> response = httpClient.send(request, HttpResponse.BodyHandlers.ofLines());
-
-        if (response.statusCode() != 200) {
-            response.body().close();
-            throw new RuntimeException("LLM 流式请求失败, status=" + response.statusCode());
-        }
-
-        try (Stream<String> lines = response.body()) {
-            Iterator<String> it = lines.iterator();
-            while (it.hasNext()) {
-                // 客户端已断开，提前终止 LLM 流以释放资源
-                if (SseEmitterContext.isDisconnected()) {
-                    log.info("[FormattingAgent] 客户端已断开，提前终止流式输出（已接收 {} 字符）",
-                            accumulator.length());
-                    break;
-                }
-                String line = it.next();
-                if (!line.startsWith("data: ") || line.equals("data: [DONE]")) continue;
-                try {
-                    String payload = line.substring(6);
-                    JsonNode chunk = objectMapper.readTree(payload);
-                    String delta = chunk.at("/choices/0/delta/content").asText("");
-                    if (!delta.isEmpty()) {
+        chatClient.prompt()
+                .system(systemPrompt)
+                .user(userMessage)
+                .stream()
+                .content()
+                .doOnNext(delta -> {
+                    if (!SseEmitterContext.isDisconnected()) {
                         accumulator.append(delta);
                         tagCallback.accept(StreamingTagEvent.delta(tagId, delta));
                     }
-                } catch (Exception e) {
-                    log.trace("[FormattingAgent] 解析 SSE 行失败: {}", e.getMessage());
-                }
-            }
-        }
+                })
+                .blockLast();
     }
 
     /**
@@ -222,35 +192,12 @@ public class FormattingAgent {
         String systemPrompt = buildMarkdownSystemPrompt();
         String userMessage = "请将以下 Python 输出格式化为 Markdown：\n\n" + stdout;
 
-        OpenAiChatOptions opts = modelOptions.getOptions("formatting");
-        Map<String, Object> requestBody = new LinkedHashMap<>();
-        requestBody.put("model", opts.getModel());
-        requestBody.put("temperature", opts.getTemperature());
-        requestBody.put("max_tokens", 4000);
-        requestBody.put("messages", List.of(
-                Map.of("role", "system", "content", systemPrompt),
-                Map.of("role", "user", "content", userMessage)
-        ));
-
-        String json = objectMapper.writeValueAsString(requestBody);
-        String url = apiBaseUrl.replaceAll("/+$", "") + "/v1/chat/completions";
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
-                .timeout(REQUEST_TIMEOUT)
-                .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
-                .build();
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() != 200) {
-            throw new RuntimeException("LLM 请求失败, status=" + response.statusCode());
-        }
-
-        JsonNode root = objectMapper.readTree(response.body());
-        return root.at("/choices/0/message/content").asText("");
+        ChatClient chatClient = chatClientFactory.createChatClient("formatting");
+        return chatClient.prompt()
+                .system(systemPrompt)
+                .user(userMessage)
+                .call()
+                .content();
     }
 
     // ─── 内部工具方法 ─────────────────────────────────────────
@@ -272,36 +219,12 @@ public class FormattingAgent {
         String systemPrompt = buildJsonSystemPrompt();
         String userMessage = "请将以下 Python 输出转换为结构化 JSON：\n\n" + stdout;
 
-        OpenAiChatOptions opts = modelOptions.getOptions("formatting");
-        Map<String, Object> requestBody = new LinkedHashMap<>();
-        requestBody.put("model", opts.getModel());
-        requestBody.put("temperature", opts.getTemperature());
-        requestBody.put("max_tokens", 4000);
-        requestBody.put("messages", List.of(
-                Map.of("role", "system", "content", systemPrompt),
-                Map.of("role", "user", "content", userMessage)
-        ));
-        requestBody.put("response_format", Map.of("type", "json_object"));
-
-        String json = objectMapper.writeValueAsString(requestBody);
-        String url = apiBaseUrl.replaceAll("/+$", "") + "/v1/chat/completions";
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + apiKey)
-                .timeout(REQUEST_TIMEOUT)
-                .POST(HttpRequest.BodyPublishers.ofString(json, StandardCharsets.UTF_8))
-                .build();
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() != 200) {
-            throw new RuntimeException("LLM 请求失败, status=" + response.statusCode());
-        }
-
-        JsonNode root = objectMapper.readTree(response.body());
-        return root.at("/choices/0/message/content").asText("");
+        ChatClient chatClient = chatClientFactory.createChatClient("formatting");
+        return chatClient.prompt()
+                .system(systemPrompt)
+                .user(userMessage)
+                .call()
+                .content();
     }
 
     @SuppressWarnings("unchecked")

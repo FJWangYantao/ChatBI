@@ -80,12 +80,6 @@ public class PlanningAgent {
         TokenLimitExceededException(String msg) { super(msg); }
     }
 
-    @Value("${spring.ai.openai.api-key}")
-    private String apiKey;
-
-    @Value("${spring.ai.openai.base-url:https://api.deepseek.com}")
-    private String apiBaseUrl;
-
     public PlanningAgent(DynamicChatClientFactory chatClientFactory,
                          ChatModel chatModel,
                          ModelOptionsProvider modelOptions,

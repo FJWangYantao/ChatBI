@@ -267,7 +267,6 @@ public class Text2SQLAgent {
             if (context != null && !context.isEmpty()) {
                 context.put("mcp_available", true);
                 log.info("[Text2SQLAgent] MCP 上下文增强成功，耗时 {}ms", duration);
-                log.info("[Text2SQLAgent] MCP 返回上下文详情：{}", context);
                 return context;
             } else {
                 log.warn("[Text2SQLAgent] MCP 返回空上下文");

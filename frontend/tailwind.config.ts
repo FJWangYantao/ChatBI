@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import colors from "tailwindcss/colors";
 
 const config: Config = {
   content: [
@@ -10,6 +11,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // 保留 Tailwind 默认颜色
+        ...colors,
+        // 自定义颜色
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         border: "hsl(var(--border))",

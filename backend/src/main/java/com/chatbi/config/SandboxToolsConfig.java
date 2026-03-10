@@ -215,9 +215,9 @@ public class SandboxToolsConfig {
                                 java.util.function.Consumer<StreamingTagEvent> tagCallback = SseEmitterContext.getTagStreamCallback();
 
                                 if (tagCallback != null) {
-                                    // 流式模式：tag_start/delta/end 由 FormattingAgent 内部通过 callback 发送
+                                    // 流式模式：发送结构化 JSON（tag_start/end）
                                     // emitTagEnd 内部自动调用 SseEmitterContext.collectTag() 完成持久化
-                                    formattingAgent.formatAnalysisOutputStreaming(stdout, tagCallback);
+                                    formattingAgent.formatAnalysisOutputStructured(stdout, tagCallback);
                                 } else {
                                     // 无流式回调时（兜底）：保留旧逻辑
                                     Map<String, Object> analysisOutput = formattingAgent.formatAnalysisOutput(stdout);
@@ -386,7 +386,7 @@ public class SandboxToolsConfig {
                                     FormattingAgent fa = applicationContext.getBean(FormattingAgent.class);
                                     var tagCallback = SseEmitterContext.getTagStreamCallback();
                                     if (tagCallback != null) {
-                                        fa.formatAnalysisOutputStreaming(stdout, tagCallback);
+                                        fa.formatAnalysisOutputStructured(stdout, tagCallback);
                                     } else {
                                         var analysisOutput = fa.formatAnalysisOutput(stdout);
                                         Map<String, Object> analysisTag = new LinkedHashMap<>();
@@ -661,6 +661,9 @@ public class SandboxToolsConfig {
                     CodeAgent codeAgent = applicationContext.getBean(CodeAgent.class);
                     AtomicBoolean cancelled = new AtomicBoolean(false);
 
+                    // 捕获主线程的 LLM 配置
+                    final LLMConfigContext.LLMConfig parentConfig = LLMConfigContext.get();
+
                     // 并行提交所有子任务
                     List<CompletableFuture<com.chatbi.dto.SubTaskResult>> futures = new ArrayList<>();
                     for (int i = 0; i < tasksList.size(); i++) {
@@ -707,7 +710,14 @@ public class SandboxToolsConfig {
                             final int taskIdx = i;
                             final String taskTitle = title;
                             futures.add(CompletableFuture.supplyAsync(
-                                    () -> codeAgent.execute(description, dataRefId, cols, preview, holder, taskIdx, taskTitle, cancelled),
+                                    () -> {
+                                        try {
+                                            LLMConfigContext.set(parentConfig);
+                                            return codeAgent.execute(description, dataRefId, cols, preview, holder, taskIdx, taskTitle, cancelled);
+                                        } finally {
+                                            LLMConfigContext.clear();
+                                        }
+                                    },
                                     executor));
                         } catch (Exception e) {
                             log.error("[DispatchParallel] 子任务 {} 构建失败: {}", idx, e.getMessage());

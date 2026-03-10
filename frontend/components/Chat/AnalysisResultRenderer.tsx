@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import StepCard from './StepCard';
 import { MessageTag } from '@/app/page';
 import { AutoChart } from '@/components/Charts';
+import { ModernTable } from '@/components/Table';
 
 // ─── 类型定义 ────────────────────────────────────────────────────────────────
 
@@ -61,70 +62,8 @@ export default function AnalysisResultRenderer({ content, title, allTags = [] }:
     const [collapsed, setCollapsed] = useState(false);
     const [expandAll, setExpandAll] = useState(false);
 
-    // 检测流式状态
-    const isStreaming = content?._streaming === true;
-    const streamedText: string = content?._streamedText || '';
-
-    // 流式状态：实时渲染已接收的 Markdown，或显示骨架屏
-    if (isStreaming) {
-        return (
-            <div className="analysis-result-card">
-                <div className="analysis-result-header">
-                    <div className="analysis-result-header-left">
-                        <span className="analysis-result-icon">📋</span>
-                        <span className="analysis-result-title">{title || '分析详情'}</span>
-                        <span className="analysis-result-badge animate-pulse">正在排版...</span>
-                    </div>
-                </div>
-                <div className="analysis-result-body">
-                    {streamedText ? (
-                        <div className="analysis-text prose prose-sm dark:prose-invert max-w-none">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {streamedText}
-                            </ReactMarkdown>
-                            <span className="inline-block w-2 h-4 bg-accent/60 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
-                        </div>
-                    ) : (
-                        <AnalysisSkeleton />
-                    )}
-                </div>
-            </div>
-        );
-    }
-
-    // Markdown 字符串内容（新版流式完成后 / 历史加载）
-    if (typeof content === 'string') {
-        return (
-            <div className="analysis-result-card">
-                <div className="analysis-result-header">
-                    <div className="analysis-result-header-left">
-                        <span className="analysis-result-icon">📋</span>
-                        <span className="analysis-result-title">{title || '分析详情'}</span>
-                    </div>
-                    <button
-                        className="analysis-collapse-btn"
-                        onClick={() => setCollapsed(v => !v)}
-                        aria-label={collapsed ? '展开' : '折叠'}
-                    >
-                        <span className="analysis-collapse-icon">{collapsed ? '▼' : '▲'}</span>
-                        <span>{collapsed ? '展开' : '折叠'}</span>
-                    </button>
-                </div>
-                {!collapsed && (
-                    <div className="analysis-result-body">
-                        <div className="analysis-text prose prose-sm dark:prose-invert max-w-none">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {content}
-                            </ReactMarkdown>
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    }
-
-    // Legacy 结构化 JSON 内容（旧版历史数据兼容）
-    const structured: StructuredContent = useMemo(() => {
+    // ⚠️ 所有 hooks 必须在条件判断之前调用（React Hooks 规则）
+    const structured = useMemo(() => {
         if (!content) return { sections: [] };
         if (typeof content === 'object' && content.sections) {
             return content as StructuredContent;
@@ -132,21 +71,16 @@ export default function AnalysisResultRenderer({ content, title, allTags = [] }:
         return { sections: [] };
     }, [content]);
 
-    const sections = structured.sections ?? [];
-
-    // 自动将 sections 分组为步骤，并关联图表
     const steps = useMemo(() => {
+        const sections = structured.sections ?? [];
         const grouped: Array<{ title: string; icon: string; sections: Section[] }> = [];
         let currentStep: { title: string; icon: string; sections: Section[] } | null = null;
 
-        // 找到所有图表 tags
         const chartTags = allTags.filter(tag => tag.type === 'chart');
         let chartIndex = 0;
 
         sections.forEach((section, idx) => {
-            // 根据 section 类型自动分组
             if (section.type === 'stats') {
-                // Stats 作为新步骤的开始
                 if (currentStep) grouped.push(currentStep);
                 currentStep = {
                     title: section.title || '数据概览',
@@ -164,7 +98,6 @@ export default function AnalysisResultRenderer({ content, title, allTags = [] }:
                     currentStep.sections.push(section);
                 }
 
-                // 表格后面尝试关联图表
                 if (chartIndex < chartTags.length) {
                     const chartSection: ChartSection = {
                         type: 'chart',
@@ -175,7 +108,6 @@ export default function AnalysisResultRenderer({ content, title, allTags = [] }:
                     chartIndex++;
                 }
             } else {
-                // text/markdown
                 if (!currentStep) {
                     currentStep = {
                         title: section.title || '分析说明',
@@ -190,7 +122,6 @@ export default function AnalysisResultRenderer({ content, title, allTags = [] }:
 
         if (currentStep) grouped.push(currentStep);
 
-        // 如果还有未关联的图表，创建独立的图表步骤
         while (chartIndex < chartTags.length) {
             grouped.push({
                 title: chartTags[chartIndex].title || '数据可视化',
@@ -205,31 +136,98 @@ export default function AnalysisResultRenderer({ content, title, allTags = [] }:
         }
 
         return grouped;
-    }, [sections, allTags]);
+    }, [structured.sections, allTags]);
+
+    // 检测流式状态
+    const isStreaming = content?._streaming === true;
+    const streamedText: string = content?._streamedText || '';
+
+    // 流式状态：实时渲染已接收的 Markdown，或显示骨架屏
+    if (isStreaming) {
+        return (
+            <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                        <span className="text-2xl">📋</span>
+                        <span className="text-lg font-semibold text-gray-900">{title || '分析详情'}</span>
+                        <span className="px-2.5 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full animate-pulse">正在排版...</span>
+                    </div>
+                </div>
+                <div className="p-6 space-y-4">
+                    {streamedText ? (
+                        <div className="prose prose-sm prose-gray max-w-none">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {streamedText}
+                            </ReactMarkdown>
+                            <span className="inline-block w-2 h-4 bg-blue-500/60 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
+                        </div>
+                    ) : (
+                        <AnalysisSkeleton />
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    // Markdown 字符串内容（新版流式完成后 / 历史加载）
+    if (typeof content === 'string') {
+        return (
+            <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                    <div className="flex items-center gap-3">
+                        <span className="text-2xl">📋</span>
+                        <span className="text-lg font-semibold text-gray-900">{title || '分析详情'}</span>
+                    </div>
+                    <button
+                        className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors duration-150"
+                        onClick={() => setCollapsed(v => !v)}
+                        aria-label={collapsed ? '展开' : '折叠'}
+                    >
+                        <span className="mr-1">{collapsed ? '▼' : '▲'}</span>
+                        <span>{collapsed ? '展开' : '折叠'}</span>
+                    </button>
+                </div>
+                {!collapsed && (
+                    <div className="p-6 space-y-4">
+                        <div className="prose prose-sm prose-gray max-w-none">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {content}
+                            </ReactMarkdown>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // Legacy 结构化 JSON 内容（旧版历史数据兼容）
+    const sections = structured.sections ?? [];
 
     return (
-        <div className="analysis-result-card">
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
             {/* ── 标题栏 ── */}
-            <div className="analysis-result-header">
-                <div className="analysis-result-header-left">
-                    <span className="analysis-result-icon">📋</span>
-                    <span className="analysis-result-title">{title || '分析详情'}</span>
-                    <span className="analysis-result-badge">{steps.length} 个分析步骤</span>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                    <span className="text-2xl">📋</span>
+                    <span className="text-lg font-semibold text-gray-900">{title || '分析详情'}</span>
+                    <span className="px-2.5 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
+                        {steps.length} 个分析步骤
+                    </span>
                 </div>
                 <button
-                    className="analysis-expand-all-btn"
+                    className="px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors duration-150"
                     onClick={() => setExpandAll(v => !v)}
                     aria-label={expandAll ? '全部折叠' : '全部展开'}
                 >
                     <span>{expandAll ? '全部折叠' : '全部展开'}</span>
-                    <span>{expandAll ? '▲' : '▼'}</span>
+                    <span className="ml-1">{expandAll ? '▲' : '▼'}</span>
                 </button>
             </div>
 
             {/* ── 内容区 ── */}
-            <div className="analysis-result-body">
+            <div className="p-6 space-y-4">
                 {steps.length === 0 && (
-                    <p className="analysis-empty">暂无详细分析内容</p>
+                    <p className="text-center text-gray-400 py-8">暂无详细分析内容</p>
                 )}
                 {steps.map((step, idx) => (
                     <StepCard
@@ -252,9 +250,8 @@ export default function AnalysisResultRenderer({ content, title, allTags = [] }:
 // ─── Section 分发渲染 ─────────────────────────────────────────────────────────
 
 function SectionRenderer({ section }: { section: Section }) {
-    // 不再显示 section 自己的标题，因为已经在 StepCard 中显示了
     return (
-        <div className="analysis-section">
+        <div className="space-y-4">
             {section.type === 'stats' && <StatsRenderer section={section} />}
             {section.type === 'table' && <TableRenderer section={section} />}
             {(section.type === 'text' || section.type === 'markdown') && <TextRenderer section={section} />}
@@ -265,20 +262,10 @@ function SectionRenderer({ section }: { section: Section }) {
 
 // ─── Stats 卡片网格 ───────────────────────────────────────────────────────────
 
-const STAT_COLORS = [
-    { bg: '#eff6ff', border: '#bfdbfe', label: '#1d4ed8', value: '#1e3a8a' },
-    { bg: '#f0fdf4', border: '#bbf7d0', label: '#15803d', value: '#14532d' },
-    { bg: '#fdf4ff', border: '#e9d5ff', label: '#7e22ce', value: '#581c87' },
-    { bg: '#fff7ed', border: '#fed7aa', label: '#c2410c', value: '#7c2d12' },
-    { bg: '#f0f9ff', border: '#bae6fd', label: '#0369a1', value: '#0c4a6e' },
-    { bg: '#fefce8', border: '#fde68a', label: '#a16207', value: '#713f12' },
-];
-
 function StatsRenderer({ section }: { section: StatsSection }) {
     return (
-        <div className="analysis-stats-grid">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {section.items.map((item, i) => {
-                const color = STAT_COLORS[i % STAT_COLORS.length];
                 // 检测趋势指示符（↑/↓/→），拆分主值和趋势部分
                 const trendMatch = item.value.match(/^(.+?)\s*(↑|↓|→)\s*(.*)$/);
                 const mainValue = trendMatch ? trendMatch[1] : item.value;
@@ -289,19 +276,15 @@ function StatsRenderer({ section }: { section: StatsSection }) {
                 return (
                     <div
                         key={i}
-                        className="analysis-stat-card"
-                        style={{
-                            background: color.bg,
-                            borderColor: color.border,
-                        }}
+                        className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-sm transition-shadow duration-200"
                     >
-                        <div className="analysis-stat-label" style={{ color: color.label }}>
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
                             {item.label}
                         </div>
-                        <div className="analysis-stat-value" style={{ color: color.value }}>
+                        <div className="text-2xl font-semibold text-gray-900">
                             {mainValue}
                             {trendArrow && (
-                                <span style={{ color: trendColor, fontSize: '0.8em', marginLeft: '6px' }}>
+                                <span style={{ color: trendColor, fontSize: '0.7em', marginLeft: '8px' }}>
                                     {trendArrow} {trendChange}
                                 </span>
                             )}
@@ -315,66 +298,14 @@ function StatsRenderer({ section }: { section: StatsSection }) {
 
 // ─── Table 带分页 ─────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 10;
-
 function TableRenderer({ section }: { section: TableSection }) {
-    const [page, setPage] = useState(1);
-    const totalPages = Math.ceil((section.rows?.length ?? 0) / PAGE_SIZE);
-    const pageRows = (section.rows ?? []).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
     return (
-        <div className="analysis-table-wrap">
-            <div className="analysis-table-scroll">
-                <table className="analysis-table">
-                    <thead>
-                        <tr>
-                            {(section.columns ?? []).map((col, i) => (
-                                <th key={i} className="analysis-th">{col}</th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {pageRows.map((row, ri) => (
-                            <tr key={ri} className={ri % 2 === 0 ? 'analysis-tr-even' : 'analysis-tr-odd'}>
-                                {row.map((cell, ci) => (
-                                    <td key={ci} className="analysis-td">{cell}</td>
-                                ))}
-                            </tr>
-                        ))}
-                        {pageRows.length === 0 && (
-                            <tr>
-                                <td colSpan={section.columns?.length || 1} className="analysis-td-empty">
-                                    暂无数据
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
-            {totalPages > 1 && (
-                <div className="analysis-pagination">
-                    <span className="analysis-pagination-info">
-                        共 {section.rows?.length} 行 · 第 {page} / {totalPages} 页
-                    </span>
-                    <div className="analysis-pagination-btns">
-                        <button
-                            className="analysis-page-btn"
-                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                            disabled={page === 1}
-                        >
-                            上一页
-                        </button>
-                        <button
-                            className="analysis-page-btn"
-                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                            disabled={page === totalPages}
-                        >
-                            下一页
-                        </button>
-                    </div>
-                </div>
-            )}
-        </div>
+        <ModernTable
+            columns={section.columns ?? []}
+            rows={section.rows ?? []}
+            pageSize={10}
+            emptyText="暂无数据"
+        />
     );
 }
 
@@ -382,7 +313,7 @@ function TableRenderer({ section }: { section: TableSection }) {
 
 function TextRenderer({ section }: { section: TextSection | MarkdownSection }) {
     return (
-        <div className="analysis-text prose prose-sm dark:prose-invert max-w-none">
+        <div className="prose prose-sm prose-gray max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {section.content}
             </ReactMarkdown>
@@ -394,7 +325,7 @@ function TextRenderer({ section }: { section: TextSection | MarkdownSection }) {
 
 function ChartRenderer({ section }: { section: ChartSection }) {
     return (
-        <div className="analysis-chart-wrapper">
+        <div className="my-4">
             <AutoChart tag={section.chartTag} />
         </div>
     );

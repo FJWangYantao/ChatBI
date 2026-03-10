@@ -20,16 +20,54 @@ export default function CodeSidebar({
   activeEntryId,
 }: CodeSidebarProps) {
   const [filter, setFilter] = useState<FilterType>("all");
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const listRef = useRef<HTMLDivElement>(null);
-  const prevEntriesLenRef = useRef(entries.length);
+  const scrollTimeoutRef = useRef<number | null>(null);
 
-  // 新条目时自动滚到底部
+  // 滚动事件处理：检测用户是否在底部
+  const handleScroll = () => {
+    if (scrollTimeoutRef.current) return;
+
+    scrollTimeoutRef.current = requestAnimationFrame(() => {
+      if (!listRef.current) return;
+      const { scrollTop, scrollHeight, clientHeight } = listRef.current;
+      const isNearBottom = scrollTop + clientHeight >= scrollHeight - 50;
+      setShouldAutoScroll(isNearBottom);
+      scrollTimeoutRef.current = null;
+    });
+  };
+
+  // 内容变化时，如果 shouldAutoScroll 为 true，则自动滚动到底部
   useEffect(() => {
-    if (entries.length > prevEntriesLenRef.current && listRef.current) {
+    if (shouldAutoScroll && listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
-    prevEntriesLenRef.current = entries.length;
-  }, [entries.length]);
+  }, [entries, shouldAutoScroll]);
+
+  // 侧栏打开时，自动滚动到底部并启用自动滚动
+  useEffect(() => {
+    if (isOpen && listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+      setShouldAutoScroll(true);
+    }
+  }, [isOpen]);
+
+  // 筛选器切换时，重置为自动滚动状态并滚动到底部
+  useEffect(() => {
+    setShouldAutoScroll(true);
+    if (listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }
+  }, [filter]);
+
+  // 组件卸载时清理 requestAnimationFrame
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        cancelAnimationFrame(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const filteredEntries =
     filter === "all" ? entries : entries.filter((e) => e.type === filter);
@@ -82,7 +120,11 @@ export default function CodeSidebar({
       </div>
 
       {/* 列表区 */}
-      <div ref={listRef} className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
+      <div
+        ref={listRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin"
+      >
         {filteredEntries.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <svg className="w-12 h-12 mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">

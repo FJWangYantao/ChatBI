@@ -3,26 +3,17 @@ package com.chatbi.service;
 import com.chatbi.config.ModelOptionsProvider;
 import com.chatbi.context.SseEmitterContext;
 import com.chatbi.dto.SubTaskResult;
+import com.chatbi.factory.DynamicChatClientFactory;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.model.function.FunctionCallback;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.net.InetSocketAddress;
-import java.net.ProxySelector;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * 单个子任务执行器：调用 LLM 生成 Python 代码，然后调用 executeCodeFunction 执行。
@@ -32,37 +23,18 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Service
 public class CodeAgent {
 
+    private final DynamicChatClientFactory chatClientFactory;
     private final ModelOptionsProvider modelOptions;
     private final FunctionCallback executeCodeFunction;
     private final ObjectMapper objectMapper;
-    private final HttpClient httpClient;
 
-    @Value("${spring.ai.openai.api-key}")
-    private String apiKey;
-
-    @Value("${spring.ai.openai.base-url:https://api.deepseek.com}")
-    private String apiBaseUrl;
-
-    public CodeAgent(ModelOptionsProvider modelOptions,
+    public CodeAgent(DynamicChatClientFactory chatClientFactory,
+                     ModelOptionsProvider modelOptions,
                      @Qualifier("executeCodeFunction") FunctionCallback executeCodeFunction) {
+        this.chatClientFactory = chatClientFactory;
         this.modelOptions = modelOptions;
         this.executeCodeFunction = executeCodeFunction;
         this.objectMapper = new ObjectMapper();
-        this.httpClient = buildHttpClient();
-    }
-
-    private static HttpClient buildHttpClient() {
-        String proxyHost = System.getProperty("https.proxyHost");
-        String proxyPort = System.getProperty("https.proxyPort");
-        if (proxyHost != null && !proxyHost.isEmpty() && proxyPort != null) {
-            return HttpClient.newBuilder()
-                    .proxy(ProxySelector.of(new InetSocketAddress(proxyHost, Integer.parseInt(proxyPort))))
-                    .connectTimeout(java.time.Duration.ofSeconds(30))
-                    .build();
-        }
-        return HttpClient.newBuilder()
-                .connectTimeout(java.time.Duration.ofSeconds(30))
-                .build();
     }
 
     /**
@@ -200,42 +172,16 @@ public class CodeAgent {
      * 调用 LLM 同步生成 Python 代码（不做流式，子任务场景追求速度）
      */
     private String generateCode(String taskDescription, String[] columns, String dataPreview) {
-        String model = modelOptions.getOptions("code-agent").getModel();
         String prompt = buildCodeGenPrompt(taskDescription, columns, dataPreview);
 
         try {
-            var body = objectMapper.createObjectNode();
-            body.put("model", model);
-            body.put("temperature", 0.1);
-            body.put("stream", false);
+            ChatClient chatClient = chatClientFactory.createChatClient("code-agent");
+            String response = chatClient.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
 
-            var messages = objectMapper.createArrayNode();
-            messages.add(objectMapper.createObjectNode()
-                    .put("role", "user")
-                    .put("content", prompt));
-            body.set("messages", messages);
-
-            String url = apiBaseUrl.replaceAll("/+$", "") + "/chat/completions";
-            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
-                    .header("Content-Type", "application/json")
-                    .header("Authorization", "Bearer " + apiKey)
-                    .timeout(java.time.Duration.ofMinutes(3))
-                    .POST(HttpRequest.BodyPublishers.ofString(
-                            objectMapper.writeValueAsString(body), StandardCharsets.UTF_8))
-                    .build();
-
-            HttpResponse<String> response = httpClient.send(request,
-                    HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-
-            if (response.statusCode() != 200) {
-                log.error("[CodeAgent] LLM API error {}: {}", response.statusCode(),
-                        response.body().substring(0, Math.min(200, response.body().length())));
-                return null;
-            }
-
-            var root = objectMapper.readTree(response.body());
-            String content = root.at("/choices/0/message/content").asText("");
-            return extractCodeBlock(content);
+            return extractCodeBlock(response);
         } catch (Exception e) {
             log.error("[CodeAgent] 代码生成失败: {}", e.getMessage(), e);
             return null;

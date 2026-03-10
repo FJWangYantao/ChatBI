@@ -339,9 +339,9 @@ public class ChatStreamService {
         } catch (Throwable t) {
             log.error("[planWithToolsStreaming] 严重错误 (Throwable): {}", t.getMessage(), t);
         } finally {
+            // 立即停止心跳，避免在 emitter 完成后继续发送
             heartbeatManager.stopHeartbeat(sessionId);
             tags.addAll(SseEmitterContext.drainCollectedTags());
-            // 注意：不要在这里清除 isDisconnected 标记，后续代码还需要检查
         }
 
         // 如果客户端已断开，直接返回
@@ -462,11 +462,11 @@ public class ChatStreamService {
                 emitter.send(event);
             }
         } catch (IllegalStateException e) {
-            log.warn("发送事件失败，emitter 已完成: {}", e.getMessage());
+            log.debug("发送事件失败，emitter 已完成: {}", e.getMessage());
             SseEmitterContext.markDisconnected();
             throw new IOException("Emitter already completed", e);
         } catch (IOException e) {
-            log.warn("发送事件失败，客户端可能已断开: {}", e.getMessage());
+            log.debug("发送事件失败，客户端可能已断开: {}", e.getMessage());
             SseEmitterContext.markDisconnected();
             throw e;
         }
