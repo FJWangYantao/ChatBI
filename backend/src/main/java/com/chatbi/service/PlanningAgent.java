@@ -443,10 +443,8 @@ public class PlanningAgent {
                     .POST(HttpRequest.BodyPublishers.ofString(requestBody, StandardCharsets.UTF_8))
                     .build();
 
-            log.info("[PlanningAgent] 开始发送 HTTP 请求...");
             HttpResponse<java.io.InputStream> response = httpClient.send(
                     request, HttpResponse.BodyHandlers.ofInputStream());
-            log.info("[PlanningAgent] 收到响应: statusCode={}", response.statusCode());
 
             if (response.statusCode() != 200) {
                 String errBody = new String(response.body().readAllBytes(), StandardCharsets.UTF_8);
@@ -465,7 +463,6 @@ public class PlanningAgent {
                 throw new RuntimeException("API returned " + response.statusCode());
             }
 
-            log.info("[PlanningAgent] 开始解析 SSE 流...");
             return parseSSEStream(response.body(), onTextDelta, onTagEvent);
 
         } catch (TokenLimitExceededException e) {
@@ -498,19 +495,12 @@ public class PlanningAgent {
 
         int lineCount = 0;
         int dataChunkCount = 0;
-        log.info("[PlanningAgent] 开始读取 SSE 流...");
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 lineCount++;
-
-                // 记录前几行的原始内容用于调试
-                if (lineCount <= 5) {
-                    log.info("[PlanningAgent] SSE 原始行 {}: {}", lineCount,
-                            line.length() > 200 ? line.substring(0, 200) + "..." : line);
-                }
 
                 // 检查客户端是否已断开连接
                 if (SseEmitterContext.isDisconnected()) {
@@ -966,8 +956,12 @@ public class PlanningAgent {
             - 如果 execute_code 失败，**必须优先使用 fix_code 工具**修复错误代码（传入 code_ref_id 和 fixes），而不是用 execute_code 重新生成完整代码。只有当 code_ref_id 过期或需要完全重写逻辑时才用 execute_code 重试
             - 修复最多 2 次，仍然失败则向用户说明原因
             - Python 代码中数据已自动加载为 df (pandas DataFrame)
-            - 绘图使用 matplotlib，设置中文字体: plt.rcParams['font.sans-serif'] = ['SimHei']
-            - 保存图表: plt.savefig('output.png', dpi=100, bbox_inches='tight')
+            - **输出要求（必须同时满足）**：
+              1. 如果需要可视化，使用 matplotlib 绘图，设置中文字体: plt.rcParams['font.sans-serif'] = ['SimHei']
+              2. 保存图表: plt.savefig('output.png', dpi=100, bbox_inches='tight')
+              3. **必须输出分析结果的 JSON 数组**：在代码最后一行添加 print(result_df.to_json(orient='records', force_ascii=False))
+              4. **重要**：result_df 必须是你分析后的结果数据（如统计、分组、排名等），不是原始数据 df
+              5. **禁止**：不要输出原始数据的列名或 df.columns，必须输出实际的分析结果
             - 打印关键统计结果到 stdout
             - DataFrame 输出规范（必须遵守）：
               * 禁止直接 print(df)，pandas 默认会截断列和行显示
@@ -976,6 +970,46 @@ public class PlanningAgent {
               * 如果行数较多（>30行），只输出前20行：print(df.head(20).to_string(index=False))，并打印 f"（共{len(df)}行，仅展示前20行）"
               * 统计指标（均值、总计等单个数值）用 "指标名: 值" 格式逐行打印，不要放在 DataFrame 里
               * 每个输出块之前用 === 标题 === 格式打印标题
+
+            **代码示例（同时输出图表和 JSON）**:
+            ```python
+            import pandas as pd
+            import matplotlib.pyplot as plt
+
+            # 数据分析（这是关键：对原始数据进行统计、分组、排名等）
+            result_df = df.groupby('类别')['数量'].sum().reset_index()
+            result_df.columns = ['类别', '总数量']
+            # result_df 现在是分析结果，不是原始数据
+
+            # 打印统计结果
+            print("=== 分析结果 ===")
+            print(result_df.to_string(index=False))
+
+            # 生成图表（可选）
+            plt.rcParams['font.sans-serif'] = ['SimHei']
+            plt.figure(figsize=(10, 6))
+            plt.bar(result_df['类别'], result_df['总数量'])
+            plt.title('各类别数量统计')
+            plt.xlabel('类别')
+            plt.ylabel('总数量')
+            plt.savefig('output.png', dpi=100, bbox_inches='tight')
+
+            # 必须输出分析结果的 JSON（不是原始数据）
+            print(result_df.to_json(orient='records', force_ascii=False))
+            ```
+
+            **错误示例（不要这样做）**:
+            ```python
+            # 错误：输出原始数据的列名
+            print(df.columns.tolist())  # ❌ 这是错的
+
+            # 错误：输出原始数据
+            print(df.to_json(orient='records'))  # ❌ 这是错的，应该输出分析结果
+
+            # 正确：输出分析结果
+            result_df = df.groupby('类别').size().reset_index(name='数量')
+            print(result_df.to_json(orient='records'))  # ✅ 这是对的
+            ```
 
             **沙盒限制：**
             - 仅允许导入：pandas, numpy, matplotlib, seaborn, sklearn, scipy, json, re, math, datetime, collections, itertools, functools, io, base64
@@ -997,6 +1031,8 @@ public class PlanningAgent {
             - 必须包含 REASONING_START/END 标记
             - 推理过程中每个步骤用【思考】或【观察】开头
             - 标记之外的内容是最终结论
+            - **重要**：不要在回复中描述"已生成X个图表"或"已生成图表"，图表会自动显示在前端，你只需要分析数据结果即可
+            - **禁止**：不要列举图表名称（如"员工留存率柱状图"、"趋势图"等），这些是系统自动生成的，你只需要解读数据洞察
 
             用户问题：%s
             识别到的实体：%s

@@ -29,7 +29,6 @@ public class RequestLoggingInterceptor implements HandlerInterceptor {
         request.setAttribute(START_TIME, System.currentTimeMillis());
         request.setAttribute(TRACE_ID, traceId);
 
-        log.info("[{}] {} {} - 请求开始", traceId, request.getMethod(), request.getRequestURI());
         return true;
     }
 
@@ -44,10 +43,6 @@ public class RequestLoggingInterceptor implements HandlerInterceptor {
             log.error("[{}] {} {} - 请求失败: status={}, duration={}ms, error={}",
                     traceId, request.getMethod(), request.getRequestURI(),
                     response.getStatus(), duration, ex.getMessage());
-        } else {
-            log.info("[{}] {} {} - 请求完成: status={}, duration={}ms",
-                    traceId, request.getMethod(), request.getRequestURI(),
-                    response.getStatus(), duration);
         }
 
         MDC.remove(TRACE_ID);

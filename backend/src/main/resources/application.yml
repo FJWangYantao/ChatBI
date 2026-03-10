@@ -180,8 +180,8 @@ logging:
     com.chatbi.service.MCPKnowledgeService: INFO
     org.springframework.ai: DEBUG
     org.springframework.web: INFO
-    org.springframework.http: DEBUG
-    org.springframework.web.client: DEBUG
+    org.springframework.http: INFO
+    org.springframework.web.client: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] %-5level %logger{36} - %msg%n"
 

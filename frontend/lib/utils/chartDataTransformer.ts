@@ -14,15 +14,27 @@ export function transformToBarData(
   const { dimensionCol, measureCol } = analysis;
 
   if (!dimensionCol || !measureCol) {
+    console.warn('[transformToBarData] 缺少字段配置:', { dimensionCol, measureCol });
     return [];
   }
 
-  return queryResult.rows
+  const result = queryResult.rows
     .map(row => ({
       name: String(row[dimensionCol] ?? '-'),
       value: Number(row[measureCol]) || 0
     }))
     .filter(item => item.value > 0 || item.name !== '-');
+
+  console.log('[transformToBarData] 转换结果:', {
+    dimensionCol,
+    measureCol,
+    rowCount: queryResult.rows.length,
+    resultCount: result.length,
+    sampleRow: queryResult.rows[0],
+    sampleResult: result[0]
+  });
+
+  return result;
 }
 
 /**
@@ -71,15 +83,27 @@ export function transformToPieData(
   const { dimensionCol, measureCol } = analysis;
 
   if (!dimensionCol || !measureCol) {
+    console.warn('[transformToPieData] 缺少字段配置:', { dimensionCol, measureCol });
     return [];
   }
 
-  return queryResult.rows
+  const result = queryResult.rows
     .map(row => ({
       name: String(row[dimensionCol] ?? '-'),
       value: Number(row[measureCol]) || 0
     }))
     .filter(item => item.value > 0);
+
+  console.log('[transformToPieData] 转换结果:', {
+    dimensionCol,
+    measureCol,
+    rowCount: queryResult.rows.length,
+    resultCount: result.length,
+    sampleRow: queryResult.rows[0],
+    sampleResult: result[0]
+  });
+
+  return result;
 }
 
 /**

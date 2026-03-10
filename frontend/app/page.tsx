@@ -333,6 +333,7 @@ export default function Home() {
 
           onTag: (data) => {
             // 累积 tag，将完整标签追加到消息的 tags 数组
+            console.log("[onTag] 收到 tag:", { type: data.type, title: data.title });
             const newTag: MessageTag = {
               type: data.type,
               content: data.content,
@@ -351,6 +352,8 @@ export default function Home() {
               };
               tagsAccumulator.push(chartTag);
             }
+
+            console.log("[onTag] tagsAccumulator 当前长度:", tagsAccumulator.length, "类型:", tagsAccumulator.map(t => t.type));
 
             setMessages((prev) =>
               prev.map((msg) =>
@@ -513,6 +516,7 @@ export default function Home() {
               metadata: { source: 'recommendation' },
             };
             tagsAccumulator.push(chartTag);
+            console.log("[ChartRecommendation] tagsAccumulator 当前长度:", tagsAccumulator.length, "类型:", tagsAccumulator.map(t => t.type));
 
             setMessages((prev) =>
               prev.map((msg) =>

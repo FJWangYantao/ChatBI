@@ -22,28 +22,10 @@ public class LLMConfigInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        // 打印所有请求头用于诊断
-        log.error("[LLMConfigInterceptor] ========== 所有请求头 ==========");
-        java.util.Enumeration<String> headerNames = request.getHeaderNames();
-        while (headerNames.hasMoreElements()) {
-            String headerName = headerNames.nextElement();
-            String headerValue = request.getHeader(headerName);
-            log.error("[LLMConfigInterceptor] {}: {}", headerName,
-                     headerName.toLowerCase().contains("key") ? "***" : headerValue);
-        }
-        log.error("[LLMConfigInterceptor] =====================================");
-
-        // 浏览器直接请求时，请求头是标准大小写格式
         String provider = request.getHeader("X-LLM-Provider");
         String apiKey = request.getHeader("X-LLM-API-Key");
         String model = request.getHeader("X-LLM-Model");
         String baseUrl = request.getHeader("X-LLM-Base-URL");
-
-        log.error("[LLMConfigInterceptor] 请求路径: {}", request.getRequestURI());
-        log.error("[LLMConfigInterceptor] X-LLM-Provider: {}", provider);
-        log.error("[LLMConfigInterceptor] X-LLM-API-Key: {}", apiKey != null ? "***" : null);
-        log.error("[LLMConfigInterceptor] X-LLM-Model: {}", model);
-        log.error("[LLMConfigInterceptor] X-LLM-Base-URL: {}", baseUrl);
 
         // 只对聊天接口强制要求前端配置
         String requestPath = request.getRequestURI();

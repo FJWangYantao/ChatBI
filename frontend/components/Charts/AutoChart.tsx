@@ -159,12 +159,14 @@ function PaginatedTable({ tag, queryResult }: { tag: MessageTag; queryResult: Qu
 }
 
 export function AutoChart({ tag }: AutoChartProps) {
-  const [viewType, setViewType] = useState<'chart' | 'table'>('chart');
-
   // 检查是否有推荐的图表类型（新格式）
   const hasRecommendation = tag.metadata?.source === 'recommendation';
   const recommendation = hasRecommendation ? tag.content.recommendation : null;
   const rawData = hasRecommendation ? tag.content.data : tag.content;
+
+  // 如果推荐的是 table，默认显示表格视图
+  const defaultViewType = (hasRecommendation && recommendation?.chartType === 'table') ? 'table' : 'chart';
+  const [viewType, setViewType] = useState<'chart' | 'table'>(defaultViewType);
 
   // 解析 queryResult
   const queryResult = useMemo(() => {
@@ -193,11 +195,35 @@ export function AutoChart({ tag }: AutoChartProps) {
     if (hasRecommendation && recommendation) {
       // 先进行完整分析，然后覆盖推荐的字段
       const baseAnalysis = analyzeDataset(queryResult);
+
+      // 验证推荐的字段是否存在于实际数据中
+      const columns = queryResult.columns || [];
+      const xFieldExists = recommendation.xField && columns.includes(recommendation.xField);
+      const yFieldExists = recommendation.yField && columns.includes(recommendation.yField);
+
+      console.log('[AutoChart] 推荐字段验证:', {
+        xField: recommendation.xField,
+        yField: recommendation.yField,
+        xFieldExists,
+        yFieldExists,
+        actualColumns: columns
+      });
+
+      // 如果推荐的字段不存在，回退到自动分析的结果
+      const dimensionCol = xFieldExists
+        ? recommendation.xField
+        : (baseAnalysis.dimensionCol || columns[0] || '');
+      const measureCol = yFieldExists
+        ? recommendation.yField
+        : (baseAnalysis.measureCol || columns[1] || '');
+
+      console.log('[AutoChart] 最终使用字段:', { dimensionCol, measureCol });
+
       return {
         ...baseAnalysis,
         recommendedChart: recommendation.chartType as ChartType,
-        dimensionCol: recommendation.xField || queryResult.columns?.[0] || '',
-        measureCol: recommendation.yField || queryResult.columns?.[1] || '',
+        dimensionCol,
+        measureCol,
       } as DatasetAnalysis;
     }
     // 如果是 Python 图表数据，直接使用其配置

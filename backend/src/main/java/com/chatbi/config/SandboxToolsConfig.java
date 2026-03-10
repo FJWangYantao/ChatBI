@@ -1,5 +1,6 @@
 package com.chatbi.config;
 
+import com.chatbi.context.LLMConfigContext;
 import com.chatbi.context.SseEmitterContext;
 import com.chatbi.dto.MessageTag;
 import com.chatbi.dto.StreamingTagEvent;
@@ -259,7 +260,11 @@ public class SandboxToolsConfig {
                                                 .name("chart_recommendation")
                                                 .data(MAPPER.writeValueAsString(chartRecommendationEvent)));
 
-                                        log.info("[ChartRecommendation] 推荐图表类型: {}", recommendation.get("chartType"));
+                                        log.info("[ChartRecommendation] 推荐详情: chartType={}, xField={}, yField={}, title={}",
+                                                recommendation.get("chartType"),
+                                                recommendation.get("xField"),
+                                                recommendation.get("yField"),
+                                                recommendation.get("title"));
                                     } else {
                                         log.warn("[ChartRecommendation] 未能从 stdout 中提取 JSON 数据");
                                     }
@@ -787,28 +792,60 @@ public class SandboxToolsConfig {
 
     /**
      * 从 stdout 中提取 JSON 数据
-     * 查找第一个完整的 JSON 数组 [...]
+     * 查找最大的完整 JSON 数组（通常是实际数据，而不是列名）
      */
     private static String extractJsonFromStdout(String stdout) {
-        if (stdout == null || stdout.isEmpty()) return null;
+        if (stdout == null || stdout.isEmpty()) {
+            log.warn("[ChartRecommendation] stdout 为空");
+            return null;
+        }
 
-        // 查找 JSON 数组的起始位置
-        int start = stdout.indexOf('[');
-        if (start < 0) return null;
+        List<String> jsonArrays = new ArrayList<>();
+        int pos = 0;
 
-        // 查找匹配的结束位置
-        int depth = 0;
-        for (int i = start; i < stdout.length(); i++) {
-            char c = stdout.charAt(i);
-            if (c == '[') depth++;
-            else if (c == ']') {
-                depth--;
-                if (depth == 0) {
-                    return stdout.substring(start, i + 1);
+        // 查找所有的 JSON 数组
+        while (pos < stdout.length()) {
+            int start = stdout.indexOf('[', pos);
+            if (start < 0) break;
+
+            // 查找匹配的结束位置
+            int depth = 0;
+            int end = -1;
+            for (int i = start; i < stdout.length(); i++) {
+                char c = stdout.charAt(i);
+                if (c == '[') depth++;
+                else if (c == ']') {
+                    depth--;
+                    if (depth == 0) {
+                        end = i;
+                        break;
+                    }
                 }
+            }
+
+            if (end > start) {
+                String json = stdout.substring(start, end + 1);
+                jsonArrays.add(json);
+                pos = end + 1;
+            } else {
+                break;
             }
         }
 
-        return null;
+        if (jsonArrays.isEmpty()) {
+            log.warn("[ChartRecommendation] stdout 中未找到完整的 JSON 数组");
+            log.warn("[ChartRecommendation] stdout 前200字符: {}",
+                stdout.length() > 200 ? stdout.substring(0, 200) : stdout);
+            return null;
+        }
+
+        // 返回最大的 JSON 数组（通常是实际数据）
+        String largestJson = jsonArrays.stream()
+            .max(Comparator.comparingInt(String::length))
+            .orElse(null);
+
+        log.info("[ChartRecommendation] 找到 {} 个 JSON 数组，选择最大的，长度: {}",
+            jsonArrays.size(), largestJson != null ? largestJson.length() : 0);
+        return largestJson;
     }
 }

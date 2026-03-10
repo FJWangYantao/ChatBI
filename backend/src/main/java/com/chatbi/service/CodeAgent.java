@@ -193,27 +193,47 @@ public class CodeAgent {
      */
     private String extractCodeBlock(String content) {
         if (content == null || content.isEmpty()) return null;
+
+        // 记录 LLM 原始响应（用于诊断）
+        log.info("[CodeAgent] LLM 原始响应长度: {}", content.length());
+        if (content.length() < 500) {
+            log.info("[CodeAgent] LLM 完整响应: {}", content);
+        }
+
         // 尝试提取 ```python ... ``` 代码块
         int start = content.indexOf("```python");
         if (start >= 0) {
             start = content.indexOf("\n", start) + 1;
             int end = content.indexOf("```", start);
-            if (end > start) return content.substring(start, end).trim();
+            if (end > start) {
+                String code = content.substring(start, end).trim();
+                log.info("[CodeAgent] 提取到 Python 代码，长度: {}", code.length());
+                log.info("[CodeAgent] 代码内容:\n{}", code);
+                return code;
+            }
         }
         // 尝试提取 ``` ... ```
         start = content.indexOf("```");
         if (start >= 0) {
             start = content.indexOf("\n", start) + 1;
             int end = content.indexOf("```", start);
-            if (end > start) return content.substring(start, end).trim();
+            if (end > start) {
+                String code = content.substring(start, end).trim();
+                log.info("[CodeAgent] 提取到代码块，长度: {}", code.length());
+                log.info("[CodeAgent] 代码内容:\n{}", code);
+                return code;
+            }
         }
         // 没有代码块标记，直接返回
+        log.warn("[CodeAgent] 未找到代码块标记，返回原始内容");
         return content.trim();
     }
 
     private String buildCodeGenPrompt(String taskDescription, String[] columns, String dataPreview) {
         return String.format("""
             你是一个 Python 数据分析代码生成器。根据任务描述，生成有洞察力的数据分析代码。
+
+            **关键要求：代码必须输出 JSON 数组格式的数据，用于自动生成图表！**
 
             **任务**: %s
 
@@ -233,60 +253,37 @@ public class CodeAgent {
                - 时间序列 → 计算增长率、环比、同比、趋势
                - 对比数据 → 计算差异、比率、相关性
 
-            3. **多层次输出结构**（按顺序输出）:
+            3. **输出格式（必须严格遵守）**:
 
-               a) 关键指标（用于卡片展示）
-               print("=== 关键指标 ===")
-               print(json.dumps({"总计": 100, "平均值": 25.5, "最大值": 50}, ensure_ascii=False))
+               **必须输出 JSON 数组**，格式如下：
+               ```python
+               import json
 
-               b) 详细数据（用于表格展示，必须包含百分比/排名等衍生指标）
-               print("=== 详细数据 ===")
-               # 添加百分比列
-               df_result['占比'] = (df_result['数量'] / df_result['数量'].sum() * 100).round(2).astype(str) + '%%'
-               print(df_result.to_json(orient='records', force_ascii=False))
+               # 进行数据分析
+               result_df = ...  # 你的分析代码
 
-               c) 分析洞察（用自然语言描述发现）
-               print("=== 分析洞察 ===")
-               insights = "发现1：美国占比最高达40%%；发现2：前两名合计占80%%"
-               print(json.dumps({"content": insights}, ensure_ascii=False))
+               # 必须输出 JSON 数组（用于自动生成图表）
+               print(result_df.to_json(orient='records', force_ascii=False))
+               ```
 
             4. **技术规范**:
                - 仅使用允许的库：pandas, numpy, json, datetime, collections, itertools, functools, re, math
                - 不要生成图表绘制代码
                - 数据已加载为 df (pandas DataFrame)
                - 只输出 Python 代码，用 ```python ``` 包裹
+               - **最后一行必须是 print(result_df.to_json(orient='records', force_ascii=False))**
 
-            **完整示例**（国家分布分析）:
+            **示例**（销售趋势分析）:
             ```python
-            import json
+            import pandas as pd
 
-            # 1. 关键指标
-            total = len(df)
-            unique_countries = df['country'].nunique()
-            top_country = df['country'].value_counts().index[0]
-            top_count = df['country'].value_counts().values[0]
+            # 按月份统计销售额
+            df['月份'] = pd.to_datetime(df['orderDate']).dt.to_period('M').astype(str)
+            monthly_sales = df.groupby('月份')['销售额'].sum().reset_index()
+            monthly_sales.columns = ['月份', '销售额']
 
-            print("=== 关键指标 ===")
-            print(json.dumps({
-                "总记录数": total,
-                "覆盖国家数": unique_countries,
-                "最多国家": f"{top_country} ({top_count}条)"
-            }, ensure_ascii=False))
-
-            # 2. 详细数据（带占比和排名）
-            country_stats = df['country'].value_counts().reset_index()
-            country_stats.columns = ['国家', '数量']
-            country_stats['占比'] = (country_stats['数量'] / total * 100).round(2).astype(str) + '%%'
-            country_stats['排名'] = range(1, len(country_stats) + 1)
-
-            print("=== 详细数据 ===")
-            print(country_stats.to_json(orient='records', force_ascii=False))
-
-            # 3. 分析洞察
-            top2_pct = (country_stats['数量'].head(2).sum() / total * 100).round(1)
-            print("=== 分析洞察 ===")
-            insights = f"{top_country}占比最高（{country_stats.iloc[0]['占比']}），前2名合计占{top2_pct}%%"
-            print(json.dumps({"content": insights}, ensure_ascii=False))
+            # 必须输出 JSON 数组
+            print(monthly_sales.to_json(orient='records', force_ascii=False))
             ```
             """,
                 taskDescription,
