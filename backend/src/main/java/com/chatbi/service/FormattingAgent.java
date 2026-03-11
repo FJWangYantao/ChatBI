@@ -220,11 +220,24 @@ public class FormattingAgent {
         String userMessage = "请将以下 Python 输出转换为结构化 JSON：\n\n" + stdout;
 
         ChatClient chatClient = chatClientFactory.createChatClient("formatting");
-        return chatClient.prompt()
+
+        // 使用流式调用避免长时间阻塞
+        StringBuilder response = new StringBuilder();
+        chatClient.prompt()
                 .system(systemPrompt)
                 .user(userMessage)
-                .call()
-                .content();
+                .stream()
+                .content()
+                .doOnNext(chunk -> {
+                    response.append(chunk);
+                    // 定期让出 CPU，避免完全阻塞
+                    if (response.length() % 100 == 0) {
+                        Thread.yield();
+                    }
+                })
+                .blockLast(); // 等待完成
+
+        return response.toString();
     }
 
     @SuppressWarnings("unchecked")

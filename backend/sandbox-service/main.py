@@ -24,8 +24,9 @@ app.add_middleware(
 
 class ExecuteRequest(BaseModel):
     code: str
-    data_json: str = None  # JSON 格式的数据
+    data_json: str = None  # JSON 格式的数据（向后兼容）
     timeout: int = 30      # 默认超时 30 秒
+    data_refs: Dict[str, str] = None  # 多个数据集，key 为变量名，value 为 JSON 字符串
 
 class ExecuteResponse(BaseModel):
     success: bool
@@ -52,7 +53,8 @@ async def execute_code(request: ExecuteRequest):
             executor.execute_code,
             request.code,
             request.data_json,
-            request.timeout
+            request.timeout,
+            request.data_refs
         )
         return ExecuteResponse(
             success=result.get("success", False),
@@ -76,6 +78,7 @@ class ToolExecuteRequest(BaseModel):
     code: str
     data_json: str = None
     timeout: int = 30
+    data_refs: Dict[str, str] = None  # 多个数据集支持
 
 @app.post("/tools/execute_code")
 async def tool_execute_code(request: ToolExecuteRequest):
@@ -86,7 +89,8 @@ async def tool_execute_code(request: ToolExecuteRequest):
             executor.execute_code,
             request.code,
             request.data_json,
-            request.timeout
+            request.timeout,
+            request.data_refs
         )
         return {
             "success": result.get("success", False),

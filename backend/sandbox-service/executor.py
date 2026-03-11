@@ -8,9 +8,14 @@ import numpy as np
 from validator import validate_code
 
 
-def _restricted_runner(code: str, data_json: str, result_queue: multiprocessing.Queue):
+def _restricted_runner(code: str, data_json: str, result_queue: multiprocessing.Queue, data_refs: dict = None):
     """
     在隔离进程中运行代码的内部函数
+
+    :param code: Python 代码
+    :param data_json: 单个数据集的 JSON 字符串（向后兼容）
+    :param result_queue: 结果队列
+    :param data_refs: 多个数据集的字典，key 为变量名，value 为 JSON 字符串
     """
 
     output_buffer = io.StringIO()
@@ -23,19 +28,24 @@ def _restricted_runner(code: str, data_json: str, result_queue: multiprocessing.
     # 准备全局变量
     local_scope = {}
 
-    # 如果有输入数据，加载为 DataFrame
-    if data_json:
+    # 如果有多个数据集，加载所有数据集
+    if data_refs and isinstance(data_refs, dict):
+        try:
+            for var_name, json_str in data_refs.items():
+                if json_str:
+                    df_temp = pd.read_json(io.StringIO(json_str), orient='records')
+                    local_scope[var_name] = df_temp
+                    print(f"Data Loaded ({var_name}): {len(df_temp)} rows")
+        except Exception as e:
+            print(f"Error loading multiple datasets: {e}")
+    # 如果有单个输入数据，加载为 DataFrame（向后兼容）
+    elif data_json:
         try:
             df = pd.read_json(io.StringIO(data_json), orient='records')
             local_scope['df'] = df
             print(f"Data Loaded: {len(df)} rows")
         except Exception as e:
             print(f"Error loading data: {e}")
-
-
-    # 限制内建函数 (这里做一个简单的演示，生产环境需要更严格的构建)
-    # 注意：真正安全的沙箱需要在此处构建一个非常干净的 __builtins__
-    # 为了演示功能，我们暂时保留默认的 __builtins__ 但依赖 validator.py 进行静态检查拦截
 
     try:
         # 执行代码
@@ -63,12 +73,13 @@ def _restricted_runner(code: str, data_json: str, result_queue: multiprocessing.
         }
         result_queue.put(result)
 
-def execute_code(code: str, data_json: str = None, timeout: int = 30) -> dict:
+def execute_code(code: str, data_json: str = None, timeout: int = 30, data_refs: dict = None) -> dict:
     """
     执行代码的主入口
     :param code: Python 代码
-    :param data_json: JSON 格式的数据字符串 (List of Dicts)
+    :param data_json: JSON 格式的数据字符串 (List of Dicts)，向后兼容
     :param timeout: 超时时间 (秒)
+    :param data_refs: 多个数据集的字典，key 为变量名（如 "df", "df_step1"），value 为 JSON 字符串
     :return: 结果字典
     """
 
@@ -85,7 +96,7 @@ def execute_code(code: str, data_json: str = None, timeout: int = 30) -> dict:
     result_queue = multiprocessing.Queue()
     process = multiprocessing.Process(
         target=_restricted_runner,
-        args=(code, data_json, result_queue)
+        args=(code, data_json, result_queue, data_refs)
     )
 
     process.start()

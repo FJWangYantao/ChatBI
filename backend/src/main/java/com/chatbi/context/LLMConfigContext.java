@@ -2,10 +2,10 @@ package com.chatbi.context;
 
 /**
  * LLM 配置上下文管理器
- * 使用 ThreadLocal 存储当前请求的 LLM 配置
+ * 使用 InheritableThreadLocal 存储当前请求的 LLM 配置，支持异步线程继承
  */
 public class LLMConfigContext {
-    private static final ThreadLocal<LLMConfig> context = new ThreadLocal<>();
+    private static final InheritableThreadLocal<LLMConfig> context = new InheritableThreadLocal<>();
 
     public static void set(LLMConfig config) {
         context.set(config);

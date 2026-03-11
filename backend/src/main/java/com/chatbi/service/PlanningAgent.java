@@ -414,6 +414,17 @@ public class PlanningAgent {
         String effectiveApiKey = customConfig.getApiKey();
         String effectiveBaseUrl = customConfig.getBaseUrl() != null
                 ? customConfig.getBaseUrl() : getDefaultBaseUrl(customConfig.getProvider());
+
+        log.info("[PlanningAgent] 原始 Base URL: {}", effectiveBaseUrl);
+
+        // 规范化 Base URL：移除末尾的 /chat/completions 和重复的 /v1
+        effectiveBaseUrl = effectiveBaseUrl.replaceAll("/+$", ""); // 移除末尾斜杠
+        effectiveBaseUrl = effectiveBaseUrl.replaceAll("/chat/completions$", ""); // 移除末尾的 /chat/completions
+        // 修复重复的 /v1/v1 -> /v1
+        effectiveBaseUrl = effectiveBaseUrl.replaceAll("/v1/v1", "/v1");
+
+        log.info("[PlanningAgent] 规范化后 Base URL: {}", effectiveBaseUrl);
+
         String model = customConfig.getModelName();
         double temperature = options.getTemperature() != null ? options.getTemperature() : 0.1;
 
@@ -426,6 +437,7 @@ public class PlanningAgent {
             body.put("model", model);
             body.put("temperature", temperature);
             body.put("stream", true);
+            body.put("max_tokens", 8192); // 设置 max_tokens，避免工具调用参数被截断（不超过模型限制）
             body.set("messages", convertMessagesToOpenAI(messages));
             body.set("tools", buildToolsArray());
 
@@ -644,6 +656,10 @@ public class PlanningAgent {
             Consumer<String> onTextDelta) {
 
         log.info("[PlanningAgent] Using Spring AI stream fallback, messagesCount={}", messages.size());
+
+        // 使用前端配置创建动态 ChatClient（配置从 LLMConfigContext 自动获取）
+        ChatClient dynamicClient = chatClientFactory.createChatClient("planning");
+
         Prompt prompt = new Prompt(messages, options);
         StringBuilder textBuffer = new StringBuilder();
         Map<Integer, String> tcIds = new HashMap<>();
@@ -651,7 +667,7 @@ public class PlanningAgent {
         Map<Integer, StringBuilder> tcArgs = new HashMap<>();
 
         try {
-            chatModel.stream(prompt).doOnNext(response -> {
+            dynamicClient.prompt(prompt).stream().chatResponse().doOnNext(response -> {
                 if (response == null || response.getResult() == null) return;
                 AssistantMessage msg = response.getResult().getOutput();
                 if (msg == null) return;
@@ -698,8 +714,12 @@ public class PlanningAgent {
             OpenAiChatOptions options,
             Consumer<String> onTextDelta) {
         log.warn("[PlanningAgent] Falling back to synchronous call");
+
+        // 使用前端配置创建动态 ChatClient（配置从 LLMConfigContext 自动获取）
+        ChatClient dynamicClient = chatClientFactory.createChatClient("planning");
+
         Prompt prompt = new Prompt(messages, options);
-        ChatResponse response = chatModel.call(prompt);
+        ChatResponse response = dynamicClient.prompt(prompt).call().chatResponse();
         Generation gen = response.getResult();
         AssistantMessage msg = gen.getOutput();
 
@@ -918,8 +938,12 @@ public class PlanningAgent {
                - 输入: {"data_description": "查询所有2024年的月度销售额"}
                - 返回: data_preview（预览）、data_ref_id（数据引用ID）、columns、row_count
             2. **execute_code**: 在安全沙盒中执行 Python 代码进行数据分析和可视化。
-               - 输入: {"code": "...", "data_ref_id": "..."}
-               - data_ref_id 使用 query_database 返回的 data_ref_id，系统会自动加载数据
+               支持单数据集或多数据集模式：
+               - 单数据集: {"code": "...", "data_ref_id": "..."}
+                 数据会自动加载为 df 变量
+               - 多数据集: {"code": "...", "data_refs": {"df_orders": "ref1", "df_regions": "ref2"}}
+                 每个数据集加载为对应的变量名（如 df_orders, df_regions）
+                 适用于需要关联多个表的分析场景
                - 返回: stdout、stderr、images、code_ref_id（代码引用ID，用于 fix_code）
             3. **fix_code**: 差量修复已执行过的代码。当 execute_code 失败时优先使用此工具，只需传入修改部分。
                - 输入: {"code_ref_id": "...", "data_ref_id": "...", "fixes": [{"old": "错误代码片段", "new": "修正后代码片段"}]}
@@ -935,15 +959,21 @@ public class PlanningAgent {
                - 返回: 所有子任务的执行结果汇总
                - 注意: 仅当有2个及以上独立分析任务时使用，单个分析直接用 execute_code
 
+            **工具选择指南：**
+            - 单表简单分析 → query_database + execute_code
+            - 同一数据的多个独立分析 → query_database + dispatch_parallel_tasks
+            - 多表关联分析 → 多次 query_database + execute_code（使用 data_refs 参数）
+
             **标准工作流程：**
             1. 先调用 query_database 获取数据
             2. 查看返回的 data_preview 理解数据结构和列名
             3. 编写 Python 分析代码，调用 execute_code 并传入 data_ref_id（不要传 data_json）
-            4. 根据执行结果生成分析总结
+            4. 如需多表关联，先多次调用 query_database 获取各表数据，然后用 data_refs 参数调用 execute_code
+            5. 根据执行结果生成分析总结
 
             **重要规则：**
             - 必须先用 query_database 获取真实数据，绝对不要自己编造或模拟数据
-            - execute_code 只需传 data_ref_id，不要传 data_json（数据由服务端自动注入）
+            - execute_code 只需传 data_ref_id 或 data_refs，不要传 data_json（数据由服务端自动注入）
             - 如果 query_database 返回 success=false，向用户说明无法获取数据
             - **数据时间范围验证（关键）：**
               * 当用户请求特定时间范围的数据时（如"1997年"），必须先检查数据库中实际的时间范围

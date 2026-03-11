@@ -42,7 +42,6 @@ public class SuggestionAgent {
 
             ChatClient chatClient = chatClientFactory.createChatClient("suggestion");
             String response = chatClient.prompt()
-                    .options(modelOptions.getOptions("suggestion"))
                     .user(prompt)
                     .call()
                     .content();

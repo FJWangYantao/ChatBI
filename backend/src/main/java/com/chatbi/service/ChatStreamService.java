@@ -459,14 +459,16 @@ public class ChatStreamService {
         if (SseEmitterContext.isDisconnected()) return;
         try {
             synchronized (emitter) {
+                log.debug("[safeSend] 准备发送事件");
                 emitter.send(event);
+                log.debug("[safeSend] 事件发送成功");
             }
         } catch (IllegalStateException e) {
-            log.debug("发送事件失败，emitter 已完成: {}", e.getMessage());
+            log.warn("[safeSend] 发送事件失败，emitter 已完成: {}", e.getMessage());
             SseEmitterContext.markDisconnected();
             throw new IOException("Emitter already completed", e);
         } catch (IOException e) {
-            log.debug("发送事件失败，客户端可能已断开: {}", e.getMessage());
+            log.warn("[safeSend] 发送事件失败，客户端可能已断开: {}", e.getMessage());
             SseEmitterContext.markDisconnected();
             throw e;
         }

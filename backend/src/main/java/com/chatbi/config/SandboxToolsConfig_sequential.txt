@@ -1,0 +1,12 @@
+    @Bean("executeSequentialTasksFunction")
+    public FunctionCallback executeSequentialTasksFunction(ApplicationContext applicationContext) {
+        return FunctionCallback.builder()
+                .description("顺序执行多个数据分析步骤，每个步骤可以依赖前面步骤的结果")
+                .function("execute_sequential_tasks", (Function<Map<String, Object>, Map<String, Object>>) params -> {
+                    log.info("[SequentialTasks] 工具被调用");
+                    return Map.of("success", false, "error", "功能开发中，暂不可用");
+                })
+                .inputType(Map.class)
+                .build();
+    }
+}

@@ -92,8 +92,8 @@ public class ChatController {
             return emitter;
         }
 
-        // 5 分钟超时
-        SseEmitter emitter = new SseEmitter(300_000L);
+        // 10 分钟超时（复杂分析可能需要更长时间）
+        SseEmitter emitter = new SseEmitter(600_000L);
 
         emitter.onCompletion(() -> log.debug("SSE 连接完成: conversationId={}", conversationId));
         emitter.onTimeout(() -> {

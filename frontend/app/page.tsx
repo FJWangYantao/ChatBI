@@ -271,7 +271,7 @@ export default function Home() {
     // 创建 AbortController
     const controller = new AbortController();
     abortControllerRef.current = controller;
-    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 分钟超时
+    const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 分钟超时（复杂分析需要更长时间）
 
     // 用于累积 tags 的辅助引用
     const tagsAccumulator: MessageTag[] = [];

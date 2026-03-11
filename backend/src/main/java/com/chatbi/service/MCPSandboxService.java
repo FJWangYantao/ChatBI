@@ -68,6 +68,44 @@ public class MCPSandboxService {
     }
 
     /**
+     * 执行 Python 代码（支持多数据集）
+     */
+    public Map<String, Object> executeCodeWithMultipleDatasets(String code, Map<String, String> dataRefs, int timeout) {
+        if (!sandboxEnabled) {
+            return Map.of("success", false, "stderr", "MCP Sandbox 服务未启用");
+        }
+
+        try {
+            String url = sandboxServerUrl + "/tools/execute_code";
+
+            Map<String, Object> request = new HashMap<>();
+            request.put("code", code);
+            if (dataRefs != null && !dataRefs.isEmpty()) {
+                request.put("data_refs", dataRefs);
+            }
+            request.put("timeout", timeout);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+
+            log.info("[MCPSandbox] Executing code with multiple datasets, length={}, datasets={}",
+                code.length(), dataRefs != null ? dataRefs.keySet() : "none");
+            ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return response.getBody();
+            }
+
+            return Map.of("success", false, "stderr", "Sandbox 服务返回异常");
+
+        } catch (Exception e) {
+            log.error("[MCPSandbox] 执行多数据集代码失败: {}", e.getMessage());
+            return Map.of("success", false, "stderr", "Sandbox 连接失败: " + e.getMessage());
+        }
+    }
+
+    /**
      * 预检代码安全性
      */
     public Map<String, Object> validateCode(String code) {
