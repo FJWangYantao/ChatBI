@@ -153,159 +153,19 @@ public class SandboxToolsConfig {
         AtomicInteger executionCounter = new AtomicInteger(0);
 
         return FunctionCallback.builder()
-                .description("在安全沙盒中执行 Python 数据分析代码。支持单数据集或多数据集模式：\n"
-                        + "- 单数据集: 使用 data_ref_id 参数，数据加载为 df 变量\n"
-                        + "- 多数据集: 使用 data_refs 参数（Map<变量名, data_ref_id>），每个数据集加载为对应变量名\n"
-                        + "例如: data_refs={\"df_orders\": \"ref1\", \"df_regions\": \"ref2\"} 会创建 df_orders 和 df_regions 两个变量。\n"
-                        + "支持 matplotlib 绘图，图表以 base64 图片返回。仅允许导入: pandas, numpy, matplotlib, "
+                .description("在安全沙盒中执行 Python 数据分析代码。数据通过 data_ref_id 参数传入（由 query_database 返回），"
+                        + "会自动加载为 pandas DataFrame（变量名 df）。支持 matplotlib 绘图，"
+                        + "图表以 base64 图片返回。仅允许导入: pandas, numpy, matplotlib, "
                         + "seaborn, sklearn, scipy, json, re, math, datetime, collections, "
                         + "itertools, functools, io, base64。")
                 .function("execute_code", (Function<Map<String, Object>, Map<String, Object>>) params -> {
                     String code = toStr(params.get("code"));
                     String dataJson = toStr(params.getOrDefault("data_json", null));
                     String dataRefId = toStr(params.getOrDefault("data_ref_id", null));
-                    Object dataRefsObj = params.get("data_refs");
                     int timeout = params.containsKey("timeout")
                             ? ((Number) params.get("timeout")).intValue()
                             : 30;
 
-                    // 检查是否使用多数据集模式
-                    if (dataRefsObj != null && dataRefsObj instanceof Map) {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> dataRefsInput = (Map<String, Object>) dataRefsObj;
-                        Map<String, String> dataRefs = new LinkedHashMap<>();
-
-                        // 解析 data_refs，将每个 ref_id 转换为实际数据
-                        for (Map.Entry<String, Object> entry : dataRefsInput.entrySet()) {
-                            String varName = entry.getKey();
-                            String refId = toStr(entry.getValue());
-
-                            DataEntry dataEntry = DATA_STORE.get(refId);
-                            if (dataEntry == null) {
-                                log.warn("[SandboxTool] data_ref_id={} not found in DATA_STORE", refId);
-                                Map<String, Object> err = new LinkedHashMap<>();
-                                err.put("success", false);
-                                err.put("error_hint", "data_ref_id '" + refId + "' 无效或已过期，请重新调用 query_database 获取数据");
-                                return err;
-                            }
-                            dataRefs.put(varName, dataEntry.data);
-                            log.info("[SandboxTool] Resolved data_refs[{}]={}, data length={}",
-                                    varName, refId, dataEntry.data.length());
-                        }
-
-                        // 生成执行 ID
-                        String executionId = "exec_" + executionCounter.incrementAndGet();
-                        log.info("[SandboxTool] 多数据集代码执行, 执行Id={}, datasets={}",
-                                executionId, dataRefs.keySet());
-
-                        // 获取当前请求的 emitter
-                        SseEmitter emitter = SseEmitterContext.getEmitter();
-
-                        // 发送"执行中"事件
-                        if (emitter != null) {
-                            try {
-                                ChatStreamService chatStreamService = applicationContext.getBean(ChatStreamService.class);
-                                chatStreamService.emitCodeExecution(
-                                        emitter, executionId, "executing", code, null, null, null, null);
-                            } catch (Exception e) {
-                                log.warn("[CodeExecution] 发送执行中事件失败: {}", e.getMessage());
-                            }
-                        }
-
-                        // 调用多数据集执行方法
-                        Map<String, Object> result = sandboxService.executeCodeWithMultipleDatasets(
-                                code, dataRefs, timeout);
-
-                        // 发送完成事件 + 分析详情 tags
-                        if (emitter != null) {
-                            try {
-                                boolean success = toBool(result.getOrDefault("success", false));
-                                String stdout = toStr(result.get("stdout"));
-                                String stderr = toStr(result.get("stderr"));
-
-                                ChatStreamService chatStreamService = applicationContext.getBean(ChatStreamService.class);
-                                chatStreamService.emitCodeExecution(
-                                        emitter, executionId,
-                                        success ? "completed" : "failed",
-                                        code, stdout, stderr, success, null);
-
-                                // 发送 analysis_result tag（与单数据集模式相同的逻辑）
-                                if (success && stdout != null && !stdout.isEmpty()) {
-                                    FormattingAgent formattingAgent = applicationContext.getBean(FormattingAgent.class);
-                                    java.util.function.Consumer<StreamingTagEvent> tagCallback = SseEmitterContext.getTagStreamCallback();
-
-                                    if (tagCallback != null) {
-                                        // 流式模式：发送结构化 JSON（tag_start/end）
-                                        formattingAgent.formatAnalysisOutputStructured(stdout, tagCallback);
-                                    } else {
-                                        // 无流式回调时（兜底）：保留旧逻辑
-                                        Map<String, Object> analysisOutput = formattingAgent.formatAnalysisOutput(stdout);
-                                        Map<String, Object> analysisTag = new LinkedHashMap<>();
-                                        analysisTag.put("type", "analysis_result");
-                                        analysisTag.put("content", analysisOutput);
-                                        analysisTag.put("title", "分析详情");
-                                        emitter.send(SseEmitter.event()
-                                                .name("tag")
-                                                .data(MAPPER.writeValueAsString(analysisTag)));
-                                        SseEmitterContext.collectTag(new MessageTag(
-                                                "analysis_result",
-                                                analysisOutput,
-                                                "分析详情",
-                                                null));
-                                    }
-
-                                    // 调用图表推荐 Agent
-                                    try {
-                                        String jsonData = extractJsonFromStdout(stdout);
-                                        if (jsonData != null && !jsonData.isEmpty()) {
-                                            com.chatbi.service.ChartRecommendationAgent chartAgent =
-                                                applicationContext.getBean(com.chatbi.service.ChartRecommendationAgent.class);
-
-                                            String userQuestion = toStr(params.getOrDefault("user_question", "数据分析"));
-                                            Map<String, Object> recommendation = chartAgent.recommend(userQuestion, jsonData);
-
-                                            // 发送图表推荐 SSE 事件
-                                            Map<String, Object> chartRecommendationEvent = new LinkedHashMap<>();
-                                            chartRecommendationEvent.put("type", "chart_recommendation");
-                                            chartRecommendationEvent.put("data", jsonData);
-                                            chartRecommendationEvent.put("recommendation", recommendation);
-                                            emitter.send(SseEmitter.event()
-                                                    .name("chart_recommendation")
-                                                    .data(MAPPER.writeValueAsString(chartRecommendationEvent)));
-
-                                            log.info("[ChartRecommendation] 多数据集模式推荐详情: chartType={}, xField={}, yField={}",
-                                                    recommendation.get("chartType"),
-                                                    recommendation.get("xField"),
-                                                    recommendation.get("yField"));
-                                        }
-                                    } catch (Exception e) {
-                                        log.error("[ChartRecommendation] 图表推荐失败", e);
-                                    }
-                                }
-                            } catch (Exception e) {
-                                log.warn("[CodeExecution] 发送完成事件失败: {}", e.getMessage());
-                            }
-                        }
-
-                        // 存储代码，返回 code_ref_id
-                        if (code != null && !code.isEmpty()) {
-                            String codeRefId = "code_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-                            CODE_STORE.put(codeRefId, new DataEntry(code));
-                            result.put("code_ref_id", codeRefId);
-                        }
-
-                        // 优化返回格式
-                        boolean success = toBool(result.getOrDefault("success", false));
-                        if (!success) {
-                            String stderr = toStr(result.get("stderr"));
-                            String errorHint = buildErrorHint(stderr);
-                            result.put("error_hint", errorHint);
-                        }
-
-                        return result;
-                    }
-
-                    // 单数据集模式（向后兼容）
                     // 优先使用 data_ref_id 从服务端取数据，避免 LLM 传递巨大 JSON
                     if ((dataJson == null || dataJson.isEmpty()) && dataRefId != null && !dataRefId.isEmpty()) {
                         DataEntry entry = DATA_STORE.get(dataRefId);
@@ -481,6 +341,7 @@ public class SandboxToolsConfig {
                     }
 
                     // 解析 fixes 并应用替换
+                    // 差量修复代码
                     String code = codeEntry.data;
                     try {
                         List<?> fixes = (fixesObj instanceof List) ? (List<?>) fixesObj
@@ -1038,4 +899,5 @@ public class SandboxToolsConfig {
             jsonArrays.size(), largestJson != null ? largestJson.length() : 0);
         return largestJson;
     }
+
 }
