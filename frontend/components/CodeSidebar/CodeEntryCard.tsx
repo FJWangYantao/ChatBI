@@ -2,6 +2,7 @@
 
 import { CodeEntry } from "@/types/code-sidebar";
 import StreamingCodeBlock from "./StreamingCodeBlock";
+import SqlResultTable from "./SqlResultTable";
 
 interface CodeEntryCardProps {
   entry: CodeEntry;
@@ -59,11 +60,19 @@ export default function CodeEntryCard({ entry, isActive }: CodeEntryCardProps) {
 
       {/* 代码块 */}
       {entry.code && (entry.type === "sql" || entry.type === "python") && (
-        <StreamingCodeBlock
-          code={entry.code}
-          language={entry.type}
-          isStreaming={entry.isStreaming}
-        />
+        <>
+          <StreamingCodeBlock
+            code={entry.code}
+            language={entry.type}
+            isStreaming={entry.isStreaming}
+          />
+          {/* SQL 执行结果表格 */}
+          {entry.type === "sql" && entry.queryResult && (
+            <div className="mt-3">
+              <SqlResultTable queryResult={entry.queryResult} />
+            </div>
+          )}
+        </>
       )}
 
       {/* execution 类型特有内容 */}

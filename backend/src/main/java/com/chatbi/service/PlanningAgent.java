@@ -415,7 +415,7 @@ public class PlanningAgent {
         String effectiveBaseUrl = customConfig.getBaseUrl() != null
                 ? customConfig.getBaseUrl() : getDefaultBaseUrl(customConfig.getProvider());
 
-        log.info("[PlanningAgent] 原始 Base URL: {}", effectiveBaseUrl);
+        // log.info("[PlanningAgent] 原始 Base URL: {}", effectiveBaseUrl);
 
         // 规范化 Base URL：移除末尾的 /chat/completions 和重复的 /v1
         effectiveBaseUrl = effectiveBaseUrl.replaceAll("/+$", ""); // 移除末尾斜杠
@@ -423,13 +423,13 @@ public class PlanningAgent {
         // 修复重复的 /v1/v1 -> /v1
         effectiveBaseUrl = effectiveBaseUrl.replaceAll("/v1/v1", "/v1");
 
-        log.info("[PlanningAgent] 规范化后 Base URL: {}", effectiveBaseUrl);
+        // log.info("[PlanningAgent] 规范化后 Base URL: {}", effectiveBaseUrl);
 
         String model = customConfig.getModelName();
         double temperature = options.getTemperature() != null ? options.getTemperature() : 0.1;
 
-        log.info("[PlanningAgent] 使用前端配置 - Model: {}, BaseURL: {}, Provider: {}",
-                model, effectiveBaseUrl, customConfig.getProvider());
+        // log.info("[PlanningAgent] 使用前端配置 - Model: {}, BaseURL: {}, Provider: {}",
+        //         model, effectiveBaseUrl, customConfig.getProvider());
 
         try {
             // 构建请求体
@@ -442,9 +442,9 @@ public class PlanningAgent {
             body.set("tools", buildToolsArray());
 
             String requestBody = objectMapper.writeValueAsString(body);
-            log.info("[PlanningAgent] 发送请求: model={}, url={}, bodyLength={}, messagesCount={}, toolsCount={}",
-                    model, effectiveBaseUrl, requestBody.length(), messages.size(),
-                    body.get("tools") != null ? body.get("tools").size() : 0);
+            // log.info("[PlanningAgent] 发送请求: model={}, url={}, bodyLength={}, messagesCount={}, toolsCount={}",
+            //         model, effectiveBaseUrl, requestBody.length(), messages.size(),
+            //         body.get("tools") != null ? body.get("tools").size() : 0);
 
             String url = effectiveBaseUrl.replaceAll("/+$", "") + "/chat/completions";
             HttpRequest request = HttpRequest.newBuilder()
@@ -576,8 +576,8 @@ public class PlanningAgent {
             }
         }
 
-        log.info("[PlanningAgent] SSE 流解析完成: lineCount={}, dataChunkCount={}, textLength={}, toolCallsCount={}",
-                lineCount, dataChunkCount, textBuffer.length(), tcIds.size());
+        // log.info("[PlanningAgent] SSE 流解析完成: lineCount={}, dataChunkCount={}, textLength={}, toolCallsCount={}",
+        //         lineCount, dataChunkCount, textBuffer.length(), tcIds.size());
 
         if (dataChunkCount == 0) {
             log.warn("[PlanningAgent] 警告：SSE 流中没有有效的 data 块，可能是格式不兼容");
@@ -739,7 +739,7 @@ public class PlanningAgent {
     private String executeToolManually(AssistantMessage.ToolCall toolCall) {
         String name = toolCall.name();
         String args = toolCall.arguments();
-        log.info("[PlanningAgent] Executing tool: {} with args length: {}",
+        log.info("[PlanningAgent] 调用工具: {} with args length: {}",
                 name, args != null ? args.length() : 0);
 
         FunctionCallback callback = toolMap.get(name);

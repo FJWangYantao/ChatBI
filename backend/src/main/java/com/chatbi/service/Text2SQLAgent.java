@@ -139,11 +139,15 @@ public class Text2SQLAgent {
 
         // MCP 增强信息（如果可用）
         if (mcpContext != null && Boolean.TRUE.equals(mcpContext.get("mcp_available"))) {
+
+            log.info("进入MCP增强");
             promptBuilder.append("【业务上下文增强】\n");
 
             // 识别到的术语
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> terms = (List<Map<String, Object>>) mcpContext.get("identified_terms");
+
+            log.info("识别到术语: {}",terms.toString());
             if (terms != null && !terms.isEmpty()) {
                 promptBuilder.append("- 识别到的业务术语：\n");
                 for (Map<String, Object> term : terms) {
@@ -155,6 +159,8 @@ public class Text2SQLAgent {
             // 时间表达式
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> timeExprs = (List<Map<String, Object>>) mcpContext.get("time_expressions");
+
+            log.info("解析到的时间表达式:{}",timeExprs.toString());
             if (timeExprs != null && !timeExprs.isEmpty()) {
                 promptBuilder.append("- 时间表达式解析：\n");
                 for (Map<String, Object> expr : timeExprs) {
@@ -182,7 +188,9 @@ public class Text2SQLAgent {
                             String description = (String) colMapping.get("description");
                             @SuppressWarnings("unchecked")
                             List<String> sampleValues = (List<String>) colMapping.get("sample_values");
-
+                            log.debug("列映射详情: {} → {}.{}, 样本值数量={}", 
+                            termName, tableName, columnName, 
+                            sampleValues != null ? sampleValues.size() : 0);
                             promptBuilder.append("  * ").append(termName)
                                 .append(" → ").append(tableName).append(".").append(columnName);
 
@@ -203,6 +211,7 @@ public class Text2SQLAgent {
             }
 
             promptBuilder.append("\n");
+            log.info("列映射完成");
         }
 
         // 数据库结构
@@ -242,7 +251,6 @@ public class Text2SQLAgent {
             8. 如果是时间序列分析，请确保包含日期字段。
             9. 只返回 SQL，不要解释，不要 markdown 代码块。
             """);
-
         return promptBuilder.toString();
     }
 

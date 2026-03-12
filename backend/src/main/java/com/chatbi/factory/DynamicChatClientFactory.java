@@ -51,19 +51,19 @@ public class DynamicChatClientFactory {
                   customConfig.getBaseUrl() : getDefaultBaseUrl(customConfig.getProvider());
         String model = customConfig.getModelName();
 
-        log.error("[DynamicChatClientFactory] ========== 开始创建 ChatClient ==========");
-        log.error("[DynamicChatClientFactory] 使用前端配置 - Provider: {}, Model: {}, BaseURL: {}",
-                 customConfig.getProvider(), model, baseUrl);
+        // log.error("[DynamicChatClientFactory] ========== 开始创建 ChatClient ==========");
+        // log.error("[DynamicChatClientFactory] 使用前端配置 - Provider: {}, Model: {}, BaseURL: {}",
+        //          customConfig.getProvider(), model, baseUrl);
 
         // 创建 OpenAiApi
         OpenAiApi openAiApi = new OpenAiApi(baseUrl, apiKey);
 
-        log.error("[DynamicChatClientFactory] 创建 OpenAiApi - BaseURL: {}, ApiKey: {}",
-                 baseUrl, apiKey != null ? "***" : "null");
+        // log.error("[DynamicChatClientFactory] 创建 OpenAiApi - BaseURL: {}, ApiKey: {}",
+        //          baseUrl, apiKey != null ? "***" : "null");
 
-        if (proxyHost != null && proxyPort > 0) {
-            log.warn("[DynamicChatClientFactory] 代理配置已忽略 - 当前 Spring AI 版本不支持代理配置");
-        }
+        // if (proxyHost != null && proxyPort > 0) {
+        //     log.warn("[DynamicChatClientFactory] 代理配置已忽略 - 当前 Spring AI 版本不支持代理配置");
+        // }
 
         OpenAiChatModel chatModel = new OpenAiChatModel(openAiApi);
 
@@ -72,9 +72,9 @@ public class DynamicChatClientFactory {
                 .withTemperature(defaultTemperature)
                 .build();
 
-        log.error("[DynamicChatClientFactory] 创建 ChatClient - Model: {}, Temperature: {}",
-                 model, defaultTemperature);
-        log.error("[DynamicChatClientFactory] ========================================");
+        // log.error("[DynamicChatClientFactory] 创建 ChatClient - Model: {}, Temperature: {}",
+        //          model, defaultTemperature);
+        // log.error("[DynamicChatClientFactory] ========================================");
 
         return ChatClient.builder(chatModel)
                 .defaultOptions(options)

@@ -333,7 +333,6 @@ export default function Home() {
 
           onTag: (data) => {
             // 累积 tag，将完整标签追加到消息的 tags 数组
-            console.log("[onTag] 收到 tag:", { type: data.type, title: data.title });
             const newTag: MessageTag = {
               type: data.type,
               content: data.content,
@@ -342,18 +341,42 @@ export default function Home() {
             };
             tagsAccumulator.push(newTag);
 
-            // 如果收到 table 类型，自动添加 chart
-            const currentTags = [...tagsAccumulator];
-            if (newTag.type === 'table' && !currentTags.some(t => t.type === 'chart')) {
-              const chartTag: MessageTag = {
-                type: 'chart',
-                content: newTag.content,
-                title: '数据图表',
-              };
-              tagsAccumulator.push(chartTag);
-            }
+            // 如果收到 table 类型，关联到对应的 SQL CodeEntry
+            if (newTag.type === 'table') {
+              setCodeEntries((prev) => {
+                // 查找最近的、未关联 queryResult 的 SQL entry（按时间戳倒序）
+                const sqlEntries = prev
+                  .filter(e => e.type === 'sql' && e.messageId === assistantId && !e.queryResult)
+                  .sort((a, b) => b.timestamp - a.timestamp);
 
-            console.log("[onTag] tagsAccumulator 当前长度:", tagsAccumulator.length, "类型:", tagsAccumulator.map(t => t.type));
+                if (sqlEntries.length > 0) {
+                  const targetEntry = sqlEntries[0];
+
+                  return prev.map((entry) => {
+                    if (entry.id === targetEntry.id) {
+                      return {
+                        ...entry,
+                        queryResult: newTag.content,
+                      };
+                    }
+                    return entry;
+                  });
+                } else {
+                  return prev;
+                }
+              });
+
+              // 自动添加 chart
+              const currentTags = [...tagsAccumulator];
+              if (!currentTags.some(t => t.type === 'chart')) {
+                const chartTag: MessageTag = {
+                  type: 'chart',
+                  content: newTag.content,
+                  title: '数据图表',
+                };
+                tagsAccumulator.push(chartTag);
+              }
+            }
 
             setMessages((prev) =>
               prev.map((msg) =>

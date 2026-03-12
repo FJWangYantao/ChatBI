@@ -30,7 +30,8 @@ import java.util.function.Function;
 @EnableScheduling
 public class SandboxToolsConfig {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .registerModule(new JavaTimeModule());
 
     /**
      * 数据条目包装类，包含数据和创建时间
@@ -534,7 +535,7 @@ public class SandboxToolsConfig {
                 .function("query_database", (Function<Map<String, Object>, Map<String, Object>>) params -> {
                     String dataDescription = toStr(params.get("data_description"));
 
-                    log.info("[SandboxTool] query_database called, description={}", dataDescription);
+                    // log.info("[SandboxTool] query_database called, description={}", dataDescription);
 
                     // 延迟获取 Text2SQLAgent，避免循环依赖
                     Text2SQLAgent text2SQLAgent = applicationContext.getBean(Text2SQLAgent.class);
@@ -598,6 +599,37 @@ public class SandboxToolsConfig {
                         DATA_STORE.put(refId, new DataEntry(fullJson));
                         result.put("data_ref_id", refId);
                         log.info("[SandboxTool] Stored data with ref_id={}, size={} bytes", refId, fullJson.length());
+
+                        // 构建 QueryResult 并发送 table tag 到前端
+                        com.chatbi.dto.QueryResult queryResult = new com.chatbi.dto.QueryResult();
+                        queryResult.setColumns(new ArrayList<>(data.get(0).keySet()));
+                        queryResult.setRows(data.subList(0, previewRows));
+                        queryResult.setTotalRows(data.size());
+                        queryResult.setDataRefId(refId);
+                        queryResult.setSuccess(true);
+                        queryResult.setExecutionTime(0L);
+
+                        // 发送 table tag
+                        if (tagCallback != null) {
+                            com.chatbi.dto.MessageTag tableTag = new com.chatbi.dto.MessageTag(
+                                "table",
+                                queryResult,
+                                "查询结果 (" + data.size() + " 行)",
+                                null
+                            );
+                            SseEmitterContext.collectTag(tableTag);
+
+                            try {
+                                SseEmitter emitter = SseEmitterContext.getEmitter();
+                                if (emitter != null) {
+                                    emitter.send(SseEmitter.event()
+                                        .name("tag")
+                                        .data(MAPPER.writeValueAsString(tableTag)));
+                                }
+                            } catch (Exception e) {
+                                log.error("[query_database] 发送 table tag 失败: {}", e.getMessage(), e);
+                            }
+                        }
 
                     } catch (Exception e) {
                         log.error("[SandboxTool] query_database failed: {}", e.getMessage(), e);
