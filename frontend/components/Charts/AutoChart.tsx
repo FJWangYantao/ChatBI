@@ -206,7 +206,8 @@ export function AutoChart({ tag }: AutoChartProps) {
         yField: recommendation.yField,
         xFieldExists,
         yFieldExists,
-        actualColumns: columns
+        actualColumns: columns,
+        sampleRow: queryResult.rows[0]
       });
 
       // 如果推荐的字段不存在，回退到自动分析的结果
@@ -217,7 +218,12 @@ export function AutoChart({ tag }: AutoChartProps) {
         ? recommendation.yField
         : (baseAnalysis.measureCol || columns[1] || '');
 
-      console.log('[AutoChart] 最终使用字段:', { dimensionCol, measureCol });
+      console.log('[AutoChart] 最终使用字段:', {
+        dimensionCol,
+        measureCol,
+        baseAnalysisDimension: baseAnalysis.dimensionCol,
+        baseAnalysisMeasure: baseAnalysis.measureCol
+      });
 
       return {
         ...baseAnalysis,

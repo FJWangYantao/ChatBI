@@ -94,6 +94,24 @@ export function analyzeColumn(
   const values = rows.map(row => row[columnName]).filter(v => v !== null && v !== undefined);
   const uniqueValues = new Set(values);
 
+  // 检查是否是ID字段：列名包含 id/ID/_id/Id（驼峰命名），且所有值都是整数
+  const isIdColumn = /\bid\b|_id$|Id\b/i.test(columnName);
+  const allIntegers = values.every(v => {
+    const num = Number(v);
+    return !isNaN(num) && Number.isInteger(num);
+  });
+
+  // 如果是ID字段，强制视为分类字段（string）
+  if (isIdColumn && allIntegers) {
+    return {
+      name: columnName,
+      dataType: 'string',
+      uniqueCount: uniqueValues.size,
+      nullCount: rows.length - values.length,
+      sampleValues: values.slice(0, 5)
+    };
+  }
+
   // 统计各类型出现次数
   const typeCount: Record<ColumnDataType, number> = {
     number: 0,

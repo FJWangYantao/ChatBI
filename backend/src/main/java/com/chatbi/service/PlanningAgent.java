@@ -139,12 +139,13 @@ public class PlanningAgent {
         messages.add(new UserMessage(userPrompt));
 
         // 构建带工具定义的 options（proxyToolCalls=true 阻止自动执行）
-        OpenAiChatOptions baseOptions = modelOptions.getOptions("planning");
-        OpenAiChatOptions options = OpenAiChatOptions.fromOptions(baseOptions);
-        options.setFunctionCallbacks(List.of(
-                queryDatabaseFunction, executeCodeFunction, fixCodeFunction,
-                validateCodeFunction, sandboxInfoFunction, dispatchParallelTasksFunction));
-        options.setProxyToolCalls(true);
+        // 注意：不设置 model，使用前端配置的模型
+        OpenAiChatOptions options = OpenAiChatOptions.builder()
+                .withFunctionCallbacks(List.of(
+                        queryDatabaseFunction, executeCodeFunction, fixCodeFunction,
+                        validateCodeFunction, sandboxInfoFunction, dispatchParallelTasksFunction))
+                .withProxyToolCalls(true)
+                .build();
 
         int maxRounds = 10;
         try {
@@ -311,8 +312,6 @@ public class PlanningAgent {
 
             return delta.length() > 0 ? delta.toString() : null;
         }
-
-        boolean isDone() { return done; }
     }
 
     /**
@@ -415,12 +414,9 @@ public class PlanningAgent {
         String effectiveBaseUrl = customConfig.getBaseUrl() != null
                 ? customConfig.getBaseUrl() : getDefaultBaseUrl(customConfig.getProvider());
 
-        // log.info("[PlanningAgent] 原始 Base URL: {}", effectiveBaseUrl);
-
-        // 规范化 Base URL：移除末尾的 /chat/completions 和重复的 /v1
+       
         effectiveBaseUrl = effectiveBaseUrl.replaceAll("/+$", ""); // 移除末尾斜杠
         effectiveBaseUrl = effectiveBaseUrl.replaceAll("/chat/completions$", ""); // 移除末尾的 /chat/completions
-        // 修复重复的 /v1/v1 -> /v1
         effectiveBaseUrl = effectiveBaseUrl.replaceAll("/v1/v1", "/v1");
 
         // log.info("[PlanningAgent] 规范化后 Base URL: {}", effectiveBaseUrl);
@@ -442,9 +438,6 @@ public class PlanningAgent {
             body.set("tools", buildToolsArray());
 
             String requestBody = objectMapper.writeValueAsString(body);
-            // log.info("[PlanningAgent] 发送请求: model={}, url={}, bodyLength={}, messagesCount={}, toolsCount={}",
-            //         model, effectiveBaseUrl, requestBody.length(), messages.size(),
-            //         body.get("tools") != null ? body.get("tools").size() : 0);
 
             String url = effectiveBaseUrl.replaceAll("/+$", "") + "/chat/completions";
             HttpRequest request = HttpRequest.newBuilder()
@@ -576,8 +569,6 @@ public class PlanningAgent {
             }
         }
 
-        // log.info("[PlanningAgent] SSE 流解析完成: lineCount={}, dataChunkCount={}, textLength={}, toolCallsCount={}",
-        //         lineCount, dataChunkCount, textBuffer.length(), tcIds.size());
 
         if (dataChunkCount == 0) {
             log.warn("[PlanningAgent] 警告：SSE 流中没有有效的 data 块，可能是格式不兼容");
@@ -932,6 +923,12 @@ public class PlanningAgent {
                 .collect(Collectors.joining(", "));
 
         return String.format("""
+            ⚠️ **核心规则（必须严格遵守）**：
+            - **严格禁止使用任何模拟数据、硬编码数据、假数据**
+            - 所有数据必须通过 query_database 工具从数据库获取
+            - 不允许在代码中写死任何数据映射（如 {1: 'Name1', 2: 'Name2'}）
+            - 如果需要关联多个表的数据，使用多次 query_database + data_refs 参数
+
             你是一个数据分析专家，拥有以下工具：
 
             1. **query_database**: 查询数据库获取数据。传入自然语言描述需要什么数据。
@@ -941,13 +938,17 @@ public class PlanningAgent {
                支持单数据集或多数据集模式：
                - 单数据集: {"code": "...", "data_ref_id": "..."}
                  数据会自动加载为 df 变量
-               - 多数据集: {"code": "...", "data_refs": {"df_orders": "ref1", "df_regions": "ref2"}}
-                 每个数据集加载为对应的变量名（如 df_orders, df_regions）
+               - 多数据集: {"code": "...", "data_refs": {"orders_df": "ref1", "products_df": "ref2"}}
+                 **重要**：data_refs 中的键名（如 orders_df, products_df）就是代码中可以直接使用的变量名
+                 例如：data_refs 中定义了 "orders_df": "ref1"，则代码中可以直接使用 orders_df 变量
                  适用于需要关联多个表的分析场景
                - 返回: stdout、stderr、images、code_ref_id（代码引用ID，用于 fix_code）
             3. **fix_code**: 差量修复已执行过的代码。当 execute_code 失败时优先使用此工具，只需传入修改部分。
-               - 输入: {"code_ref_id": "...", "data_ref_id": "...", "fixes": [{"old": "错误代码片段", "new": "修正后代码片段"}]}
+               支持单数据集和多数据集模式：
+               - 单数据集: {"code_ref_id": "...", "data_ref_id": "...", "fixes": [{"old": "错误代码片段", "new": "修正后代码片段"}]}
+               - 多数据集: {"code_ref_id": "...", "data_refs": {"df_orders": "ref1", "df_regions": "ref2"}, "fixes": [{"old": "错误代码片段", "new": "修正后代码片段"}]}
                - code_ref_id 使用 execute_code 返回的 code_ref_id
+               - data_ref_id 或 data_refs 必须与原始 execute_code 调用时使用的参数一致
                - fixes 数组中每项的 old 是原代码中需要替换的文本，new 是替换后的文本
             4. **validate_code**: 预检代码安全性（通常不需要调用）
             5. **sandbox_info**: 查询沙盒环境能力（通常不需要调用）
@@ -972,7 +973,13 @@ public class PlanningAgent {
             5. 根据执行结果生成分析总结
 
             **重要规则：**
-            - 必须先用 query_database 获取真实数据，绝对不要自己编造或模拟数据
+            - ⚠️ **严格禁止使用模拟数据、硬编码数据、假数据**：
+              * 绝对不允许在代码中写死任何数据（如 shipper_map = {1: 'Speedy Express', ...}）
+              * 绝对不允许使用 "模拟"、"假设"、"示例" 等方式创建数据
+              * 所有数据必须通过 query_database 工具从数据库获取
+              * 如果某些数据无法通过 SQL 直接获取，必须先用 query_database 查询，然后在代码中处理
+              * 违反此规则将导致分析结果完全不可信
+            - 必须先用 query_database 获取真实数据
             - execute_code 只需传 data_ref_id 或 data_refs，不要传 data_json（数据由服务端自动注入）
             - 如果 query_database 返回 success=false，向用户说明无法获取数据
             - **数据时间范围验证（关键）：**
@@ -983,7 +990,10 @@ public class PlanningAgent {
                 3. 询问用户是否要调整分析的时间范围
               * **绝对不要**自作主张地调整时间范围进行分析
               * 示例：用户要求"1997年数据"，但数据库只有2006-2008年，应回复："数据库中没有1997年的数据，实际可用的时间范围是2006-2008年。您是否需要我分析2007年的数据（对应的相对时间位置）？"
-            - 如果 execute_code 失败，**必须优先使用 fix_code 工具**修复错误代码（传入 code_ref_id 和 fixes），而不是用 execute_code 重新生成完整代码。只有当 code_ref_id 过期或需要完全重写逻辑时才用 execute_code 重试
+            - 如果 execute_code 失败，**必须优先使用 fix_code 工具**修复错误代码（传入 code_ref_id 和 fixes），而不是用 execute_code 重新生成完整代码
+              * fix_code 支持单数据集（data_ref_id）和多数据集（data_refs）模式
+              * 使用 fix_code 时，data_ref_id 或 data_refs 参数必须与原始 execute_code 调用时完全一致
+              * 只有当 code_ref_id 过期或需要完全重写逻辑时才用 execute_code 重试
             - 修复最多 2 次，仍然失败则向用户说明原因
             - Python 代码中数据已自动加载为 df (pandas DataFrame)
             - **输出要求（必须同时满足）**：
@@ -1001,7 +1011,7 @@ public class PlanningAgent {
               * 统计指标（均值、总计等单个数值）用 "指标名: 值" 格式逐行打印，不要放在 DataFrame 里
               * 每个输出块之前用 === 标题 === 格式打印标题
 
-            **代码示例（同时输出图表和 JSON）**:
+            **代码示例1（单数据集 - 同时输出图表和 JSON）**:
             ```python
             import pandas as pd
             import matplotlib.pyplot as plt
@@ -1025,6 +1035,31 @@ public class PlanningAgent {
             plt.savefig('output.png', dpi=100, bbox_inches='tight')
 
             # 必须输出分析结果的 JSON（不是原始数据）
+            print(result_df.to_json(orient='records', force_ascii=False))
+            ```
+
+            **代码示例2（多数据集 - 关联多个表）**:
+            假设调用 execute_code 时传入：
+            {"code": "...", "data_refs": {"orders_df": "ref1", "customers_df": "ref2"}}
+
+            ```python
+            import pandas as pd
+            import matplotlib.pyplot as plt
+
+            # 多数据集模式：orders_df 和 customers_df 已自动加载
+            # 注意：变量名必须与 data_refs 中的键名完全一致
+
+            # 关联两个表
+            merged_df = orders_df.merge(customers_df, on='customer_id', how='left')
+
+            # 分析
+            result_df = merged_df.groupby('customer_name')['order_amount'].sum().reset_index()
+            result_df.columns = ['客户名称', '总订单金额']
+            result_df = result_df.sort_values('总订单金额', ascending=False).head(10)
+
+            # 输出结果
+            print("=== 前10名客户 ===")
+            print(result_df.to_string(index=False))
             print(result_df.to_json(orient='records', force_ascii=False))
             ```
 

@@ -8,7 +8,7 @@ import com.chatbi.dto.ChatResponseWithConversation;
 import com.chatbi.dto.ExecuteSqlRequest;
 import com.chatbi.dto.NERRequest;
 import com.chatbi.dto.NERResponse;
-import com.chatbi.service.ChatService;
+import com.chatbi.service.SqlExecutionService;
 import com.chatbi.service.ChatStreamService;
 import com.chatbi.service.NERService;
 import lombok.extern.slf4j.Slf4j;
@@ -29,42 +29,18 @@ import jakarta.servlet.http.HttpServletResponse;
 @RequestMapping("/chat")
 public class ChatController {
 
-    private final ChatService chatService;
+    private final SqlExecutionService sqlExecutionService;
     private final ChatStreamService chatStreamService;
     private final NERService nerService;
     private final Executor sseTaskExecutor;
 
     @Autowired
-    public ChatController(ChatService chatService, ChatStreamService chatStreamService, NERService nerService,
+    public ChatController(SqlExecutionService sqlExecutionService, ChatStreamService chatStreamService, NERService nerService,
                           @Qualifier("sseTaskExecutor") Executor sseTaskExecutor) {
-        this.chatService = chatService;
+        this.sqlExecutionService = sqlExecutionService;
         this.chatStreamService = chatStreamService;
         this.nerService = nerService;
         this.sseTaskExecutor = sseTaskExecutor;
-    }
-
-    /**
-     * 统一聊天接口 - 智能识别意图（返回 conversationId）
-     * POST /api/chat/message
-     */
-    @PostMapping("/message")
-    public ChatResponseWithConversation chat(@RequestBody ChatRequest request) {
-        String message = request.getMessage();
-        String conversationId = request.getConversationId();
-        int messageLength = message != null ? message.length() : 0;
-
-        if (message == null || message.trim().isEmpty()) {
-            log.warn("聊天请求参数无效: conversationId={}, messageLength=0", conversationId);
-            return new ChatResponseWithConversation("错误：请提供有效的消息内容", null, conversationId);
-        }
-
-        log.info("聊天请求: conversationId={}, messageLength={}", conversationId, messageLength);
-        ChatResponseWithConversation response = chatService.smartChatWithConversation(message.trim(), conversationId);
-        boolean hasTags = response.getTags() != null && !response.getTags().isEmpty();
-        int suggestionCount = response.getSuggestions() != null ? response.getSuggestions().size() : 0;
-        boolean hasSuggestionsTag = response.getTags() != null && response.getTags().stream().anyMatch(t -> "suggestions".equals(t.getType()));
-        log.info("聊天响应: conversationId={}, hasTags={}, suggestions={}, hasSuggestionsTag={}", response.getConversationId(), hasTags, suggestionCount, hasSuggestionsTag);
-        return response;
     }
 
     /**
@@ -127,40 +103,6 @@ public class ChatController {
     }
 
     /**
-     * Text2SQL 接口
-     * POST /api/chat/text2sql
-     */
-    @PostMapping("/text2sql")
-    public ChatResponse text2SQL(@RequestBody ChatRequest request) {
-        String message = request.getMessage();
-        if (message == null || message.trim().isEmpty()) {
-            log.warn("Text2SQL请求参数无效: messageLength=0");
-            return new ChatResponse("错误：请提供有效的问题内容", null);
-        }
-        log.info("Text2SQL请求: messageLength={}", message.length());
-        ChatResponse response = chatService.text2SQL(message.trim());
-        log.info("Text2SQL响应: hasTags={}", response.getTags() != null && !response.getTags().isEmpty());
-        return response;
-    }
-
-    /**
-     * 非流式查数模式接口（包含完整流程：NER + MCP + Text2SQL）
-     * POST /api/chat/query-mode
-     */
-    @PostMapping("/query-mode")
-    public ChatResponse queryMode(@RequestBody ChatRequest request) {
-        String message = request.getMessage();
-        if (message == null || message.trim().isEmpty()) {
-            log.warn("QueryMode请求参数无效: messageLength=0");
-            return new ChatResponse("错误：请提供有效的问题内容", null);
-        }
-        log.info("QueryMode请求: messageLength={}", message.length());
-        ChatResponse response = chatService.queryModeNonStreaming(message.trim());
-        log.info("QueryMode响应: hasTags={}", response.getTags() != null && !response.getTags().isEmpty());
-        return response;
-    }
-
-    /**
      * 执行 SQL 接口
      * POST /api/chat/execute-sql
      */
@@ -169,7 +111,7 @@ public class ChatController {
         String sql = request.getSql();
         int sqlLength = sql != null ? sql.length() : 0;
         log.info("执行SQL请求: sqlLength={}", sqlLength);
-        ChatResponse response = chatService.executeSql(sql);
+        ChatResponse response = sqlExecutionService.executeSql(sql);
         log.info("执行SQL响应: hasTags={}", response.getTags() != null && !response.getTags().isEmpty());
         return response;
     }

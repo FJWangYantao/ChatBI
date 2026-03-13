@@ -17,13 +17,20 @@ export default function EditableSqlBlock({ tag, onExecuteResult }: EditableSqlBl
     setError(null);
 
     try {
+      console.log('[EditableSqlBlock] 开始执行 SQL:', sql.substring(0, 100));
       const response = await executeSql(sql);
+      console.log('[EditableSqlBlock] 收到响应:', response);
 
       if (response.tags && response.tags.length > 0) {
+        console.log('[EditableSqlBlock] 找到结果 tag:', response.tags[0]);
         // 将结果 tag 传递给父组件
         onExecuteResult(response.tags[0]);
+      } else {
+        console.warn('[EditableSqlBlock] 响应中没有 tags');
+        setError('执行成功但没有返回结果');
       }
     } catch (err: any) {
+      console.error('[EditableSqlBlock] 执行失败:', err);
       setError(err.message || "执行失败");
     } finally {
       setIsExecuting(false);

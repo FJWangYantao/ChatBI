@@ -47,7 +47,6 @@ public class ClarificationAgent {
         try {
             ChatClient chatClient = chatClientFactory.createChatClient("clarification");
             String response = chatClient.prompt()
-                    .options(modelOptions.getOptions("clarification"))
                     .user(prompt)
                     .call()
                     .content();
@@ -62,8 +61,16 @@ public class ClarificationAgent {
                     .filter(s -> !s.isBlank())
                     .toList();
         } catch (Exception e) {
-            // 限速（429）或其他异常时，跳过澄清步骤，直接进入分析流程
-            log.warn("[ClarificationAgent] 澄清步骤失败（可能是限速），跳过: {}", e.getMessage());
+            // 澄清失败时跳过，直接进入分析流程
+            log.warn("[ClarificationAgent] 澄清步骤失败，跳过澄清直接分析。错误: {}", e.getMessage());
+
+            // 如果是模型不存在的错误，给出更明确的提示
+            if (e.getMessage() != null && e.getMessage().contains("Model Not Exist")) {
+                log.error("[ClarificationAgent] ❌ 模型配置错误：您配置的模型在API提供商处不存在。" +
+                         "请检查前端设置中的模型名称是否正确。" +
+                         "DeepSeek 支持: deepseek-chat, deepseek-reasoner");
+            }
+
             return Collections.emptyList();
         }
     }

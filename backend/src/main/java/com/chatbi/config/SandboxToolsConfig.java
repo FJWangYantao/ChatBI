@@ -163,23 +163,10 @@ public class SandboxToolsConfig {
                     String code = toStr(params.get("code"));
                     String dataJson = toStr(params.getOrDefault("data_json", null));
                     String dataRefId = toStr(params.getOrDefault("data_ref_id", null));
+                    Object dataRefsObj = params.get("data_refs");
                     int timeout = params.containsKey("timeout")
                             ? ((Number) params.get("timeout")).intValue()
                             : 30;
-
-                    // 优先使用 data_ref_id 从服务端取数据，避免 LLM 传递巨大 JSON
-                    if ((dataJson == null || dataJson.isEmpty()) && dataRefId != null && !dataRefId.isEmpty()) {
-                        DataEntry entry = DATA_STORE.get(dataRefId);
-                        if (entry == null) {
-                            log.warn("[SandboxTool] data_ref_id={} not found in DATA_STORE", dataRefId);
-                            Map<String, Object> err = new LinkedHashMap<>();
-                            err.put("success", false);
-                            err.put("error_hint", "data_ref_id 无效或已过期，请重新调用 query_database 获取数据");
-                            return err;
-                        }
-                        dataJson = entry.data;
-                        log.info("[SandboxTool] Resolved data_ref_id={}, data length={}", dataRefId, dataJson.length());
-                    }
 
                     // 生成执行 ID
                     String executionId = "exec_" + executionCounter.incrementAndGet();
@@ -202,7 +189,52 @@ public class SandboxToolsConfig {
 
                     // 执行代码
                     long startTime = System.currentTimeMillis();
-                    Map<String, Object> result = sandboxService.executeCode(code, dataJson, timeout);
+                    Map<String, Object> result;
+
+                    // 检查是否为多数据集模式
+                    if (dataRefsObj != null) {
+                        // 多数据集模式
+                        try {
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> rawMap = (Map<String, Object>) dataRefsObj;
+                            Map<String, String> dataRefsMap = new LinkedHashMap<>();
+                            for (Map.Entry<String, Object> entry : rawMap.entrySet()) {
+                                String varName = entry.getKey();
+                                String refId = toStr(entry.getValue());
+                                if (refId != null && !refId.isEmpty()) {
+                                    DataEntry dataEntry = DATA_STORE.get(refId);
+                                    if (dataEntry != null) {
+                                        dataRefsMap.put(varName, dataEntry.data);
+                                    } else {
+                                        log.warn("[SandboxTool] data_ref_id={} not found in DATA_STORE", refId);
+                                    }
+                                }
+                            }
+                            log.info("[SandboxTool] 多数据集模式，加载 {} 个数据集", dataRefsMap.size());
+                            result = sandboxService.executeCodeWithMultipleDatasets(code, dataRefsMap, timeout);
+                        } catch (Exception e) {
+                            Map<String, Object> err = new LinkedHashMap<>();
+                            err.put("success", false);
+                            err.put("error_hint", "data_refs 参数解析失败: " + e.getMessage());
+                            return err;
+                        }
+                    } else {
+                        // 单数据集模式：优先使用 data_ref_id 从服务端取数据，避免 LLM 传递巨大 JSON
+                        if ((dataJson == null || dataJson.isEmpty()) && dataRefId != null && !dataRefId.isEmpty()) {
+                            DataEntry entry = DATA_STORE.get(dataRefId);
+                            if (entry == null) {
+                                log.warn("[SandboxTool] data_ref_id={} not found in DATA_STORE", dataRefId);
+                                Map<String, Object> err = new LinkedHashMap<>();
+                                err.put("success", false);
+                                err.put("error_hint", "data_ref_id 无效或已过期，请重新调用 query_database 获取数据");
+                                return err;
+                            }
+                            dataJson = entry.data;
+                            log.info("[SandboxTool] Resolved data_ref_id={}, data length={}", dataRefId, dataJson.length());
+                        }
+                        result = sandboxService.executeCode(code, dataJson, timeout);
+                    }
+
                     long executionTime = System.currentTimeMillis() - startTime;
 
                     // 发送"完成"事件 + image tags

@@ -143,6 +143,14 @@ export default function Home() {
         const historyCodeEntries: CodeEntry[] = [];
         historyMessages.forEach((msg) => {
           if (msg.tags) {
+            // 先找到所有 table tag，建立 messageId -> queryResult 的映射
+            const tableTagMap = new Map<string, any>();
+            msg.tags.forEach((tag) => {
+              if (tag.type === "table") {
+                tableTagMap.set(msg.id, tag.content);
+              }
+            });
+
             msg.tags.forEach((tag, idx) => {
               if (tag.type === "sql") {
                 historyCodeEntries.push({
@@ -153,6 +161,7 @@ export default function Home() {
                   timestamp: new Date(msg.timestamp).getTime(),
                   messageId: msg.id,
                   isStreaming: false,
+                  queryResult: tableTagMap.get(msg.id), // 关联查询结果
                 });
               } else if (tag.type === "code") {
                 historyCodeEntries.push({

@@ -910,8 +910,8 @@ public class ChatStreamService {
             log.info("[QueryMode] 开始调用 AI 生成 SQL");
             ChatClient chatClient = chatClientFactory.createChatClient("text2sql");
             try {
+                // 注意：不再调用 .options()，使用 createChatClient 中设置的 defaultOptions（前端配置）
                 var sqlFlux = chatClient.prompt()
-                        .options(modelOptions.getOptions("text2sql"))
                         .user(systemPrompt)
                         .stream()
                         .content();

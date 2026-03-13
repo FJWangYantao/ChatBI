@@ -202,8 +202,8 @@ public class ReportAgent {
             """, queriesStr, sqlStr, dataStr, analysisStr);
 
         ChatClient chatClient = chatClientFactory.createChatClient("report");
+        // 注意：不再调用 .options()，使用 createChatClient 中设置的 defaultOptions（前端配置）
         return chatClient.prompt()
-                .options(modelOptions.getOptions("report"))
                 .user(prompt)
                 .call()
                 .content();
@@ -264,8 +264,8 @@ public class ReportAgent {
                 """, question, analysisGoal, dataPreview);
 
             ChatClient chatClient = chatClientFactory.createChatClient("report");
+            // 注意：不再调用 .options()，使用 createChatClient 中设置的 defaultOptions（前端配置）
             String insightJson = chatClient.prompt()
-                    .options(modelOptions.getOptions("report"))
                     .user(prompt)
                     .call()
                     .content();
@@ -308,8 +308,8 @@ public class ReportAgent {
             """, transcript);
 
         ChatClient chatClient = chatClientFactory.createChatClient("report");
+        // 注意：不再调用 .options()，使用 createChatClient 中设置的 defaultOptions（前端配置）
         return chatClient.prompt()
-                .options(modelOptions.getOptions("report"))
                 .user(prompt)
                 .call()
                 .content();

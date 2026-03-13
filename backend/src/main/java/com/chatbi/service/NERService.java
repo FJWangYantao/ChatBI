@@ -302,8 +302,8 @@ public class NERService {
         try {
             String prompt = String.format(NER_PROMPT_TEMPLATE, text);
 
+            // 注意：不再调用 .options()，使用 createChatClient 中设置的 defaultOptions（前端配置）
             String content = chatClient.prompt()
-                    .options(modelOptions.getOptions("ner"))
                     .user(prompt)
                     .call()
                     .content();

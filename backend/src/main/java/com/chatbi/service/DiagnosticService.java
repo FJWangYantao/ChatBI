@@ -76,8 +76,8 @@ public class DiagnosticService {
             - 不要返回任何解释性文字。
             """, question, schemaInfo);
 
+        // 注意：不再调用 .options()，使用 createChatClient 中设置的 defaultOptions（前端配置）
         String sqlsResponse = chatClient.prompt()
-                .options(modelOptions.getOptions("diagnostic"))
                 .user(analysisPrompt)
                 .call()
                 .content();
@@ -155,8 +155,8 @@ public class DiagnosticService {
             5. 如果数据不支持用户的假设（例如用户说跌了，但数据通过显示涨了），请礼貌地指出。
             """, question, escapedDataSummary);
 
+        // 注意：不再调用 .options()，使用 createChatClient 中设置的 defaultOptions（前端配置）
         String report = chatClient.prompt()
-                .options(modelOptions.getOptions("diagnostic"))
                 .user(reportPrompt)
                 .call()
                 .content();

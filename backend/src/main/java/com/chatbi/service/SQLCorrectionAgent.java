@@ -177,8 +177,8 @@ public class SQLCorrectionAgent {
                     """, userQuery, sql, entitiesStr);
 
             ChatClient chatClient = chatClientFactory.createChatClient("sql-correction");
+            // 注意：不再调用 .options()，使用 createChatClient 中设置的 defaultOptions（前端配置）
             String response = chatClient.prompt()
-                    .options(modelOptions.getOptions("sql-correction"))
                     .user(prompt)
                     .call()
                     .content();
