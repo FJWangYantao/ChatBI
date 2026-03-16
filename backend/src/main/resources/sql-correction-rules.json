@@ -1,11 +1,6 @@
 {
   "syntaxRules": [
     {
-      "pattern": "WHERE.*AND.*OR.*",
-      "issue": "AND/OR优先级可能有误",
-      "suggestion": "使用括号明确优先级"
-    },
-    {
       "pattern": "WHERE\\s+OR\\s+",
       "issue": "WHERE 后直接使用 OR 可能导致逻辑错误",
       "suggestion": "检查是否需要括号包裹 OR 条件"
@@ -18,18 +13,7 @@
       "correction": "可能需要使用 PRODUCT_NAME"
     }
   ],
-  "timeRules": [
-    {
-      "pattern": "Year.*2024.*Month.*BETWEEN.*3.*AND.*1",
-      "issue": "跨年时间范围逻辑错误",
-      "correction": "需要使用 OR 条件处理跨年"
-    },
-    {
-      "pattern": "Month\\s+BETWEEN\\s+\\d+\\s+AND\\s+\\d+",
-      "issue": "跨年月份范围需特殊处理",
-      "correction": "跨年时使用 (Year=X AND Month>=M) OR (Year=Y AND Month<=N)"
-    }
-  ],
+  "timeRules": [],
   "performanceRules": [
     {
       "pattern": "SELECT\\s+\\*\\s+FROM",

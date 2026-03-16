@@ -22,7 +22,6 @@ import java.util.*;
 public class SqlExecutionService {
 
     private final DynamicChatClientFactory chatClientFactory;
-    private final ModelOptionsProvider modelOptions;
     private final DynamicJdbcTemplateProvider jdbcTemplateProvider;
     private final ChartTypeService chartTypeService;
     private final ModelPerformanceMonitor performanceMonitor;
@@ -41,7 +40,6 @@ public class SqlExecutionService {
             ModelPerformanceMonitor performanceMonitor
     ) {
         this.chatClientFactory = chatClientFactory;
-        this.modelOptions = modelOptions;
         this.jdbcTemplateProvider = jdbcTemplateProvider;
         this.chartTypeService = chartTypeService;
         this.performanceMonitor = performanceMonitor;

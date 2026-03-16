@@ -59,6 +59,7 @@ public class SQLCorrectionAgent {
      */
     public CorrectionResult correctSQL(String originalSQL, String userQuery, List<Entity> entities) {
         if (!enabled || originalSQL == null || originalSQL.trim().isEmpty()) {
+            log.info("SQL 纠错未启用或原始 SQL 为空");
             return CorrectionResult.builder()
                     .originalSQL(originalSQL)
                     .correctedSQL(originalSQL)
@@ -70,6 +71,7 @@ public class SQLCorrectionAgent {
 
         // 支持多条 SQL，分别纠错后合并
         if (originalSQL.contains(SQL_SEPARATOR)) {
+            log.info("SQL 包含多条 SQL，开始分别纠错");
             String[] parts = originalSQL.split(Pattern.quote(SQL_SEPARATOR));
             List<String> correctedParts = new ArrayList<>();
             boolean anyCorrected = false;
@@ -107,14 +109,20 @@ public class SQLCorrectionAgent {
         // 2. 规则校验
         if (ruleBasedCorrectionEnabled) {
             validationErrors.addAll(sqlValidationService.validate(cleanSql));
+            log.info("规则校验完成，发现 {} 个错误", validationErrors.size());
+            validationErrors.forEach(error -> 
+                log.info("错误详情 -> 类型: {} | 消息: {}", error.getType(), error.getMessage())
+            );
         }
 
         String finalSQL = cleanSql;
         boolean corrected = false;
 
-        // 3. 规则驱动的智能纠错（条件优先级、时间范围等）
-        if (ruleBasedCorrectionEnabled) {
+        // 3. 规则驱动的智能纠错（仅在发现错误时执行）
+        if (ruleBasedCorrectionEnabled && !validationErrors.isEmpty()) {
+            log.info("开始规则驱动的智能纠错");
             var ruleCorrected = applyRuleBasedCorrections(cleanSql);
+            log.info("规则驱动的智能纠错完成，结果: {}", ruleCorrected);
             if (ruleCorrected != null && !ruleCorrected.equals(cleanSql)) {
                 finalSQL = ruleCorrected;
                 corrected = true;
@@ -129,6 +137,7 @@ public class SQLCorrectionAgent {
                 .anyMatch(e -> "SYNTAX".equals(e.getType()));
 
         if (hasSyntaxError && aiCorrectionEnabled) {
+            log.info("开始尝试 AI 纠错");
             CorrectionResult aiResult = attemptAICorrection(finalSQL, userQuery, entities);
             if (aiResult != null && aiResult.isCorrected()) {
                 finalSQL = aiResult.getCorrectedSQL();

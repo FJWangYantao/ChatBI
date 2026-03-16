@@ -67,7 +67,7 @@ public class Text2SQLAgent {
         ChatClient chatClient = chatClientFactory.createChatClient("text2sql");
         StringBuilder sqlBuilder = new StringBuilder();
         try {
-            // 注意：不再调用 .options()，使用 createChatClient 中设置的 defaultOptions（前端配置）
+            // 使用 createChatClient 中设置的 defaultOptions（前端配置）
             Flux<String> sqlFlux = chatClient.prompt()
                     .user(systemPrompt)
                     .stream()
@@ -96,6 +96,7 @@ public class Text2SQLAgent {
 
         // 5. 执行
         try {
+            // 规则清理 SQL（去除 markdown 代码块标记）
             String cleanSql = finalSQL.trim()
                     .replaceAll("^```sql\\s*", "")
                     .replaceAll("^```\\s*", "")
@@ -146,13 +147,55 @@ public class Text2SQLAgent {
             // 识别到的术语
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> terms = (List<Map<String, Object>>) mcpContext.get("identified_terms");
+            // 组织术语信息，产生单条规范日志
+            StringBuilder termsLog = new StringBuilder();
+            termsLog.append("[MCP术语识别]\n");
 
-            log.info("识别到术语: {}",terms.toString());
+            if (terms != null && !terms.isEmpty()) {
+                termsLog.append("  总数: ").append(terms.size()).append("\n");
+                for (int i = 0; i < terms.size(); i++) {
+                    Map<String, Object> term = terms.get(i);
+                    termsLog.append("  ").append(i + 1).append(". ")
+                        .append(term.get("term"))
+                        .append(" (").append(term.get("category")).append(")")
+                        .append("\n     定义: ").append(term.get("definition")).append("\n");
+                }
+            } else {
+                termsLog.append("  总数: 0\n");
+            }
+
+            log.info(termsLog.toString());
             if (terms != null && !terms.isEmpty()) {
                 promptBuilder.append("- 识别到的业务术语：\n");
                 for (Map<String, Object> term : terms) {
                     promptBuilder.append("  * ").append(term.get("term"))
                         .append("：").append(term.get("definition")).append("\n");
+                }
+
+                for (Map<String, Object> term : terms) {
+                    String category = (String) term.get("category");
+                    if ("product_series".equals(category) || "product_family".equals(category)) {
+                        String termName = (String) term.get("term");
+                        try {
+                            Map<String, Object> expandResult = mcpKnowledgeService.expandProductSeries(termName);
+                            if (Boolean.TRUE.equals(expandResult.get("success"))) {
+                                @SuppressWarnings("unchecked")
+                                Map<String, Object> result = (Map<String, Object>) expandResult.get("result");
+                                @SuppressWarnings("unchecked")
+                                List<String> models = (List<String>) result.get("models");
+                                if (models != null && !models.isEmpty()) {
+                                    String modelValues = String.join(", ", models.stream()
+                                        .map(m -> "'" + m + "'").toList());
+                                    promptBuilder.append("  * ").append(termName)
+                                        .append(" 系列包含以下型号：").append(modelValues).append("\n")
+                                        .append("    ⚠️ 查询该系列时请使用 IN (").append(modelValues).append(")\n");
+                                    log.info("产品系列 {} 展开为 {} 个型号", termName, models.size());
+                                }
+                            }
+                        } catch (Exception e) {
+                            log.warn("展开产品系列 {} 失败: {}", termName, e.getMessage());
+                        }
+                    }
                 }
             }
 
@@ -160,12 +203,32 @@ public class Text2SQLAgent {
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> timeExprs = (List<Map<String, Object>>) mcpContext.get("time_expressions");
 
-            log.info("解析到的时间表达式:{}",timeExprs.toString());
+            // 日志
+            StringBuilder timeExprsLog = new StringBuilder();
+            
+            timeExprsLog.append("[MCP时间表达式解析]\n");
             if (timeExprs != null && !timeExprs.isEmpty()) {
+                timeExprsLog.append("  总数: ").append(timeExprs.size()).append("\n");
+                for (int i = 0; i < timeExprs.size(); i++) {
+                    Map<String, Object> expr = timeExprs.get(i);
+                    timeExprsLog.append("  ").append(i + 1).append(". ")
+                        .append(expr.get("expression"))      
+                        .append(" → ").append(expr.get("description"))
+                        .append(" (").append(expr.get("type")).append(")")
+                        .append("\n");
+                }
+                log.info(timeExprsLog.toString());
+
+                //加入时间表达式到prompt
                 promptBuilder.append("- 时间表达式解析：\n");
+                int exprIndex = 1;
                 for (Map<String, Object> expr : timeExprs) {
-                    promptBuilder.append("  * ").append(expr.get("original"))
-                        .append(" → ").append(expr.get("parsed")).append("\n");
+                    promptBuilder.append("  ").append(exprIndex++).append(". ")
+                    .append(expr.get("expression"))
+                    .append(" → ").append(expr.get("description"))
+                    .append(" (").append(expr.get("type")).append(")")
+                    .append("\n  SQL条件: ").append(expr.get("sql_condition"))
+                    .append("\n");
                 }
             }
 
@@ -188,7 +251,7 @@ public class Text2SQLAgent {
                             String description = (String) colMapping.get("description");
                             @SuppressWarnings("unchecked")
                             List<String> sampleValues = (List<String>) colMapping.get("sample_values");
-                            log.debug("列映射详情: {} → {}.{}, 样本值数量={}", 
+                            log.info("列映射详情: {} → {}.{}, 样本值数量={}", 
                             termName, tableName, columnName, 
                             sampleValues != null ? sampleValues.size() : 0);
                             promptBuilder.append("  * ").append(termName)

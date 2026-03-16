@@ -64,6 +64,9 @@ public class DynamicDataSourceService {
         // 测试连接
         hikariConfig.setConnectionTestQuery("SELECT 1");
 
+        // 设置连接初始化 SQL，确保使用 utf8mb4
+        hikariConfig.setConnectionInitSql("SET NAMES utf8mb4");
+
         log.info("创建数据源: name={}, url={}", config.getName(), buildUrl(config));
 
         return new HikariDataSource(hikariConfig);

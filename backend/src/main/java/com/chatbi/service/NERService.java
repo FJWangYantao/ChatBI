@@ -182,11 +182,39 @@ public class NERService {
                     Map<String, Object> validationResult = mcpKnowledgeService.validateEntities(entityList);
                     if (Boolean.TRUE.equals(validationResult.get("success"))) {
                         logger.debug("MCP 实体验证成功");
-                        // 可以根据验证结果更新实体的置信度或标记无效实体
+                    }
+
+                    // 对低置信度实体做消歧
+                    for (Entity ent : response.getEntities()) {
+                        if (ent.getConfidence() < 0.7) {
+                            try {
+                                List<String> possibleTypes = List.of("PRODUCT", "CUSTOMER", "BRAND", "SERIES");
+                                Map<String, Object> disambResult = mcpKnowledgeService.disambiguateEntity(
+                                    ent.getText(), text, possibleTypes);
+
+                                if (Boolean.TRUE.equals(disambResult.get("success"))) {
+                                    @SuppressWarnings("unchecked")
+                                    Map<String, Object> result = (Map<String, Object>) disambResult.get("result");
+                                    if (result != null) {
+                                        String resolvedType = (String) result.get("resolved_type");
+                                        if (resolvedType != null) {
+                                            ent.setType(resolvedType);
+                                            logger.debug("实体消歧: {} -> 类型={}", ent.getText(), resolvedType);
+                                        }
+                                        Number newConfidence = (Number) result.get("confidence");
+                                        if (newConfidence != null) {
+                                            ent.setConfidence(newConfidence.doubleValue());
+                                        }
+                                    }
+                                }
+                            } catch (Exception ex) {
+                                logger.warn("实体消歧失败: {} - {}", ent.getText(), ex.getMessage());
+                            }
+                        }
                     }
                 }
             } catch (Exception e) {
-                logger.warn("Entity validation failed: {}", e.getMessage());
+                logger.warn("Entity validation/disambiguation failed: {}", e.getMessage());
             }
         }
 
@@ -302,7 +330,7 @@ public class NERService {
         try {
             String prompt = String.format(NER_PROMPT_TEMPLATE, text);
 
-            // 注意：不再调用 .options()，使用 createChatClient 中设置的 defaultOptions（前端配置）
+            // 使用 createChatClient 中设置的 defaultOptions（前端配置）
             String content = chatClient.prompt()
                     .user(prompt)
                     .call()

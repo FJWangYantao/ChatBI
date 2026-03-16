@@ -1,6 +1,5 @@
 package com.chatbi.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -23,7 +22,6 @@ import java.util.Map;
 public class MCPKnowledgeService {
 
     private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
 
     @Value("${mcp.knowledge.server.url:http://localhost:8004}")
     private String mcpServerUrl;
@@ -31,9 +29,8 @@ public class MCPKnowledgeService {
     @Value("${mcp.knowledge.enabled:true}")
     private boolean mcpEnabled;
 
-    public MCPKnowledgeService(RestTemplate restTemplate, ObjectMapper objectMapper) {
+    public MCPKnowledgeService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
-        this.objectMapper = objectMapper;
     }
 
     /**
@@ -64,7 +61,9 @@ public class MCPKnowledgeService {
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 Map<String, Object> body = response.getBody();
                 if (Boolean.TRUE.equals(body.get("success"))) {
+                    // 获取识别到的术语
                     Map<String, Object> result = (Map<String, Object>) body.get("result");
+                    // 打印识别信息
                     log.info("MCP 上下文增强成功，识别到 {} 个术语",
                             result.get("identified_terms") != null ?
                                     ((java.util.List<?>) result.get("identified_terms")).size() : 0);
@@ -79,24 +78,6 @@ public class MCPKnowledgeService {
             log.error("调用 MCP 服务器失败: {}", e.getMessage());
             return createEmptyContext(userQuery);
         }
-    }
-
-    /**
-     * 获取增强后的 Prompt
-     *
-     * @param userQuery 用户查询
-     * @return 增强后的 Prompt 文本
-     */
-    public String getEnrichedPrompt(String userQuery) {
-        Map<String, Object> context = enrichQueryContext(userQuery);
-        String enrichedPrompt = (String) context.get("enriched_prompt");
-
-        if (enrichedPrompt != null && !enrichedPrompt.isEmpty()) {
-            return enrichedPrompt;
-        }
-
-        // 如果没有增强信息，返回原始查询
-        return "用户问题：" + userQuery;
     }
 
     /**

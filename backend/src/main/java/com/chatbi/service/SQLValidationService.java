@@ -121,6 +121,7 @@ public class SQLValidationService {
         CorrectionResult.ValidationError syntaxError = validateSyntax(sql);
         if (syntaxError != null) {
             errors.add(syntaxError);
+            logger.info("语法检查完成，发现语法错误: {}", syntaxError.getMessage());
             return errors; // 语法错误时不再继续
         }
 
@@ -132,6 +133,7 @@ public class SQLValidationService {
                 Pattern p = Pattern.compile(rule.pattern, Pattern.CASE_INSENSITIVE);
                 Matcher m = p.matcher(normalizedSql);
                 if (m.find()) {
+                    logger.info("发现语法规则匹配: {}", rule.pattern);
                     errors.add(new CorrectionResult.ValidationError("LOGIC", rule.issue, rule.suggestion));
                 }
             } catch (Exception e) {

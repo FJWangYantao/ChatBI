@@ -90,7 +90,22 @@ class TermService:
             return self._parse_quarter(expression, reference_date)
         elif expr_type == "year_quarter":
             return self._parse_year_quarter(expression)
+        elif expr_type == "relative_time":
+            return self._parse_relative_time(expression, reference_date)
+        elif expr_type == "relative_years":
+            return self._parse_relative_years(expression, reference_date)
+        elif expr_type == "half_year":
+            return self._parse_half_year(expression, reference_date)
+        elif expr_type == "fiscal_quarter":
+            return self._parse_fiscal_quarter(expression, parse_rule, reference_date)
+        elif expr_type == "calendar_quarter":
+            return self._parse_calendar_quarter(expression, reference_date)
+        elif expr_type == "cross_fiscal_year":
+            return self._parse_cross_fiscal_year(expression, parse_rule)
+        elif expr_type == "fiscal_year_quarter":
+            return self._parse_fiscal_year_quarter(expression, parse_rule)
 
+        logger.warning(f"未知的时间表达式类型: {expr_type}")
         return None
 
     def _parse_fiscal_year(self, expression: str, rule: Dict[str, Any], reference_date: date) -> Dict[str, Any]:
@@ -175,6 +190,206 @@ class TermService:
             "end_date": end_date.isoformat(),
             "sql_condition": f"date_column >= '{start_date}' AND date_column <= '{end_date}'",
             "description": f"{year}年第{quarter}季度（{start_date} 至 {end_date}）"
+        }
+
+    def _parse_relative_time(self, expression: str, reference_date: date) -> Dict[str, Any]:
+        """解析相对时间表达式（如 "过去3个月", "近6个月", "上个月"）"""
+        if "上个月" in expression:
+            end_d = date(reference_date.year, reference_date.month, 1) - relativedelta(days=1)
+            start_d = date(end_d.year, end_d.month, 1)
+            return {
+                "expression": expression,
+                "type": "relative_time",
+                "start_date": start_d.isoformat(),
+                "end_date": end_d.isoformat(),
+                "sql_condition": f"Year = {start_d.year} AND Month = {start_d.month}",
+                "description": f"上个月（{start_d} 至 {end_d}）"
+            }
+
+        num_match = re.search(r'(\d+)', expression)
+        if not num_match:
+            return None
+        months = int(num_match.group(1))
+
+        # 结束日期：当前月的前一天（即上个月最后一天）
+        end_d = date(reference_date.year, reference_date.month, 1) - relativedelta(days=1)
+        # 起始日期：往前推 N 个月的第一天
+        start_d = date(end_d.year, end_d.month, 1) - relativedelta(months=months - 1)
+
+        # 生成 SQL 条件
+        if start_d.year == end_d.year:
+            sql_cond = f"Year = {start_d.year} AND Month >= {start_d.month} AND Month <= {end_d.month}"
+        else:
+            sql_cond = (f"((Year = {start_d.year} AND Month >= {start_d.month}) OR "
+                        f"(Year > {start_d.year} AND Year < {end_d.year}) OR "
+                        f"(Year = {end_d.year} AND Month <= {end_d.month}))")
+
+        return {
+            "expression": expression,
+            "type": "relative_time",
+            "start_date": start_d.isoformat(),
+            "end_date": end_d.isoformat(),
+            "sql_condition": sql_cond,
+            "description": f"过去{months}个月（{start_d} 至 {end_d}）"
+        }
+
+    def _parse_relative_years(self, expression: str, reference_date: date) -> Dict[str, Any]:
+        """解析相对年份表达式（如 "过去3年", "近5年"）"""
+        num_match = re.search(r'(\d+)', expression)
+        if not num_match:
+            return None
+        years = int(num_match.group(1))
+
+        end_d = date(reference_date.year - 1, 12, 31)
+        start_d = date(reference_date.year - years, 1, 1)
+
+        sql_cond = f"Year >= {start_d.year} AND Year <= {end_d.year}"
+
+        return {
+            "expression": expression,
+            "type": "relative_years",
+            "start_date": start_d.isoformat(),
+            "end_date": end_d.isoformat(),
+            "sql_condition": sql_cond,
+            "description": f"过去{years}年（{start_d.year} 至 {end_d.year}）"
+        }
+
+    def _parse_half_year(self, expression: str, reference_date: date) -> Dict[str, Any]:
+        """解析半年表达式（如 "上半年", "下半年", "1H", "2H"）"""
+        is_first_half = "上半年" in expression or "1H" in expression
+
+        if is_first_half:
+            start_month, end_month = 1, 6
+            label = "上半年"
+        else:
+            start_month, end_month = 7, 12
+            label = "下半年"
+
+        year = reference_date.year
+        start_d = date(year, start_month, 1)
+        end_d = date(year, end_month, 30 if end_month == 6 else 31)
+
+        return {
+            "expression": expression,
+            "type": "half_year",
+            "start_date": start_d.isoformat(),
+            "end_date": end_d.isoformat(),
+            "sql_condition": f"Year = {year} AND Month >= {start_month} AND Month <= {end_month}",
+            "description": f"{year}年{label}（{start_d} 至 {end_d}）"
+        }
+
+    def _parse_fiscal_quarter(self, expression: str, rule: Dict[str, Any], reference_date: date) -> Dict[str, Any]:
+        """解析财务季度表达式（如 "FQ1", "FQ3"）
+        联想财年：FQ1=4-6月, FQ2=7-9月, FQ3=10-12月, FQ4=1-3月
+        """
+        fq_match = re.search(r'FQ([1-4])', expression)
+        if not fq_match:
+            return None
+        fq = int(fq_match.group(1))
+
+        # 财务季度到自然月的映射
+        fq_month_map = {1: (4, 6), 2: (7, 9), 3: (10, 12), 4: (1, 3)}
+        start_month, end_month = fq_month_map[fq]
+
+        year = reference_date.year
+        # FQ4 属于下一自然年的 1-3 月
+        if fq == 4:
+            year = reference_date.year + 1 if reference_date.month >= 4 else reference_date.year
+
+        start_d = date(year, start_month, 1)
+        end_d = date(year, end_month, 1) + relativedelta(months=1, days=-1)
+
+        return {
+            "expression": expression,
+            "type": "fiscal_quarter",
+            "start_date": start_d.isoformat(),
+            "end_date": end_d.isoformat(),
+            "sql_condition": f"Year = {year} AND Month >= {start_month} AND Month <= {end_month}",
+            "description": f"财务季度FQ{fq}（{start_d} 至 {end_d}）"
+        }
+
+    def _parse_calendar_quarter(self, expression: str, reference_date: date) -> Dict[str, Any]:
+        """解析自然季度表达式（如 "CQ1", "CQ3"）
+        CQ1=1-3月, CQ2=4-6月, CQ3=7-9月, CQ4=10-12月
+        """
+        cq_match = re.search(r'CQ([1-4])', expression)
+        if not cq_match:
+            return None
+        cq = int(cq_match.group(1))
+
+        year = reference_date.year
+        start_month = (cq - 1) * 3 + 1
+        start_d = date(year, start_month, 1)
+
+        if cq == 4:
+            end_d = date(year, 12, 31)
+        else:
+            end_d = date(year, start_month + 2, 1) + relativedelta(months=1, days=-1)
+
+        return {
+            "expression": expression,
+            "type": "calendar_quarter",
+            "start_date": start_d.isoformat(),
+            "end_date": end_d.isoformat(),
+            "sql_condition": f"Year = {year} AND Month >= {start_month} AND Month <= {start_month + 2}",
+            "description": f"{year}年自然季度CQ{cq}（{start_d} 至 {end_d}）"
+        }
+
+    def _parse_cross_fiscal_year(self, expression: str, rule: Dict[str, Any]) -> Dict[str, Any]:
+        """解析跨财年表达式（如 "FY23/24"）
+        FY23/24 表示 FY23 和 FY24 两个完整财年，即 2023-04-01 至 2025-03-31
+        """
+        match = re.search(r'FY(\d{2})/(\d{2})', expression)
+        if not match:
+            return None
+        start_fy = 2000 + int(match.group(1))
+        end_fy = 2000 + int(match.group(2))
+
+        start_month = rule.get("start_month", 4)
+        start_d = date(start_fy, start_month, 1)
+        end_d = date(end_fy + 1, start_month, 1) - relativedelta(days=1)
+
+        return {
+            "expression": expression,
+            "type": "cross_fiscal_year",
+            "start_date": start_d.isoformat(),
+            "end_date": end_d.isoformat(),
+            "sql_condition": f"FiscalYear >= {start_fy} AND FiscalYear <= {end_fy}",
+            "description": f"FY{match.group(1)}/FY{match.group(2)}（{start_d} 至 {end_d}）"
+        }
+
+    def _parse_fiscal_year_quarter(self, expression: str, rule: Dict[str, Any]) -> Dict[str, Any]:
+        """解析财年+财务季度表达式（如 "23FQ1", "FY23 FQ2"）"""
+        match = re.search(r'(\d{2,4})\s*FQ([1-4])', expression)
+        if not match:
+            return None
+        year_str = match.group(1)
+        if len(year_str) == 2:
+            fy = 2000 + int(year_str)
+        else:
+            fy = int(year_str)
+        fq = int(match.group(2))
+
+        # 财务季度到自然月的映射（财年从4月开始）
+        fq_month_map = {1: (4, 6), 2: (7, 9), 3: (10, 12), 4: (1, 3)}
+        start_month, end_month = fq_month_map[fq]
+
+        # FQ4 的自然年是财年+1
+        if fq == 4:
+            natural_year = fy + 1
+        else:
+            natural_year = fy
+
+        start_d = date(natural_year, start_month, 1)
+        end_d = date(natural_year, end_month, 1) + relativedelta(months=1, days=-1)
+
+        return {
+            "expression": expression,
+            "type": "fiscal_year_quarter",
+            "start_date": start_d.isoformat(),
+            "end_date": end_d.isoformat(),
+            "sql_condition": f"FiscalYear = {fy} AND FiscalQuarter = {fq}",
+            "description": f"FY{fy} FQ{fq}（{start_d} 至 {end_d}）"
         }
 
     def enrich_query_context(self, user_query: str) -> Dict[str, Any]:

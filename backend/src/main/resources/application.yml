@@ -33,7 +33,7 @@ spring:
   # 数据库配置（用于 Text2SQL）
   datasource:
     # 主数据源 - 出货数据
-    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:shipment_data}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:shipment_data}?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -41,7 +41,7 @@ spring:
   # 对话数据库配置
   conversation:
     datasource:
-      url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${CONV_DB_NAME:chatbi_conversations}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${CONV_DB_NAME:chatbi_conversations}?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
       username: ${DB_USERNAME:root}
       password: ${DB_PASSWORD:123456}
       driver-class-name: com.mysql.cj.jdbc.Driver
@@ -49,7 +49,7 @@ spring:
   # 配置数据库配置（用于存储应用级配置，如数据源配置等）
   config:
     datasource:
-      url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${CONFIG_DB_NAME:chatbi_config}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+      url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${CONFIG_DB_NAME:chatbi_config}?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
       username: ${DB_USERNAME:root}
       password: ${DB_PASSWORD:123456}
       driver-class-name: com.mysql.cj.jdbc.Driver

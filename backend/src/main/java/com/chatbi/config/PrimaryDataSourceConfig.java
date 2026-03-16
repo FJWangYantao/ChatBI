@@ -1,6 +1,7 @@
 package com.chatbi.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,12 +36,15 @@ public class PrimaryDataSourceConfig {
     @Bean(name = "primaryDataSource")
     @Primary
     public DataSource primaryDataSource() {
-        return DataSourceBuilder.create()
+        HikariDataSource ds = (HikariDataSource) DataSourceBuilder.create()
                 .url(url)
                 .username(username)
                 .password(password)
                 .driverClassName(driverClassName)
+                .type(HikariDataSource.class)
                 .build();
+        ds.setConnectionInitSql("SET NAMES utf8mb4");
+        return ds;
     }
 
     /**

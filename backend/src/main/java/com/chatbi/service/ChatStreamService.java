@@ -22,7 +22,6 @@ import java.util.regex.Pattern;
 public class ChatStreamService {
 
     private final DynamicChatClientFactory chatClientFactory;
-    private final ModelOptionsProvider modelOptions;
     private final ConversationService conversationService;
     private final IntentRecognitionService intentRecognitionService;
     private final PromptEnhancementManager enhancementManager;
@@ -54,7 +53,6 @@ public class ChatStreamService {
             Text2SQLAgent text2SQLAgent
     ) {
         this.chatClientFactory = chatClientFactory;
-        this.modelOptions = modelOptions;
         this.conversationService = conversationService;
         this.intentRecognitionService = intentRecognitionService;
         this.enhancementManager = enhancementManager;
@@ -151,6 +149,7 @@ public class ChatStreamService {
                 emitStatus(emitter, "intent_detection", "正在识别意图...", 1, 7);
                 intentResponse = recognizeIntent(message);
                 intent = IntentType.valueOf(intentResponse.getCategory());
+                log.info("[ChatStreamService] 意图识别结果: {}", intentResponse.getCategory());
             }
 
             // 发送意图事件（如果有意图识别结果）
@@ -882,18 +881,13 @@ public class ChatStreamService {
         long startTime = System.currentTimeMillis();
         try {
             SseEmitterContext.setEmitter(emitter);
-            log.info("[QueryMode] SseEmitter 已设置");
 
             // 1. 发送状态事件
-            log.info("[QueryMode] 准备发送状态事件");
             emitStatus(emitter, "sql_generation", "正在生成 SQL...", 1, 2);
-            log.info("[QueryMode] 状态事件已发送");
 
             // 2. 流式生成 SQL
             String tagId = UUID.randomUUID().toString();
-            log.info("[QueryMode] 准备发送 tag_start，tagId: {}", tagId);
             emitTagStart(emitter, tagId, "sql_editable", "生成的 SQL");
-            log.info("[QueryMode] tag_start 已发送");
 
             StringBuilder sqlBuilder = new StringBuilder();
 
@@ -904,7 +898,7 @@ public class ChatStreamService {
 
             // 使用 Text2SQLAgent 的 buildSqlPrompt 方法（包含 MCP 增强）
             String systemPrompt = text2SQLAgent.buildSqlPromptWithMCP(query, schemaInfo);
-            log.info("[QueryMode] Prompt 构建完成（含 MCP 增强），长度: {}", systemPrompt.length());
+            log.info("[QueryMode] Prompt 构建完成（含 MCP 增强），实际Prompt:\n {}", systemPrompt.toString());
 
             // 动态创建 ChatClient 并流式生成 SQL
             log.info("[QueryMode] 开始调用 AI 生成 SQL");
@@ -929,7 +923,7 @@ public class ChatStreamService {
             }
 
             String sql = sqlBuilder.toString();
-            log.info("[QueryMode] 原始 SQL: {}", sql.substring(0, Math.min(100, sql.length())));
+            log.info("[QueryMode] 原始 SQL:\n \n {}", sql.substring(0, Math.min(1000, sql.length())));
 
             if (sql.trim().isEmpty()) {
                 log.warn("[QueryMode] 生成的 SQL 为空");
@@ -951,7 +945,6 @@ public class ChatStreamService {
                     .trim();
 
             // 4. 发送 tag_end（包含完整 SQL 和可编辑标识）
-            log.info("[QueryMode] 准备发送 tag_end");
             Map<String, Object> sqlContent = Map.of(
                     "sql", finalSQL,
                     "editable", true,
@@ -959,10 +952,8 @@ public class ChatStreamService {
             );
 
             emitTagEnd(emitter, tagId, "sql_editable", "生成的 SQL", sqlContent);
-            log.info("[QueryMode] tag_end 已发送");
 
             // 5. 保存消息
-            log.info("[QueryMode] 保存消息到数据库");
             MessageTag sqlTag = new MessageTag();
             sqlTag.setType("sql_editable");
             sqlTag.setTitle("生成的 SQL");
@@ -986,12 +977,4 @@ public class ChatStreamService {
         }
     }
 
-    /**
-     * 构建 SQL 生成 prompt（已废弃，使用 Text2SQLAgent.buildSqlPromptWithMCP）
-     */
-    @Deprecated
-    private String buildSqlPrompt(String dataQuery, String schemaInfo) {
-        // 此方法已废弃，保留仅为兼容性
-        return text2SQLAgent.buildSqlPromptWithMCP(dataQuery, schemaInfo);
-    }
 }
