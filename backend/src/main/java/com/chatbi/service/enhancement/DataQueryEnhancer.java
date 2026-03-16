@@ -239,6 +239,13 @@ public class DataQueryEnhancer implements PromptEnhancer {
             return buildAggregationEnhancement(subtype);
         }
 
+        // 对 shipment/出货类问题，"多少"通常是在问 Volume 总量，而不是记录条数
+        if ((message.contains("出货") || message.contains("shipment") || message.contains("Volume"))
+                && (message.contains("多少") || message.contains("总量") || message.contains("总出货量")
+                || message.contains("一共") || message.contains("合计") || message.contains("总计"))) {
+            return buildAggregationEnhancement("AGGREGATION_SUM");
+        }
+
         // 根据消息内容推断聚合方式
         if (message.contains("总计") || message.contains("总和") || message.contains("合计")) {
             return buildAggregationEnhancement("AGGREGATION_SUM");

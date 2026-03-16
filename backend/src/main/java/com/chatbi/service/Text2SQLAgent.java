@@ -220,11 +220,14 @@ public class Text2SQLAgent {
         // 要求
         promptBuilder.append("""
             要求：
-            1. 优先查询明细行数据（不使用聚合函数），让 Python 做后续统计分析。
+            1. 先判断用户要“明细”还是“统计结果”：
+               - 如果用户问“多少/总量/总出货量/一共出了多少/合计/总计/平均/最大/最小/占比”等统计问题，必须直接在 SQL 中使用聚合函数，不要返回明细行。
+               - 如果用户问“明细/list/有哪些/分别是什么记录”等明细问题，才返回明细行。
+               - 对出货相关问题，默认指标是 Volume；“出货量多少/出了多少货”通常表示 SUM(Volume)，不是 COUNT(*)。
             2. 只选择必要的字段：
                - 过滤条件相关的字段（如 PRODUCT_CATEGORY, Year, Month）
-               - 分析目标字段（如 Volume）
-               - 分组维度字段（如需要按产品/时间分组）
+               - 分析目标字段（如 Volume 或 SUM(Volume)）
+               - 分组维度字段（如明确要求按产品/时间/GEO分组时）
                ⚠️ 不要使用 SELECT * 或选择大量无关字段
                ⚠️ 时间字段二选一：如果用户提到"财年/FY"，只选 FiscalYear/FiscalMonth/FiscalQuarter；否则只选 Year/Month/Quarter
                ⚠️ 禁止同时选择 Year/Month 和 FiscalYear/FiscalMonth，这是冗余的
@@ -239,6 +242,10 @@ public class Text2SQLAgent {
                - 只有在 MCP 未提供精确值时，才可以使用 LIKE 模糊匹配
                - 【禁止】同时使用精确匹配和LIKE：WHERE (PRODUCT_SERIES = 'IdeaPad Slim 3' OR PRODUCT_NAME LIKE '%S3%')
             4. 时间范围解析规则：
+               - 自然年月范围要按用户字面时间精确过滤。例如“2023年3月到2024年4月”表示 2023-03-01 至 2024-04-30：
+                 WHERE ((Year = 2023 AND Month >= 3) OR (Year = 2024 AND Month <= 4))
+               - 如果跨越两年以上，必须包含中间完整年份：
+                 WHERE ((Year = 2023 AND Month >= 3) OR (Year > 2023 AND Year < 2025) OR (Year = 2025 AND Month <= 4))
                - "2024.2-25.2" 表示 FY24 M2 到 FY25 M2（跨财年），需要用 OR 连接：
                  WHERE (FiscalYear = 2024 AND FiscalMonth >= 2) OR (FiscalYear = 2025 AND FiscalMonth <= 2)
                - FiscalMonth 只有 1-12，不可能有 13 以上的值
@@ -246,10 +253,15 @@ public class Text2SQLAgent {
             5. 产品型号中的数字识别：
                - "S3 15" 中的 "15" 指屏幕尺寸，需要添加 PRODUCT_SCREENSIZE = '15' 或 PRODUCT_SCREENSIZE = '15.6'
                - "Yoga Pro 7" 中的 "7" 是产品系列名称的一部分，应该在 PRODUCT_NAME 或 PRODUCT_SERIES 中匹配
-            6. 如果必须使用聚合函数（SUM/COUNT/AVG等），则 SELECT 中所有非聚合列都必须出现在 GROUP BY 中。
-            7. 不要在同一 SELECT 中混用聚合列和非聚合明细列（如 customer_id、gender），除非它们都在 GROUP BY 里。
-            8. 如果是时间序列分析，请确保包含日期字段。
-            9. 只返回 SQL，不要解释，不要 markdown 代码块。
+            6. 统计查询的聚合规则：
+               - “出货量多少/出了多少货/总出货量” -> 使用 SUM(Volume)
+               - “多少条记录/多少个产品/多少个型号” -> 使用 COUNT()
+               - “每月/每季度/各GEO分别多少” -> 先按对应维度 GROUP BY，再对 Volume 做 SUM()
+               - 如果用户没有要求“分别/按月/by month/by geo”，就返回一个总值，不要附带 Year、Month 等明细维度列
+            7. 如果使用聚合函数（SUM/COUNT/AVG等），则 SELECT 中所有非聚合列都必须出现在 GROUP BY 中。
+            8. 不要在同一 SELECT 中混用聚合列和非聚合明细列（如 customer_id、gender），除非它们都在 GROUP BY 里。
+            9. 如果是时间序列分析，请确保包含日期字段。
+            10. 只返回 SQL，不要解释，不要 markdown 代码块。
             """);
         return promptBuilder.toString();
     }

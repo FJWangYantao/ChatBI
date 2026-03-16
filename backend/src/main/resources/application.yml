@@ -84,6 +84,14 @@ server:
       charset: UTF-8
       enabled: true
       force: true
+  # Tomcat 线程池配置（优化并发处理能力）
+  tomcat:
+    threads:
+      max: 200          # 最大工作线程数
+      min-spare: 10     # 最小空闲线程数
+    max-connections: 10000  # 最大连接数
+    accept-count: 100   # 等待队列长度
+    connection-timeout: 20000  # 连接超时（毫秒）
 
 # NER 模型服务配置 (BERT+CRF 本地模型)
 ner-model-service:
