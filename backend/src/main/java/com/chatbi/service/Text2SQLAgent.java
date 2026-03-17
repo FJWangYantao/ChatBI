@@ -170,6 +170,11 @@ public class Text2SQLAgent {
                 for (Map<String, Object> term : terms) {
                     promptBuilder.append("  * ").append(term.get("term"))
                         .append("：").append(term.get("definition")).append("\n");
+                    // 动态输出 sql_hint
+                    Object sqlHint = term.get("sql_hint");
+                    if (sqlHint != null && !sqlHint.toString().isEmpty()) {
+                        promptBuilder.append("    SQL提示：").append(sqlHint).append("\n");
+                    }
                 }
 
                 for (Map<String, Object> term : terms) {
@@ -196,6 +201,20 @@ public class Text2SQLAgent {
                             log.warn("展开产品系列 {} 失败: {}", termName, e.getMessage());
                         }
                     }
+                }
+            }
+
+            // 识别到的具体产品型号
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> models = (List<Map<String, Object>>) mcpContext.get("identified_models");
+            if (models != null && !models.isEmpty()) {
+                promptBuilder.append("- 识别到的具体产品型号：\n");
+                for (Map<String, Object> model : models) {
+                    String series = (String) model.get("series");
+                    String fullName = (String) model.get("full_name");
+                    promptBuilder.append("  * ").append(series).append(" 系列的具体型号: ").append(fullName).append("\n")
+                        .append("    提示：匹配时请结合用户查询中的其他限定条件（如代次Gen、屏幕尺寸等）一起过滤\n");
+                    log.info("识别到具体产品型号: {} (系列: {})", fullName, series);
                 }
             }
 
@@ -313,6 +332,7 @@ public class Text2SQLAgent {
                  WHERE (FiscalYear = 2024 AND FiscalMonth >= 2) OR (FiscalYear = 2025 AND FiscalMonth <= 2)
                - FiscalMonth 只有 1-12，不可能有 13 以上的值
                - "上个月/上个季度/上个财年" 等相对时间，需要计算具体的年月值，不要使用数据库函数
+               - 如果识别到的业务术语包含SQL提示，请严格按照SQL提示生成对应的SQL逻辑
             5. 产品型号中的数字识别：
                - "S3 15" 中的 "15" 指屏幕尺寸，需要添加 PRODUCT_SCREENSIZE = '15' 或 PRODUCT_SCREENSIZE = '15.6'
                - "Yoga Pro 7" 中的 "7" 是产品系列名称的一部分，应该在 PRODUCT_NAME 或 PRODUCT_SERIES 中匹配

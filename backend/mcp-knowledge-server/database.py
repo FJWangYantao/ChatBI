@@ -27,6 +27,7 @@ class BusinessTerm(Base):
     definition = Column(Text)
     aliases = Column(Text)  # JSON 数组
     examples = Column(Text)  # JSON 数组
+    sql_hint = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -34,7 +35,7 @@ class BusinessTerm(Base):
     column_mappings = relationship("ColumnMapping", back_populates="term")
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result = {
             "id": self.id,
             "term": self.term,
             "category": self.category,
@@ -42,6 +43,9 @@ class BusinessTerm(Base):
             "aliases": json.loads(self.aliases) if self.aliases else [],
             "examples": json.loads(self.examples) if self.examples else [],
         }
+        if self.sql_hint:
+            result["sql_hint"] = self.sql_hint
+        return result
 
 
 class ColumnMapping(Base):
@@ -185,6 +189,7 @@ class Database:
                     definition=term_data.get("definition"),
                     aliases=json.dumps(term_data.get("aliases", []), ensure_ascii=False),
                     examples=json.dumps(term_data.get("examples", []), ensure_ascii=False),
+                    sql_hint=term_data.get("sql_hint"),
                 )
                 session.add(term)
                 session.flush()
@@ -309,6 +314,7 @@ class Database:
                 definition=term_data.get("definition"),
                 aliases=json.dumps(term_data.get("aliases", []), ensure_ascii=False),
                 examples=json.dumps(term_data.get("examples", []), ensure_ascii=False),
+                sql_hint=term_data.get("sql_hint"),
             )
             session.add(term)
             session.commit()
@@ -338,6 +344,8 @@ class Database:
                 term.aliases = json.dumps(term_data["aliases"], ensure_ascii=False)
             if "examples" in term_data:
                 term.examples = json.dumps(term_data["examples"], ensure_ascii=False)
+            if "sql_hint" in term_data:
+                term.sql_hint = term_data["sql_hint"]
 
             term.updated_at = datetime.utcnow()
             session.commit()

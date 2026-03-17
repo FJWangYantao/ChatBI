@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "ChatBI - 智能数据分析平台",
   description: "基于 AI 的数据分析与可视化平台",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

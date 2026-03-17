@@ -104,6 +104,7 @@ class CreateBusinessTermRequest(BaseModel):
     definition: str = Field(..., min_length=1, description="术语定义")
     aliases: List[str] = Field(default_factory=list, description="别名列表")
     examples: List[str] = Field(default_factory=list, description="示例列表")
+    sql_hint: Optional[str] = Field(None, description="SQL生成提示")
 
 
 class UpdateBusinessTermRequest(BaseModel):
@@ -113,6 +114,7 @@ class UpdateBusinessTermRequest(BaseModel):
     definition: Optional[str] = Field(None, min_length=1, description="术语定义")
     aliases: Optional[List[str]] = Field(None, description="别名列表")
     examples: Optional[List[str]] = Field(None, description="示例列表")
+    sql_hint: Optional[str] = Field(None, description="SQL生成提示")
 
 
 class CreateColumnMappingRequest(BaseModel):

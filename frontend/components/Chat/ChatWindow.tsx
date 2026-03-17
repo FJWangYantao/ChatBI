@@ -564,13 +564,12 @@ function renderSuggestions(
   if (!sugs || sugs.length === 0) return null;
   return (
     <div className="w-full mt-4">
-      <p className="text-xs font-medium opacity-60 mb-3 font-display">💡 推荐后续问题</p>
       <div className="flex flex-wrap gap-2">
         {sugs.map((suggestion, idx) => (
           <button
             key={idx}
             onClick={() => onSendMessage?.(suggestion)}
-            className="px-4 py-2.5 text-sm text-left rounded-2xl glass-card border border-accent/30 hover:border-accent/60 hover:bg-accent/10 transition-all duration-200"
+            className="px-3 py-1.5 text-sm text-left rounded-full border border-border/50 hover:border-accent/50 hover:bg-accent/5 transition-colors"
           >
             {suggestion}
           </button>
@@ -625,57 +624,27 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
 
   return (
     <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
-      <div className="mx-auto max-w-5xl w-full px-8 py-10 space-y-10">
+      <div className="mx-auto max-w-3xl w-full px-6 py-8 space-y-6">
         {messages.map((message) => (
           <div
             key={message.id}
-            className={`group flex gap-4 ${message.role === "user" ? "flex-row-reverse" : "flex-row"
-              }`}
+            className={`group ${message.role === "user" ? "flex justify-end" : ""}`}
           >
-            {/* 头像 */}
-            <div
-              className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl font-medium text-sm transition-all duration-200 ${message.role === "user"
-                ? "bg-accent/15 border border-accent/30 text-accent"
-                : "glass-card border border-border/50"
-                }`}
-            >
-              {message.role === "user" ? "我" : "AI"}
-            </div>
-
-            {/* 消息内容 - 自适应宽度 */}
-            <div
-              className={`${message.role === "user"
-                ? "max-w-[70%] flex flex-col items-end"
-                : "w-full flex flex-col items-start"
-                }`}
-            >
-              {/* 意图标签 - 显示在消息气泡上方 */}
-              {message.role === "assistant" && message.intentInfo && (
-                <div className="mb-2">
-                  <IntentBadge intentInfo={message.intentInfo} />
-                </div>
-              )}
-
-              {/* 气泡 */}
-              <div
-                className={`rounded-2xl px-5 py-4 transition-all duration-200 ${message.role === "user"
-                  ? "bg-accent/10 border border-accent/20"
-                  : "glass-card border border-border/50 hover:border-accent/20"
-                  } ${message.role === "assistant" && message.tags?.some(t => t.type === 'analysis_result') ? 'w-full' : ''}`}
-              >
-                {/* 编辑态 */}
+            {message.role === "user" ? (
+              /* ── 用户消息：右对齐气泡 ── */
+              <div className="max-w-[75%] flex flex-col items-end">
                 {editingMessageId === message.id ? (
-                  <div>
+                  <div className="w-full rounded-2xl bg-accent/8 px-4 py-3">
                     <textarea
                       value={editContent}
                       onChange={(e) => setEditContent(e.target.value)}
-                      className="w-full min-h-[80px] glass-card border border-border/50 text-foreground text-sm p-3 rounded-xl focus:border-accent focus:ring-2 focus:ring-accent/20 outline-none resize-y transition-colors duration-200"
+                      className="w-full min-h-[80px] bg-transparent text-foreground text-sm p-2 rounded-lg border border-accent/20 focus:border-accent focus:ring-1 focus:ring-accent/20 outline-none resize-y"
                       autoFocus
                     />
                     <div className="flex justify-end gap-2 mt-2">
                       <button
                         onClick={() => setEditingMessageId(null)}
-                        className="px-3 py-1.5 text-xs font-medium rounded-xl glass-card border border-border/50 hover:border-accent/50 hover:bg-accent/10 transition-all duration-200"
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg hover:bg-foreground/5 transition-colors"
                       >
                         取消
                       </button>
@@ -686,153 +655,163 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
                             setEditingMessageId(null);
                           }
                         }}
-                        className="px-3 py-1.5 text-xs font-medium gradient-btn text-white rounded-xl transition-all duration-200"
+                        className="px-3 py-1.5 text-xs font-medium gradient-btn text-white rounded-lg transition-all duration-200"
                       >
                         发送
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <>
-                    {/* 步骤时间线 */}
-                    {(message.isStreaming || (message.completedSteps && message.completedSteps.length > 0)) && (
-                      <StepTimeline
-                        completedSteps={message.completedSteps}
-                        currentStage={message.streamingStage}
-                        currentMessage={message.streamingMessage}
-                        isStreaming={message.isStreaming}
-                      />
-                    )}
-
-                    {/* 推理过程展示 */}
-                    {message.role === "assistant" && message.reasoningSteps && message.reasoningSteps.length > 0 && (
-                      <ReasoningChain
-                        steps={message.reasoningSteps}
-                        isStreaming={message.isStreaming && message.streamingStage === "reasoning"}
-                      />
-                    )}
-
-                    {/* 标签化消息或有 tags 的消息 */}
-                    {message.tags && message.tags.length > 0 ? (
-                      // 查数模式：如果只有一个 sql_editable tag，直接渲染
-                      message.tags.length === 1 && message.tags[0].type === 'sql_editable' ? (
-                        <EditableSqlBlock
-                          tag={message.tags[0]}
-                          onExecuteResult={(resultTag) => {
-                            if (onUpdateMessage) {
-                              const newTags = [...(message.tags || []), resultTag];
-                              onUpdateMessage(message.id, newTags);
-                            }
-                          }}
-                        />
-                      ) : (
-                        <TaggedMessage
-                          message={message}
-                          onUpdateMessage={onUpdateMessage}
-                        />
-                      )
-                    ) : (
-                      <div className={`max-w-none break-words leading-relaxed ${message.role === "user"
-                        ? "prose prose-sm max-w-none"
-                        : "prose prose-sm dark:prose-invert max-w-none"
-                        }`}>
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {message.content}
-                        </ReactMarkdown>
-                        {message.isStreaming && message.content && (
-                          <span className="inline-block w-2 h-5 bg-emerald-500 animate-pulse ml-0.5 align-middle" />
-                        )}
-                      </div>
-                    )}
-
-                    <span
-                      className={`mt-2 text-xs block opacity-60 font-mono ${message.role === "user" ? "" : ""
-                        }`}
-                    >
-                      {message.timestamp.toLocaleTimeString()}
-                    </span>
-                  </>
+                  <div className="rounded-2xl bg-accent/8 px-4 py-3">
+                    <div className="prose prose-sm max-w-none break-words leading-relaxed">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                )}
+                {/* 用户消息工具栏 */}
+                {!message.isStreaming && editingMessageId !== message.id && (
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 mt-1">
+                    <MessageToolbar
+                      message={message}
+                      onCopy={() => navigator.clipboard.writeText(message.content)}
+                      onEdit={() => {
+                        setEditingMessageId(message.id);
+                        setEditContent(message.content);
+                      }}
+                    />
+                  </div>
                 )}
               </div>
-
-              {/* 工具栏 - 流式输出中不显示 */}
-              {!message.isStreaming && editingMessageId !== message.id && (
-                <div className={`opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${
-                  message.role === "user" ? "flex justify-end" : ""
-                }`}>
-                  <MessageToolbar
-                    message={message}
-                    onCopy={() => navigator.clipboard.writeText(message.content)}
-                    onEdit={message.role === "user" ? () => {
-                      setEditingMessageId(message.id);
-                      setEditContent(message.content);
-                    } : undefined}
-                    onRegenerate={message.role === "assistant" && onRegenerateMessage
-                      ? () => onRegenerateMessage(message.id)
-                      : undefined}
-                    onFeedback={message.role === "assistant" && onFeedback
-                      ? (fb) => onFeedback(message.id, fb)
-                      : undefined}
-                  />
-                </div>
-              )}
-
-              {/* ── analysis_result 独立全宽展示区（气泡外） ── */}
-              {message.role === "assistant" && message.tags
-                ?.filter(t => t.type === 'analysis_result')
-                .map((tag, idx) => (
-                  <div key={`analysis-${idx}`} className="w-full mt-4">
-                    <AnalysisResultRenderer content={tag.content} title={tag.title} allTags={message.tags || []} />
+            ) : (
+              /* ── AI 消息：左对齐，无外层气泡 ── */
+              <div className="w-full flex flex-col items-start">
+                {/* 意图标签 */}
+                {message.intentInfo && (
+                  <div className="mb-2">
+                    <IntentBadge intentInfo={message.intentInfo} />
                   </div>
-                ))
-              }
+                )}
 
-              {/* ── image 独立全宽展示区（气泡外） ── */}
-              {message.role === "assistant" && message.tags
-                ?.filter(t => t.type === 'image')
-                .map((tag, idx) => (
-                  <div key={`image-${idx}`} className="w-full mt-4 glass-card rounded-2xl border border-border/50 overflow-hidden hover:border-accent/30 transition-all duration-200">
-                    <div className="px-5 py-3 border-b border-border/50 bg-gradient-to-r from-muted/50 to-background flex items-center gap-2">
-                      <span className="text-base">🖼️</span>
-                      <span className="text-sm font-semibold font-display">{tag.title || '分析图表'}</span>
-                    </div>
-                    <div className="p-4">
-                      <img
-                        src={tag.content}
-                        alt="Analysis Chart"
-                        className="w-full h-auto rounded-xl"
-                        style={{ maxHeight: '500px', objectFit: 'contain' }}
+                {/* 步骤时间线 */}
+                {(message.isStreaming || (message.completedSteps && message.completedSteps.length > 0)) && (
+                  <div className="w-full mb-3">
+                    <StepTimeline
+                      completedSteps={message.completedSteps}
+                      currentStage={message.streamingStage}
+                      currentMessage={message.streamingMessage}
+                      isStreaming={message.isStreaming}
+                    />
+                  </div>
+                )}
+
+                {/* 推理过程展示 */}
+                {message.reasoningSteps && message.reasoningSteps.length > 0 && (
+                  <div className="w-full mb-3">
+                    <ReasoningChain
+                      steps={message.reasoningSteps}
+                      isStreaming={message.isStreaming && message.streamingStage === "reasoning"}
+                    />
+                  </div>
+                )}
+
+                {/* 主内容区 - 无气泡包裹 */}
+                <div className="w-full">
+                  {message.tags && message.tags.length > 0 ? (
+                    message.tags.length === 1 && message.tags[0].type === 'sql_editable' ? (
+                      <EditableSqlBlock
+                        tag={message.tags[0]}
+                        onExecuteResult={(resultTag) => {
+                          if (onUpdateMessage) {
+                            const newTags = [...(message.tags || []), resultTag];
+                            onUpdateMessage(message.id, newTags);
+                          }
+                        }}
                       />
+                    ) : (
+                      <TaggedMessage
+                        message={message}
+                        onUpdateMessage={onUpdateMessage}
+                      />
+                    )
+                  ) : (
+                    <div className="prose prose-sm dark:prose-invert max-w-none break-words leading-relaxed">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {message.content}
+                      </ReactMarkdown>
+                      {message.isStreaming && message.content && (
+                        <span className="inline-block w-1.5 h-4 bg-accent/70 animate-pulse ml-0.5 align-middle rounded-sm" />
+                      )}
                     </div>
+                  )}
+                </div>
+
+                {/* 时间戳 + 工具栏 */}
+                {!message.isStreaming && editingMessageId !== message.id && (
+                  <div className="flex items-center gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <span className="text-xs opacity-50 font-mono">
+                      {message.timestamp.toLocaleTimeString()}
+                    </span>
+                    <MessageToolbar
+                      message={message}
+                      onCopy={() => navigator.clipboard.writeText(message.content)}
+                      onRegenerate={onRegenerateMessage
+                        ? () => onRegenerateMessage(message.id)
+                        : undefined}
+                      onFeedback={onFeedback
+                        ? (fb) => onFeedback(message.id, fb)
+                        : undefined}
+                    />
                   </div>
-                ))
-              }
+                )}
 
-              {/* ── 推荐后续问题（气泡外，来自 message.suggestions 或 tags 中的 suggestions） ── */}
-              {message.role === "assistant" && renderSuggestions(
-                message.suggestions,
-                message.tags,
-                onSendMessage
-              )}
-            </div>
+                {/* ── analysis_result 独立全宽展示区 ── */}
+                {message.tags
+                  ?.filter(t => t.type === 'analysis_result')
+                  .map((tag, idx) => (
+                    <div key={`analysis-${idx}`} className="w-full mt-4">
+                      <AnalysisResultRenderer content={tag.content} title={tag.title} allTags={message.tags || []} />
+                    </div>
+                  ))
+                }
 
+                {/* ── image 独立全宽展示区 ── */}
+                {message.tags
+                  ?.filter(t => t.type === 'image')
+                  .map((tag, idx) => (
+                    <div key={`image-${idx}`} className="w-full mt-4 rounded-xl border border-border/40 overflow-hidden">
+                      <div className="px-4 py-2.5 border-b border-border/30 bg-muted/30 flex items-center gap-2">
+                        <span className="text-sm">🖼️</span>
+                        <span className="text-sm font-medium">{tag.title || '分析图表'}</span>
+                      </div>
+                      <div className="p-3">
+                        <img
+                          src={tag.content}
+                          alt="Analysis Chart"
+                          className="w-full h-auto rounded-lg"
+                          style={{ maxHeight: '500px', objectFit: 'contain' }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                }
+
+                {/* ── 推荐后续问题 ── */}
+                {renderSuggestions(
+                  message.suggestions,
+                  message.tags,
+                  onSendMessage
+                )}
+              </div>
+            )}
           </div>
         ))}
 
-        {/* 加载动画 - 仅在发送中且最后消息是用户消息且没有助手占位时显示 */}
+        {/* 加载动画 */}
         {isSending && messages.length > 0 && messages[messages.length - 1].role === "user" && (
-          <div className="flex gap-4">
-            {/* AI 头像占位 */}
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl glass-card border border-border/50 font-medium text-sm">
-              AI
-            </div>
-
-            {/* 加载动画 */}
-            <div className="flex flex-col items-start">
-              <div className="rounded-2xl px-5 py-4 glass-card border border-border/50">
-                <LoadingSpinner />
-              </div>
-            </div>
+          <div className="flex items-center gap-2 py-2">
+            <LoadingSpinner />
           </div>
         )}
       </div>

@@ -6,6 +6,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
+from difflib import SequenceMatcher
 
 from database import db
 
@@ -392,6 +393,74 @@ class TermService:
             "description": f"FY{fy} FQ{fq}（{start_d} 至 {end_d}）"
         }
 
+    def _fuzzy_match(self, text: str, pattern: str, threshold: float = 0.75) -> Optional[int]:
+        """
+        模糊匹配：检查pattern是否在text中（容忍空格、大小写、轻微拼写错误）
+
+        Args:
+            text: 待匹配的文本（用户查询）
+            pattern: 匹配模式（术语或别名）
+            threshold: 相似度阈值（0-1），默认0.75
+
+        Returns:
+            匹配结束位置的索引（在标准化文本中），未匹配返回None
+        """
+        # 标准化：移除空格、转小写
+        text_norm = text.replace(" ", "").lower()
+        pattern_norm = pattern.replace(" ", "").lower()
+
+        # 1. 精确包含匹配（优先级最高）
+        idx = text_norm.find(pattern_norm)
+        if idx >= 0:
+            return idx + len(pattern_norm)
+
+        # 2. 模糊匹配：使用滑动窗口检查相似度
+        pattern_len = len(pattern_norm)
+        if pattern_len == 0:
+            return None
+
+        # 在text中寻找与pattern长度相近的子串
+        for i in range(len(text_norm) - pattern_len + 1):
+            substring = text_norm[i:i + pattern_len]
+            similarity = SequenceMatcher(None, substring, pattern_norm).ratio()
+            if similarity >= threshold:
+                return i + pattern_len
+
+        return None
+
+    # 需要捕获型号数字的品牌系列类别
+    _SERIES_CATEGORIES = {"品牌系列", "product_series", "product_family"}
+
+    def _extract_model_suffix(self, user_query: str, match_end: int, term_name: str) -> Optional[str]:
+        """
+        从用户查询中提取系列术语后面紧跟的型号数字
+
+        例如：用户输入 "YG Pro 7 Gen90"，识别到 "Yoga Pro" 后，
+        捕获后面的 "7"，组合成 "Yoga Pro 7"
+
+        Args:
+            user_query: 用户原始查询
+            match_end: 术语在标准化文本中的匹配结束位置
+            term_name: 术语标准名称（如 "Yoga Pro"）
+
+        Returns:
+            带型号的完整产品名（如 "Yoga Pro 7"），无型号返回None
+        """
+        query_norm = user_query.replace(" ", "").lower()
+
+        # 从匹配结束位置向后扫描，捕获紧跟的数字（可能有空格间隔）
+        remaining = query_norm[match_end:]
+
+        # 匹配紧跟的数字型号（如 "7"、"9"、"14"、"16"）
+        model_match = re.match(r'(\d{1,2})', remaining)
+        if model_match:
+            model_number = model_match.group(1)
+            full_name = f"{term_name} {model_number}"
+            logger.info(f"捕获到产品型号: {term_name} + {model_number} → {full_name}")
+            return full_name
+
+        return None
+
     def enrich_query_context(self, user_query: str) -> Dict[str, Any]:
         """
         为用户查询增强上下文
@@ -418,10 +487,31 @@ class TermService:
         for term_data in all_terms:
             term = term_data["term"]
             aliases = term_data.get("aliases", [])
+            category = term_data.get("category", "")
 
-            # 检查查询中是否包含该术语或其别名
-            if term in user_query or any(alias in user_query for alias in aliases):
+            # 使用模糊匹配检查查询中是否包含该术语或其别名
+            # 同时记录最佳匹配位置（用于后续型号捕获）
+            match_end = self._fuzzy_match(user_query, term)
+            if match_end is None:
+                for alias in aliases:
+                    match_end = self._fuzzy_match(user_query, alias)
+                    if match_end is not None:
+                        break
+
+            if match_end is not None:
                 context["identified_terms"].append(term_data)
+
+                # 对品牌系列类别，尝试捕获后面的型号数字
+                if category in self._SERIES_CATEGORIES:
+                    full_model_name = self._extract_model_suffix(user_query, match_end, term)
+                    if full_model_name:
+                        # 添加型号级别的信息到上下文
+                        context.setdefault("identified_models", []).append({
+                            "series": term,
+                            "full_name": full_model_name,
+                            "category": category
+                        })
+                        logger.info(f"识别到具体型号: {full_model_name}（系列: {term}）")
 
                 # 获取列映射
                 mapping = db.get_column_mapping(term)
@@ -444,6 +534,14 @@ class TermService:
             prompt_parts.append("\n业务术语解释：")
             for term in context["identified_terms"]:
                 prompt_parts.append(f"- {term['term']}: {term['definition']}")
+                if term.get('sql_hint'):
+                    prompt_parts.append(f"  SQL提示: {term['sql_hint']}")
+
+        if context.get("identified_models"):
+            prompt_parts.append("\n识别到的具体产品型号：")
+            for model in context["identified_models"]:
+                prompt_parts.append(f"- {model['series']} 系列的具体型号: {model['full_name']}")
+                prompt_parts.append(f"  提示：匹配时请结合用户查询中的其他限定条件（如代次Gen、屏幕尺寸等）一起过滤")
 
         if context["column_mappings"]:
             prompt_parts.append("\n数据库列映射：")

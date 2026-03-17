@@ -131,21 +131,24 @@
       "category": "时间",
       "definition": "Start Ship，产品首次出货日期，标志产品正式上市",
       "aliases": ["Start Ship", "开始出货", "首次出货"],
-      "examples": ["IPS5 16IRL8 SS的前三个月一共出了多少", "YG Pro 7 Gen90 SS后到现在的出货量", "从SS开始各月份出货情况"]
+      "examples": ["IPS5 16IRL8 SS的前三个月一共出了多少", "YG Pro 7 Gen90 SS后到现在的出货量", "从SS开始各月份出货情况"],
+      "sql_hint": "SS表示产品首次出货。必须用子查询获取SS时间点：SELECT MIN(Year) as ss_year, MIN(Month) as ss_month FROM statshipmentboxai WHERE PRODUCT_NAME = 'xxx' AND Volume > 0 AND Year = (SELECT MIN(Year) FROM statshipmentboxai WHERE PRODUCT_NAME = 'xxx' AND Volume > 0)。'SS后到现在'需加时间过滤：WHERE (Year > ss_year OR (Year = ss_year AND Month >= ss_month))。'SS前N个月'需先获取SS时间点再往前推算N个月作为起始时间。"
     },
     {
       "term": "EOL",
       "category": "时间",
       "definition": "End of Life，产品生命周期结束，停止生产和出货",
       "aliases": ["End of Life", "停产", "生命周期结束"],
-      "examples": ["EOL之后还有出货产品list", "EOL之后出货的by Q vol"]
+      "examples": ["EOL之后还有出货产品list", "EOL之后出货的by Q vol"],
+      "sql_hint": "EOL表示产品停产。'EOL前'用子查询获取最后出货年月：SELECT MAX(Year), MAX(Month) FROM statshipmentboxai WHERE PRODUCT_NAME = 'xxx' AND Volume > 0。"
     },
     {
       "term": "Lifecycle",
       "category": "时间",
       "definition": "产品生命周期，从SS(首次出货)到EOL(停产)的完整时间段",
       "aliases": ["生命周期", "整个生命周期", "lifecycle", "整个lifecycle"],
-      "examples": ["IPS5 16IRL8 整个lifecycle一共出了多少", "LOQ 15寸 70代整个lifecycle一共出了多少"]
+      "examples": ["IPS5 16IRL8 整个lifecycle一共出了多少", "LOQ 15寸 70代整个lifecycle一共出了多少"],
+      "sql_hint": "整个lifecycle等价于该产品从首次出货到最后出货的全部记录，直接查询所有Volume>0的记录即可。"
     },
     {
       "term": "NB",
