@@ -14,6 +14,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -312,14 +313,31 @@ public class ChatStreamService {
             }
         });
 
+        // 推理内容实时发送标记
+        AtomicBoolean reasoningEmitted = new AtomicBoolean(false);
+
         try {
             // 调用流式版 PlanningAgent：文本 token 实时转发，SQL 流式通过 tag 回调
             log.info("[handleDataAnalysisStream] 开始调用 planWithToolsStreaming, promptLength={}", promptToUse.length());
+
+            // 推理内容过滤器：缓存 REASONING_START 到 REASONING_END 之间的内容，不发送到前端
+            ReasoningFilter reasoningFilter = new ReasoningFilter(reasoningText -> {
+                try {
+                    emitReasoningSteps(emitter, reasoningText);
+                    reasoningEmitted.set(true);
+                } catch (Exception e) {
+                    log.warn("实时推理事件发送失败: {}", e.getMessage());
+                }
+            });
+
             toolResult = planningAgent.planWithToolsStreaming(
                     promptToUse,
                     delta -> {
                         try {
-                            emitTextDelta(emitter, delta);
+                            String filtered = reasoningFilter.filter(delta);
+                            if (filtered != null && !filtered.isEmpty()) {
+                                emitTextDelta(emitter, filtered);
+                            }
                         } catch (IOException e) {
                             log.debug("文本 delta 发送失败: {}", e.getMessage());
                         }
@@ -362,14 +380,16 @@ public class ChatStreamService {
         String conclusion = toolResult;
         Pattern reasoningPattern = Pattern.compile("<!--\\s*REASONING_START\\s*-->(.*?)<!--\\s*REASONING_END\\s*-->", Pattern.DOTALL);
         Matcher reasoningMatcher = reasoningPattern.matcher(toolResult);
+
         if (reasoningMatcher.find()) {
             reasoning = reasoningMatcher.group(1).trim();
             conclusion = toolResult.substring(0, reasoningMatcher.start()) + toolResult.substring(reasoningMatcher.end());
             conclusion = conclusion.trim();
         }
 
-        // 推送推理步骤（结构化事件，供前端展示推理链组件）
-        if (reasoning != null && !reasoning.isEmpty()) {
+        // 后置推理发送：仅在实时回调未触发时作为 fallback
+        if (!reasoningEmitted.get() && reasoning != null && !reasoning.isEmpty()) {
+            log.info("[handleDataAnalysisStream] 实时推理未触发，使用 fallback 发送推理步骤");
             emitReasoningSteps(emitter, reasoning);
         }
 
@@ -667,8 +687,8 @@ public class ChatStreamService {
      * 解析推理文本中的【思考】和【观察】步骤，逐步推送 reasoning 事件
      */
     private void emitReasoningSteps(SseEmitter emitter, String reasoningText) {
-        // 按【思考】和【观察】分割
-        Pattern stepPattern = Pattern.compile("【(思考|观察)】");
+        // 按【思考】、【观察】、【行动】分割
+        Pattern stepPattern = Pattern.compile("【(思考|观察|行动)】");
         Matcher matcher = stepPattern.matcher(reasoningText);
 
         List<String[]> steps = new ArrayList<>(); // [stepType, content]
@@ -682,7 +702,12 @@ public class ChatStreamService {
                     steps.add(new String[]{lastType, content});
                 }
             }
-            lastType = matcher.group(1).equals("思考") ? "thought" : "observation";
+            lastType = switch (matcher.group(1)) {
+                case "思考" -> "thought";
+                case "观察" -> "observation";
+                case "行动" -> "action";
+                default -> "thought";
+            };
             lastEnd = matcher.end();
         }
         // 最后一段
@@ -974,6 +999,111 @@ public class ChatStreamService {
         } finally {
             SseEmitterContext.clear();
             log.info("[QueryMode] SseEmitterContext 已清理");
+        }
+    }
+
+    /**
+     * 推理内容过滤器：过滤掉 REASONING_START 到 REASONING_END 之间的内容
+     */
+    private static class ReasoningFilter {
+        private final StringBuilder buffer = new StringBuilder();
+        private boolean insideReasoning = false;
+        private final StringBuilder reasoningContent = new StringBuilder();
+        private static final Pattern START_PATTERN = Pattern.compile("<!--\\s*REASONING_START\\s*-->");
+        private static final Pattern END_PATTERN = Pattern.compile("<!--\\s*REASONING_END\\s*-->");
+        private static final String START_TAG = "<!-- REASONING_START -->";
+        private static final String END_TAG = "<!-- REASONING_END -->";
+        private final Consumer<String> onReasoningComplete;
+
+        public ReasoningFilter(Consumer<String> onReasoningComplete) {
+            this.onReasoningComplete = onReasoningComplete;
+        }
+
+        public String filter(String delta) {
+            buffer.append(delta);
+            String buffered = buffer.toString();
+            StringBuilder output = new StringBuilder();
+
+            while (true) {
+                boolean foundTag = false;
+
+                // 检测 REASONING_START
+                if (!insideReasoning) {
+                    Matcher startMatcher = START_PATTERN.matcher(buffered);
+                    if (startMatcher.find()) {
+                        log.info("[ReasoningFilter] 匹配到START标签");
+                        // 输出 START 之前的内容
+                        output.append(buffered, 0, startMatcher.start());
+                        insideReasoning = true;
+                        buffered = buffered.substring(startMatcher.end());
+                        foundTag = true;
+                    }
+                }
+
+                // 检测 REASONING_END
+                if (insideReasoning) {
+                    Matcher endMatcher = END_PATTERN.matcher(buffered);
+                    if (endMatcher.find()) {
+                        log.info("[ReasoningFilter] 匹配到END标签");
+                        // 缓存推理内容（不输出）
+                        reasoningContent.append(buffered, 0, endMatcher.start());
+                        // 立即发送推理内容
+                        if (onReasoningComplete != null && !reasoningContent.isEmpty()) {
+                            onReasoningComplete.accept(reasoningContent.toString());
+                            reasoningContent.setLength(0);
+                        }
+                        insideReasoning = false;
+                        buffered = buffered.substring(endMatcher.end());
+                        foundTag = true;
+                    }
+                }
+
+                // 如果没有找到更多标签，退出循环
+                if (!foundTag) break;
+            }
+
+            // 如果在推理块内，需要检查是否有不完整的 END 标签
+            if (insideReasoning) {
+                int tagIdx = findPotentialTagStartIndex(buffered);
+                if (tagIdx >= 0) {
+                    // 尾部可能是标签开始，缓存标签头之前的内容到推理，保留尾部
+                    reasoningContent.append(buffered, 0, tagIdx);
+                    buffer.setLength(0);
+                    buffer.append(buffered.substring(tagIdx));
+                } else {
+                    // 不是标签开始，全部缓存到推理内容中
+                    reasoningContent.append(buffered);
+                    buffer.setLength(0);
+                }
+                return output.toString();
+            }
+
+            // 检查 buffer 尾部是否有不完整的标签
+            int tagIdx = findPotentialTagStartIndex(buffered);
+            if (tagIdx >= 0) {
+                output.append(buffered, 0, tagIdx);
+                buffer.setLength(0);
+                buffer.append(buffered.substring(tagIdx));
+                return output.toString();
+            }
+
+            // 正常内容：输出并清空 buffer
+            output.append(buffered);
+            buffer.setLength(0);
+            return output.toString();
+        }
+
+        // 从尾部向前扫描，找到可能是标签开始的位置
+        private int findPotentialTagStartIndex(String s) {
+            if (s.isEmpty()) return -1;
+            int maxScanLen = Math.max(START_TAG.length(), END_TAG.length());
+            for (int i = s.length() - 1; i >= Math.max(0, s.length() - maxScanLen); i--) {
+                String suffix = s.substring(i);
+                if (START_TAG.startsWith(suffix) || END_TAG.startsWith(suffix)) {
+                    return i;
+                }
+            }
+            return -1;
         }
     }
 

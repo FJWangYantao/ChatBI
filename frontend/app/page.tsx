@@ -35,7 +35,7 @@ export interface IntentInfo {
 
 // 推理步骤类型
 export interface ReasoningStep {
-  step: "thought" | "observation";
+  step: "thought" | "observation" | "action";
   content: string;
   stepIndex: number;
 }
