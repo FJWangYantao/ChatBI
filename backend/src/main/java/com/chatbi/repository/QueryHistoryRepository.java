@@ -92,4 +92,11 @@ public class QueryHistoryRepository {
         String sql = "SELECT * FROM query_history ORDER BY created_at DESC";
         return conversationJdbcTemplate.query(sql, rowMapper);
     }
+
+    public void deleteByConversationId(String conversationId) {
+        conversationJdbcTemplate.update(
+                "DELETE FROM query_history WHERE conversation_id = ?",
+                conversationId
+        );
+    }
 }

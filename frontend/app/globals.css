@@ -71,11 +71,11 @@
   }
 }
 
-/* 滚动条 - 霓虹风格 */
+/* 滚动条 - 简洁风格 */
 @layer utilities {
   .scrollbar-thin::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 6px;
+    height: 6px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-track {
@@ -83,13 +83,12 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, hsl(var(--accent)) 0%, hsl(var(--purple)) 100%);
-    border-radius: 10px;
-    border: 2px solid hsl(var(--background));
+    background: hsl(var(--foreground) / 0.15);
+    border-radius: 3px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    box-shadow: 0 0 10px hsl(var(--accent-glow));
+    background: hsl(var(--foreground) / 0.3);
   }
 
   /* 玻璃态卡片效果 - 简化效果，减少模糊 */
@@ -113,17 +112,16 @@
     text-shadow: 0 0 8px hsl(var(--accent-glow) / 0.4);
   }
 
-  /* 渐变按钮 - 优化性能 */
+  /* 简洁按钮 */
   .gradient-btn {
-    background: linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--purple)) 100%);
-    box-shadow: 0 2px 8px hsl(var(--accent) / 0.3);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    will-change: transform;
+    background: hsl(var(--foreground) / 0.9);
+    color: hsl(var(--background));
+    transition: background 0.2s ease, box-shadow 0.2s ease;
   }
 
   .gradient-btn:hover {
-    box-shadow: 0 4px 16px hsl(var(--accent) / 0.4);
-    transform: translateY(-1px);
+    background: hsl(var(--foreground) / 0.75);
+    box-shadow: 0 1px 4px hsl(var(--foreground) / 0.1);
   }
 
   /* 页面加载动画 - 优化性能 */
@@ -155,6 +153,17 @@
 
   .animate-pulse-glow {
     animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* 从左到右柔和扫光：文字始终可见，一道亮光缓慢扫过 */
+  @keyframes shimmer-text {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
+  }
+
+  .animate-shimmer-text {
+    animation: shimmer-text 2.5s ease-in-out infinite;
   }
 }
 

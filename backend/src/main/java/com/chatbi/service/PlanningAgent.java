@@ -115,10 +115,31 @@ public class PlanningAgent {
     }
 
     /**
-     * 向后兼容：使用 Function Calling 的增强规划（阻塞版）
+     * 工具名称 → 状态描述（LLM 生成参数阶段）
      */
-    public String planWithTools(String question) {
-        return planWithToolsStreaming(question, delta -> {}, event -> {});
+    private static String getGeneratingStatus(String toolName) {
+        return switch (toolName) {
+            case "execute_code" -> "生成Python代码中...";
+            case "query_database" -> "生成SQL中...";
+            case "fix_code" -> "生成修复方案中...";
+            case "validate_code" -> "生成验证方案中...";
+            default -> "准备调用工具中...";
+        };
+    }
+
+    /**
+     * 工具名称 → 状态描述（工具实际执行阶段）
+     */
+    private static String getExecutingStatus(String toolName) {
+        return switch (toolName) {
+            case "execute_code" -> "执行Python代码中...";
+            case "query_database" -> "查询数据库中...";
+            case "fix_code" -> "修复代码中...";
+            case "validate_code" -> "验证代码中...";
+            case "sandbox_info" -> "获取环境信息中...";
+            case "dispatch_parallel_tasks" -> "分发并行任务中...";
+            default -> "执行工具中...";
+        };
     }
 
     /**
@@ -126,11 +147,13 @@ public class PlanningAgent {
      * @param question 用户问题
      * @param onTextDelta 文本 token 实时回调
      * @param onTagEvent 流式 tag 事件回调
+     * @param onStatusChange 状态变更回调，发送当前执行阶段描述
      */
     public String planWithToolsStreaming(
             String question,
             Consumer<String> onTextDelta,
-            Consumer<StreamingTagEvent> onTagEvent) {
+            Consumer<StreamingTagEvent> onTagEvent,
+            Consumer<String> onStatusChange) {
 
         log.info("[PlanningAgent] Planning with tools (streaming) for: {}", question);
 
@@ -139,7 +162,6 @@ public class PlanningAgent {
         messages.add(new UserMessage(userPrompt));
 
         // 构建带工具定义的 options（proxyToolCalls=true 阻止自动执行）
-        // 注意：不设置 model，使用前端配置的模型
         OpenAiChatOptions options = OpenAiChatOptions.builder()
                 .withFunctionCallbacks(List.of(
                         queryDatabaseFunction, executeCodeFunction, fixCodeFunction,
@@ -158,11 +180,17 @@ public class PlanningAgent {
 
                 log.info("[PlanningAgent] Round {} starting", round + 1);
 
+                // 发送思考状态
+                onStatusChange.accept("思考中...");
+
+                // 注入轮次标记，ReasoningFilter 会检测并处理
+                onTextDelta.accept("<!-- ROUND_" + (round + 1) + " -->");
+
                 // 发送前检查 token 估算，必要时压缩历史消息
                 trimMessagesIfNeeded(messages);
 
                 // 流式调用 LLM（同时拦截 execute_code 的代码参数进行流式发送）
-                RoundResult result = streamOneRound(messages, options, onTextDelta, onTagEvent);
+                RoundResult result = streamOneRound(messages, options, onTextDelta, onTagEvent, onStatusChange);
 
                 if (!result.hasToolCalls) {
                     // 最终文本回复，已通过 onTextDelta 实时转发
@@ -185,6 +213,9 @@ public class PlanningAgent {
                         log.info("[PlanningAgent] 客户端已断开，停止工具执行");
                         return "";
                     }
+
+                    // 发送工具执行状态
+                    onStatusChange.accept(getExecutingStatus(toolCall.name()));
 
                     String toolResult = executeToolManually(toolCall);
                     String slimResult = slimToolResponse(toolCall.name(), toolResult);
@@ -402,7 +433,8 @@ public class PlanningAgent {
             List<Message> messages,
             OpenAiChatOptions options,
             Consumer<String> onTextDelta,
-            Consumer<StreamingTagEvent> onTagEvent) {
+            Consumer<StreamingTagEvent> onTagEvent,
+            Consumer<String> onStatusChange) {
 
         // 必须使用前端传递的配置
         LLMConfigContext.LLMConfig customConfig = LLMConfigContext.get();
@@ -413,11 +445,6 @@ public class PlanningAgent {
         String effectiveApiKey = customConfig.getApiKey();
         String effectiveBaseUrl = customConfig.getBaseUrl() != null
                 ? customConfig.getBaseUrl() : getDefaultBaseUrl(customConfig.getProvider());
-
-       
-        effectiveBaseUrl = effectiveBaseUrl.replaceAll("/+$", ""); // 移除末尾斜杠
-        effectiveBaseUrl = effectiveBaseUrl.replaceAll("/chat/completions$", ""); // 移除末尾的 /chat/completions
-        effectiveBaseUrl = effectiveBaseUrl.replaceAll("/v1/v1", "/v1");
 
         // log.info("[PlanningAgent] 规范化后 Base URL: {}", effectiveBaseUrl);
 
@@ -468,7 +495,7 @@ public class PlanningAgent {
                 throw new RuntimeException("API returned " + response.statusCode());
             }
 
-            return parseSSEStream(response.body(), onTextDelta, onTagEvent);
+            return parseSSEStream(response.body(), onTextDelta, onTagEvent, onStatusChange);
 
         } catch (TokenLimitExceededException e) {
             log.error("[PlanningAgent] Token 超限异常", e);
@@ -486,7 +513,8 @@ public class PlanningAgent {
     private RoundResult parseSSEStream(
             java.io.InputStream inputStream,
             Consumer<String> onTextDelta,
-            Consumer<StreamingTagEvent> onTagEvent) throws Exception {
+            Consumer<StreamingTagEvent> onTagEvent,
+            Consumer<String> onStatusChange) throws Exception {
 
         StringBuilder textBuffer = new StringBuilder();
         // 工具调用累积：index -> {id, name, argsBuilder}
@@ -498,14 +526,12 @@ public class PlanningAgent {
         Map<Integer, String> codeTagIds = new HashMap<>();
         Map<Integer, Boolean> tagStartSent = new HashMap<>();
 
-        int lineCount = 0;
         int dataChunkCount = 0;
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                lineCount++;
 
                 // 检查客户端是否已断开连接
                 if (SseEmitterContext.isDisconnected()) {
@@ -551,7 +577,13 @@ public class PlanningAgent {
                         JsonNode fnNode = tcNode.get("function");
                         if (fnNode != null) {
                             if (fnNode.has("name")) {
-                                tcNames.put(idx, fnNode.get("name").asText());
+                                String toolName = fnNode.get("name").asText();
+                                // 首次检测到工具名称时，发送"生成中"状态
+                                if (!tcNames.containsKey(idx)) {
+                                    try { onStatusChange.accept(getGeneratingStatus(toolName)); }
+                                    catch (Exception e) { log.debug("状态回调失败: {}", e.getMessage()); }
+                                }
+                                tcNames.put(idx, toolName);
                             }
                             if (fnNode.has("arguments")) {
                                 String argDelta = fnNode.get("arguments").asText();
@@ -960,17 +992,26 @@ public class PlanningAgent {
                - 返回: 所有子任务的执行结果汇总
                - 注意: 仅当有2个及以上独立分析任务时使用，单个分析直接用 execute_code
 
-            **工具选择指南：**
-            - 单表简单分析 → query_database + execute_code
-            - 同一数据的多个独立分析 → query_database + dispatch_parallel_tasks
-            - 多表关联分析 → 多次 query_database + execute_code（使用 data_refs 参数）
+            **工具选择指南（按复杂度递增）：**
+            - ⚡ 简单查询（最值、排名、计数、求和等）→ 仅 query_database，直接根据返回的 data_preview 回答，**不需要写 Python 代码**
+            - 📊 需要可视化或复杂计算（趋势分析、占比分布、多维对比、统计建模等）→ query_database + execute_code
+            - 📊 同一数据的多个独立分析 → query_database + dispatch_parallel_tasks
+            - 📊 多表关联分析 → 多次 query_database + execute_code（使用 data_refs 参数）
 
-            **标准工作流程：**
+            **判断是否需要写代码的标准：**
+            - ✅ 不需要代码：问题可以用一条 SQL 直接得到最终答案（如"哪个产品销售额最高"、"总共有多少订单"、"最近一个月的销售额是多少"）
+            - ✅ 不需要代码：query_database 返回的 data_preview 已经包含完整答案（行数少、结构清晰）
+            - ❌ 需要代码：需要生成图表/可视化
+            - ❌ 需要代码：需要复杂的数据处理（如时间序列分析、同比环比计算、多步聚合）
+            - ❌ 需要代码：数据量大需要进一步加工才能回答
+
+            **工作流程：**
             1. 先调用 query_database 获取数据
-            2. 查看返回的 data_preview 理解数据结构和列名
-            3. 编写 Python 分析代码，调用 execute_code 并传入 data_ref_id（不要传 data_json）
-            4. 如需多表关联，先多次调用 query_database 获取各表数据，然后用 data_refs 参数调用 execute_code
-            5. 根据执行结果生成分析总结
+            2. 查看返回的 data_preview，判断是否已经能直接回答用户问题
+            3. **如果 data_preview 已包含答案** → 直接根据数据撰写分析结论，跳过 execute_code
+            4. **如果需要进一步分析或可视化** → 编写 Python 代码，调用 execute_code 并传入 data_ref_id
+            5. 如需多表关联，先多次调用 query_database 获取各表数据，然后用 data_refs 参数调用 execute_code
+            6. 根据结果生成分析总结
 
             **重要规则：**
             - ⚠️ **严格禁止使用模拟数据、硬编码数据、假数据**：
@@ -996,12 +1037,16 @@ public class PlanningAgent {
               * 只有当 code_ref_id 过期或需要完全重写逻辑时才用 execute_code 重试
             - 修复最多 2 次，仍然失败则向用户说明原因
             - Python 代码中数据已自动加载为 df (pandas DataFrame)
-            - **输出要求（必须同时满足）**：
+            - **输出要求（仅在使用 execute_code 时适用）**：
               1. 如果需要可视化，使用 matplotlib 绘图，设置中文字体: plt.rcParams['font.sans-serif'] = ['SimHei']
               2. 保存图表: plt.savefig('output.png', dpi=100, bbox_inches='tight')
               3. **必须输出分析结果的 JSON 数组**：在代码最后一行添加 print(result_df.to_json(orient='records', force_ascii=False))
               4. **重要**：result_df 必须是你分析后的结果数据（如统计、分组、排名等），不是原始数据 df
               5. **禁止**：不要输出原始数据的列名或 df.columns，必须输出实际的分析结果
+            - **不使用 execute_code 时的输出要求**：
+              * 直接根据 query_database 返回的 data_preview 数据撰写结论
+              * 用自然语言清晰地回答用户问题，引用具体数据（如"销售额最高的产品是XX，销售额为YY元"）
+              * 不需要输出 JSON 数组或图表
             - 打印关键统计结果到 stdout
             - DataFrame 输出规范（必须遵守）：
               * 禁止直接 print(df)，pandas 默认会截断列和行显示
@@ -1082,20 +1127,41 @@ public class PlanningAgent {
             - 执行超时：30 秒
 
             **ReAct 推理框架（必须遵守）：**
-            你必须在最终回复中展示完整的推理过程。使用以下格式：
+            你的文本输出必须遵循以下结构化格式：
 
-            <!-- REASONING_START -->
-            【思考】说明推理逻辑
-            【观察】分析返回数据
+            1. 在**第一次文本回复**中，**立即**以 `<!-- REASONING_START -->` 开头（前面不要输出任何文字）
+            2. 在每轮工具调用前后，使用【思考】【观察】【行动】标记描述你的推理过程
+            3. 在所有工具调用完成后的**最终回复**中，输出 `<!-- REASONING_END -->`，然后输出最终分析结论
+
+            ⚠️ **关键约束**：
+            - 你的第一个文本 token 必须是 `<` (即 `<!-- REASONING_START -->` 的开头)
+            - **绝对不要**在 `<!-- REASONING_START -->` 之前输出任何文字（如"我来帮您分析"等）
+            - REASONING 标记之间的所有文本必须使用【思考】【观察】【行动】格式
+            - 只有 `<!-- REASONING_END -->` 之后的内容才会显示给用户作为最终回复
+            - 推理过程（标记之间）会以折叠面板形式展示，用户可选择查看
+
+            **多轮工具调用场景示例：**
+
+            第1轮文本: <!-- REASONING_START -->
+            【思考】用户想了解销售趋势，我需要先查询销售数据。
+            (然后调用 query_database)
+
+            第2轮文本: 【观察】获取了100条销售记录，包含日期和金额字段。
+            【思考】数据结构清晰，需要按月聚合并绘制趋势图。
+            【行动】编写Python代码进行时间序列分析。
+            (然后调用 execute_code)
+
+            最终回复: 【观察】代码执行成功，生成了趋势图。销售额在Q3达到峰值。
             <!-- REASONING_END -->
 
-            然后在标记之外给出最终结论和分析总结。
+            ## 销售趋势分析
+            根据数据分析，贵公司销售趋势呈现以下特征：...
 
             **回复要求：**
             - 用中文回复
             - 必须包含 REASONING_START/END 标记
-            - 推理过程中每个步骤用【思考】或【观察】开头
-            - 标记之外的内容是最终结论
+            - 推理过程中每个步骤用【思考】、【观察】或【行动】开头
+            - REASONING_END 之后的内容是最终结论，确保内容完整有价值
             - **重要**：不要在回复中描述"已生成X个图表"或"已生成图表"，图表会自动显示在前端，你只需要分析数据结果即可
             - **禁止**：不要列举图表名称（如"员工留存率柱状图"、"趋势图"等），这些是系统自动生成的，你只需要解读数据洞察
 
@@ -1106,9 +1172,6 @@ public class PlanningAgent {
             """, question, entitiesStr, schemaInfo);
     }
 
-    /**
-     * 根据供应商获取默认 Base URL
-     */
     private String getDefaultBaseUrl(String provider) {
         return switch (provider) {
             case "deepseek" -> "https://api.deepseek.com";
@@ -1116,4 +1179,5 @@ public class PlanningAgent {
             default -> "https://api.openai.com/v1";
         };
     }
+
 }

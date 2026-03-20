@@ -38,6 +38,7 @@ export interface ReasoningStep {
   step: "thought" | "observation" | "action";
   content: string;
   stepIndex: number;
+  round?: number;
 }
 
 // 已完成步骤类型
@@ -75,6 +76,108 @@ export interface Message {
   streamingProgress?: number;      // 当前进度
   streamingTotalSteps?: number;    // 总步骤数
   feedback?: 'like' | 'dislike' | null; // 用户反馈
+}
+
+/**
+ * 从历史消息 content 中提取推理步骤并清理内容
+ * 实际 DB 格式：【观察】...【思考】...<!-- REASONING_END -->\n正文
+ * （没有 REASONING_START，只有 REASONING_END 作为分割点）
+ */
+function parseReasoningFromContent(content: string): {
+  cleanContent: string;
+  parsedSteps: ReasoningStep[];
+} {
+  if (!content) return { cleanContent: content, parsedSteps: [] };
+
+  const parsedSteps: ReasoningStep[] = [];
+
+  // 情况1：有 REASONING_START + REASONING_END 成对标记
+  const pairedRegex = /<!--\s*REASONING_START\s*-->([\s\S]*?)<!--\s*REASONING_END\s*-->/g;
+  let pairedMatch;
+  let hasPaired = false;
+  let cleanContent = content;
+
+  while ((pairedMatch = pairedRegex.exec(content)) !== null) {
+    hasPaired = true;
+    parseStepsFromText(pairedMatch[1].trim(), parsedSteps, 1);
+  }
+  if (hasPaired) {
+    cleanContent = content.replace(pairedRegex, '').trim();
+    return { cleanContent, parsedSteps };
+  }
+
+  // 情况2：只有 <!-- REASONING_END --> 作为分割点（实际 DB 中的主要格式）
+  const endTagRegex = /<!--\s*REASONING_END\s*-->/;
+  const endMatch = endTagRegex.exec(content);
+  if (endMatch) {
+    const reasoningPart = content.slice(0, endMatch.index).trim();
+    cleanContent = content.slice(endMatch.index + endMatch[0].length).trim();
+    parseStepsFromText(reasoningPart, parsedSteps, 1);
+    return { cleanContent, parsedSteps };
+  }
+
+  // 情况3：没有任何 HTML 注释标记，但 content 以【观察】或【思考】开头
+  if (/^【(?:观察|思考|行动)】/.test(content)) {
+    // 找到第一个不以【开头且非推理延续的段落作为正文起点
+    // 按【标记】分割推理段
+    const segments = content.split(/(?=【(?:观察|思考|行动)】)/);
+    for (const seg of segments) {
+      const m = seg.match(/^【(观察|思考|行动)】/);
+      if (m) {
+        const typeMap: Record<string, 'thought' | 'observation' | 'action'> = {
+          '思考': 'thought', '观察': 'observation', '行动': 'action'
+        };
+        parsedSteps.push({
+          step: typeMap[m[1]] || 'thought',
+          content: seg.trim(),
+          stepIndex: parsedSteps.length,
+        });
+      } else if (parsedSteps.length > 0) {
+        // 非推理段 = 正文开始
+        cleanContent = seg.trim();
+        break;
+      }
+    }
+    if (parsedSteps.length > 0) {
+      return { cleanContent, parsedSteps };
+    }
+  }
+
+  return { cleanContent: content, parsedSteps: [] };
+}
+
+/** 从推理文本块中解析出各步骤 */
+function parseStepsFromText(text: string, steps: ReasoningStep[], round: number) {
+  const typeMap: Record<string, 'thought' | 'observation' | 'action'> = {
+    '思考': 'thought', '观察': 'observation', '行动': 'action'
+  };
+  // 按 【xxx】 分割
+  const stepRegex = /【(观察|思考|行动)】/g;
+  const markers: { type: string; index: number }[] = [];
+  let m;
+  while ((m = stepRegex.exec(text)) !== null) {
+    markers.push({ type: m[1], index: m.index });
+  }
+
+  if (markers.length === 0) {
+    // 整块作为一个思考步骤
+    if (text.trim()) {
+      steps.push({ step: 'thought', content: text.trim(), stepIndex: steps.length, round });
+    }
+    return;
+  }
+
+  for (let i = 0; i < markers.length; i++) {
+    const start = markers[i].index;
+    const end = i + 1 < markers.length ? markers[i + 1].index : text.length;
+    const content = text.slice(start, end).trim();
+    steps.push({
+      step: typeMap[markers[i].type] || 'thought',
+      content,
+      stepIndex: steps.length,
+      round,
+    });
+  }
 }
 
 export default function Home() {
@@ -122,21 +225,34 @@ export default function Home() {
       const response = await fetch(`/api/conversations/${conversationId}`);
       if (response.ok) {
         const data = await response.json();
-        const historyMessages: Message[] = data.messages.map((msg: any) => ({
-          id: msg.messageId,
-          role: msg.role,
-          content: msg.content,
-          timestamp: new Date(msg.createdAt),
-          tags: msg.tags || undefined,
-          completedSteps: msg.steps ? msg.steps.map((s: any) => ({
-            stepName: s.stepName,
-            stepLabel: s.stepLabel,
-            duration: s.duration,
-            status: s.status,
-            result: s.result,
-            timestamp: 0,
-          })) : undefined,
-        }));
+        const historyMessages: Message[] = data.messages.map((msg: any) => {
+          // 从 content 中提取推理标记并清理
+          const { cleanContent, parsedSteps } = parseReasoningFromContent(msg.content || '');
+          // 优先使用 DB 中的 reasoningSteps，否则用从 content 解析出的
+          const reasoning = msg.reasoningSteps?.length > 0
+            ? msg.reasoningSteps
+            : parsedSteps.length > 0 ? parsedSteps : undefined;
+
+          return {
+            id: msg.messageId,
+            role: msg.role,
+            content: parsedSteps.length > 0 ? cleanContent : (msg.content || ''),
+            timestamp: new Date(msg.createdAt),
+            tags: msg.tags || undefined,
+            completedSteps: msg.steps ? msg.steps.map((s: any) => ({
+              stepName: s.stepName,
+              stepLabel: s.stepLabel,
+              duration: s.duration,
+              status: s.status,
+              result: s.result,
+              timestamp: 0,
+            })) : undefined,
+            intentInfo: msg.intentInfo || undefined,
+            suggestions: msg.suggestions || undefined,
+            reasoningSteps: reasoning,
+            feedback: msg.feedback || null,
+          };
+        });
         setMessages(historyMessages);
 
         // 从历史消息 tags 中提取代码条目
@@ -286,6 +402,8 @@ export default function Home() {
     const tagsAccumulator: MessageTag[] = [];
     // 用于累积已完成步骤
     const stepsAccumulator: CompletedStep[] = [];
+    // 追踪当前推理轮次，用于给 analysis_result tag 打 round 标记
+    let currentReasoningRound = 0;
     // 用于累积子任务状态
     const subtasksAccumulator: SubtaskInfo[] = [];
 
@@ -454,7 +572,7 @@ export default function Home() {
                 type: 'analysis_result',
                 content: { sections: [], _streaming: true },
                 title: data.title || '分析详情',
-                metadata: { streamingTagId: data.id },
+                metadata: { streamingTagId: data.id, round: currentReasoningRound },
               };
               tagsAccumulator.push(placeholderTag);
               setMessages((prev) =>
@@ -521,6 +639,9 @@ export default function Home() {
               t => t.type === 'analysis_result' && t.metadata?.streamingTagId === data.id
             );
             if (streamingIdx >= 0) {
+              // 保留占位 tag 上的 round 信息
+              const existingRound = tagsAccumulator[streamingIdx].metadata?.round;
+              newTag.metadata = { ...newTag.metadata, round: existingRound };
               tagsAccumulator[streamingIdx] = newTag;
             } else {
               tagsAccumulator.push(newTag);
@@ -570,13 +691,19 @@ export default function Home() {
           },
 
           onReasoning: (data) => {
+            if (data.round) currentReasoningRound = data.round;
             setMessages((prev) =>
               prev.map((msg) => {
                 if (msg.id !== assistantId) return msg;
                 const existing = msg.reasoningSteps || [];
                 return {
                   ...msg,
-                  reasoningSteps: [...existing, { step: data.step as "thought" | "observation", content: data.content, stepIndex: data.stepIndex }],
+                  reasoningSteps: [...existing, {
+                    step: data.step as "thought" | "observation" | "action",
+                    content: data.content,
+                    stepIndex: data.stepIndex,
+                    round: data.round,
+                  }],
                   streamingStage: "reasoning",
                   streamingMessage: data.step === "thought" ? "正在思考..." : "正在分析结果...",
                 };

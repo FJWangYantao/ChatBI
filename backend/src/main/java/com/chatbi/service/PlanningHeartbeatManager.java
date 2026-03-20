@@ -5,8 +5,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Planning 心跳管理器
@@ -28,21 +28,20 @@ public class PlanningHeartbeatManager {
      * 启动心跳
      * @param sessionId 会话 ID
      * @param statusEmitter 状态发送器，接收进度消息
+     * @param currentStatus 当前状态供应器，心跳会读取最新状态并重发（保持连接活跃）
      */
-    public void startHeartbeat(String sessionId, Consumer<String> statusEmitter) {
-        AtomicInteger counter = new AtomicInteger(0);
+    public void startHeartbeat(String sessionId, Consumer<String> statusEmitter, Supplier<String> currentStatus) {
         ScheduledFuture<?> future = scheduler.scheduleAtFixedRate(() -> {
             try {
-                int count = counter.incrementAndGet();
-                String message = count == 1
-                        ? "正在分析问题，准备执行代码..."
-                        : "代码执行中，请稍候... (" + (count * 10) + "秒)";
-                statusEmitter.accept(message);
-                log.debug("[Heartbeat] Session {} - {}", sessionId, message);
+                String message = currentStatus.get();
+                if (message != null) {
+                    statusEmitter.accept(message);
+                    log.debug("[Heartbeat] Session {} - {}", sessionId, message);
+                }
             } catch (Exception e) {
                 log.warn("[Heartbeat] Session {} 心跳发送失败: {}", sessionId, e.getMessage());
             }
-        }, 0, 10, TimeUnit.SECONDS);
+        }, 8, 10, TimeUnit.SECONDS);
 
         heartbeats.put(sessionId, future);
         log.info("[Heartbeat] Session {} 心跳已启动", sessionId);

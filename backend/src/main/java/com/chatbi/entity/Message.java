@@ -26,5 +26,9 @@ public class Message {
     private String content;
     private List<MessageTag> tags;
     private List<Map<String, Object>> steps; // 处理步骤结果
+    private Map<String, Object> intentInfo;           // 意图识别结果
+    private List<String> suggestions;                  // 推荐后续问题
+    private List<Map<String, Object>> reasoningSteps;  // 推理链
+    private String feedback;                           // 用户反馈: like/dislike
     private LocalDateTime createdAt;
 }

@@ -23,5 +23,9 @@ public class MessageDTO {
     private String content;
     private List<MessageTag> tags;
     private List<Map<String, Object>> steps; // 处理步骤结果
+    private Map<String, Object> intentInfo;
+    private List<String> suggestions;
+    private List<Map<String, Object>> reasoningSteps;
+    private String feedback;
     private LocalDateTime createdAt;
 }

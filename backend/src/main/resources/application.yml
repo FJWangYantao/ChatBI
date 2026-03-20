@@ -74,6 +74,7 @@ chatbi:
       diagnostic: # 归因分析 Agent
       formatting: # 排版 Agent
       code-agent: # 并行代码生成 Agent
+      query-rewrite: # Query Rewriting Agent（不配则用 default 模型）
 
 # 服务器配置
 server:

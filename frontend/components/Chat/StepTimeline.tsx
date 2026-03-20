@@ -11,6 +11,7 @@ interface StepTimelineProps {
 }
 
 const stepIcons: Record<string, string> = {
+  query_rewrite: "🔄",
   intent_detection: "🔍",
   prompt_enhancement: "✨",
   clarification: "❓",
@@ -31,6 +32,18 @@ function StepResultSummary({ step }: { step: CompletedStep }) {
   if (!r) return null;
 
   switch (step.stepName) {
+    case "query_rewrite":
+      return (
+        <div className="text-xs opacity-70 space-y-0.5">
+          <div>{r.isRewritten ? "已改写" : "无需改写"}</div>
+          {r.isRewritten && r.rewrittenMessage && (
+            <div className="mt-1 p-2 rounded-lg bg-accent/5 border border-accent/10 font-mono text-[11px] line-clamp-2">
+              {r.originalMessage} → {r.rewrittenMessage}
+            </div>
+          )}
+        </div>
+      );
+
     case "intent_detection":
       return (
         <div className="text-xs opacity-70 space-y-0.5">
@@ -229,14 +242,14 @@ export default function StepTimeline({
         {isStreaming && currentStage && (
           <div className="relative mb-1">
             {/* 动画节点 */}
-            <div className="absolute -left-6 top-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center bg-background border-2 border-accent animate-pulse">
-              <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+            <div className="absolute -left-6 top-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center bg-background border-2 border-accent">
+              <div className="w-2 h-2 rounded-full bg-accent animate-ping" />
             </div>
 
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 text-sm animate-shimmer-text">
               <span>{stepIcons[currentStage] || "⏳"}</span>
               <span className="font-medium">{currentMessage || "处理中..."}</span>
-              <span className="text-xs font-mono opacity-50">{formatDuration(elapsed)}</span>
+              <span className="text-xs font-mono opacity-70">{formatDuration(elapsed)}</span>
             </div>
           </div>
         )}

@@ -66,12 +66,25 @@ public class StreamEventData {
      * event: reasoning
      */
     @Data
-    @AllArgsConstructor
     @NoArgsConstructor
     public static class ReasoningEventData {
-        private String step;       // "thought" 或 "observation"
+        private String step;       // "thought" 或 "observation" 或 "action"
         private String content;    // 推理内容
         private int stepIndex;     // 步骤序号（从0开始）
+        private Integer round;     // 轮次号（可为 null，向后兼容）
+
+        public ReasoningEventData(String step, String content, int stepIndex) {
+            this.step = step;
+            this.content = content;
+            this.stepIndex = stepIndex;
+        }
+
+        public ReasoningEventData(String step, String content, int stepIndex, Integer round) {
+            this.step = step;
+            this.content = content;
+            this.stepIndex = stepIndex;
+            this.round = round;
+        }
     }
 
     /**

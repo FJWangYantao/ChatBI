@@ -54,11 +54,12 @@ interface AnalysisResultRendererProps {
     content: any;   // 兼容 Markdown 字符串、结构化 JSON 对象、流式占位对象
     title?: string;
     allTags?: MessageTag[];  // 传入所有 tags，用于关联图表
+    embedded?: boolean;      // 嵌入推理链时为 true，去掉外层卡片和标题栏
 }
 
 // ─── 主组件 ──────────────────────────────────────────────────────────────────
 
-export default function AnalysisResultRenderer({ content, title, allTags = [] }: AnalysisResultRendererProps) {
+export default function AnalysisResultRenderer({ content, title, allTags = [], embedded = false }: AnalysisResultRendererProps) {
     const [collapsed, setCollapsed] = useState(false);
     const [expandAll, setExpandAll] = useState(false);
 
@@ -144,6 +145,21 @@ export default function AnalysisResultRenderer({ content, title, allTags = [] }:
 
     // 流式状态：实时渲染已接收的 Markdown，或显示骨架屏
     if (isStreaming) {
+        const streamContent = (
+            <div className={embedded ? "space-y-2" : "p-6 space-y-4"}>
+                {streamedText ? (
+                    <div className="prose prose-sm prose-gray max-w-none">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {streamedText}
+                        </ReactMarkdown>
+                        <span className="inline-block w-2 h-4 bg-blue-500/60 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
+                    </div>
+                ) : (
+                    <AnalysisSkeleton />
+                )}
+            </div>
+        );
+        if (embedded) return streamContent;
         return (
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
@@ -153,24 +169,23 @@ export default function AnalysisResultRenderer({ content, title, allTags = [] }:
                         <span className="px-2.5 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full animate-pulse">正在排版...</span>
                     </div>
                 </div>
-                <div className="p-6 space-y-4">
-                    {streamedText ? (
-                        <div className="prose prose-sm prose-gray max-w-none">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {streamedText}
-                            </ReactMarkdown>
-                            <span className="inline-block w-2 h-4 bg-blue-500/60 animate-pulse ml-0.5 align-text-bottom rounded-sm" />
-                        </div>
-                    ) : (
-                        <AnalysisSkeleton />
-                    )}
-                </div>
+                {streamContent}
             </div>
         );
     }
 
     // Markdown 字符串内容（新版流式完成后 / 历史加载）
     if (typeof content === 'string') {
+        const mdContent = (
+            <div className={embedded ? "space-y-2" : "p-6 space-y-4"}>
+                <div className="prose prose-sm prose-gray max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {content}
+                    </ReactMarkdown>
+                </div>
+            </div>
+        );
+        if (embedded) return mdContent;
         return (
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
@@ -187,21 +202,36 @@ export default function AnalysisResultRenderer({ content, title, allTags = [] }:
                         <span>{collapsed ? '展开' : '折叠'}</span>
                     </button>
                 </div>
-                {!collapsed && (
-                    <div className="p-6 space-y-4">
-                        <div className="prose prose-sm prose-gray max-w-none">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                {content}
-                            </ReactMarkdown>
-                        </div>
-                    </div>
-                )}
+                {!collapsed && mdContent}
             </div>
         );
     }
 
     // Legacy 结构化 JSON 内容（旧版历史数据兼容）
     const sections = structured.sections ?? [];
+
+    const structuredContent = (
+        <div className={embedded ? "space-y-3" : "p-6 space-y-4"}>
+            {steps.length === 0 && (
+                <p className="text-center text-gray-400 py-8">暂无详细分析内容</p>
+            )}
+            {steps.map((step, idx) => (
+                <StepCard
+                    key={idx}
+                    stepId={`step-${idx}`}
+                    stepTitle={step.title}
+                    stepIcon={step.icon}
+                    defaultExpanded={expandAll}
+                >
+                    {step.sections.map((section, sIdx) => (
+                        <SectionRenderer key={sIdx} section={section} />
+                    ))}
+                </StepCard>
+            ))}
+        </div>
+    );
+
+    if (embedded) return structuredContent;
 
     return (
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm">
@@ -225,24 +255,7 @@ export default function AnalysisResultRenderer({ content, title, allTags = [] }:
             </div>
 
             {/* ── 内容区 ── */}
-            <div className="p-6 space-y-4">
-                {steps.length === 0 && (
-                    <p className="text-center text-gray-400 py-8">暂无详细分析内容</p>
-                )}
-                {steps.map((step, idx) => (
-                    <StepCard
-                        key={idx}
-                        stepId={`step-${idx}`}
-                        stepTitle={step.title}
-                        stepIcon={step.icon}
-                        defaultExpanded={expandAll}
-                    >
-                        {step.sections.map((section, sIdx) => (
-                            <SectionRenderer key={sIdx} section={section} />
-                        ))}
-                    </StepCard>
-                ))}
-            </div>
+            {structuredContent}
         </div>
     );
 }

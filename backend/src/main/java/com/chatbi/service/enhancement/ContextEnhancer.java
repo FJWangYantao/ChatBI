@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,6 +30,9 @@ public class ContextEnhancer implements PromptEnhancer {
 
     @Value("${prompt-enhancement.max-history-messages:5}")
     private int maxHistoryMessages;
+
+    @Value("${prompt-enhancement.max-assistant-content-length:200}")
+    private int maxAssistantContentLength;
 
     @Override
     public EnhancedPrompt enhance(String originalPrompt, EnhancementContext context) {
@@ -89,16 +93,24 @@ public class ContextEnhancer implements PromptEnhancer {
      */
     private String buildContextEnhancement(EnhancementContext context) {
         List<MessageDTO> history = context.getConversationHistory();
-        
+
         if (history == null || history.isEmpty()) {
             return null;
         }
 
-        // 过滤掉当前消息（如果历史中包含）
+        // 按时间排序，取最近的消息，并过滤掉当前消息
         List<MessageDTO> relevantHistory = history.stream()
-                .filter(msg -> !msg.getContent().equals(context.getOriginalMessage()))
-                .limit(maxHistoryMessages)
+                .filter(msg -> msg.getContent() != null && !msg.getContent().equals(context.getOriginalMessage()))
+                .sorted(Comparator.comparing(
+                        MessageDTO::getCreatedAt,
+                        Comparator.nullsFirst(Comparator.naturalOrder())))
                 .collect(Collectors.toList());
+
+        // 只保留最近 N 条
+        if (relevantHistory.size() > maxHistoryMessages) {
+            relevantHistory = relevantHistory.subList(
+                    relevantHistory.size() - maxHistoryMessages, relevantHistory.size());
+        }
 
         if (relevantHistory.isEmpty()) {
             return null;
@@ -114,10 +126,33 @@ public class ContextEnhancer implements PromptEnhancer {
 
         for (MessageDTO msg : relevantHistory) {
             String role = "user".equals(msg.getRole()) ? "用户" : "助手";
-            contextBuilder.append(String.format("%s: %s\n", role, msg.getContent()));
+            String content = msg.getContent();
+
+            // 压缩助手回复，避免 SQL、JSON 等长内容撑爆上下文
+            if ("assistant".equals(msg.getRole()) && content.length() > maxAssistantContentLength) {
+                content = compressAssistantContent(content);
+            }
+
+            contextBuilder.append(String.format("%s: %s\n", role, content));
         }
 
         return contextBuilder.toString();
+    }
+
+    /**
+     * 压缩助手回复内容
+     * 去除 SQL、JSON、代码块等冗长部分，只保留关键摘要
+     */
+    private String compressAssistantContent(String content) {
+        // 去除 Markdown 代码块（SQL、JSON 等）
+        String compressed = content.replaceAll("```[\\s\\S]*?```", "[代码块已省略]");
+        // 去除内联代码中的长内容
+        compressed = compressed.replaceAll("`[^`]{50,}`", "[长代码已省略]");
+
+        if (compressed.length() > maxAssistantContentLength) {
+            compressed = compressed.substring(0, maxAssistantContentLength) + "...（已截断）";
+        }
+        return compressed;
     }
 
     /**

@@ -829,6 +829,7 @@ public class SandboxToolsConfig {
                             final String preview = dataPreview;
                             final int taskIdx = i;
                             final String taskTitle = title;
+                            // 添加子任务到CompletableFuture列表
                             futures.add(CompletableFuture.supplyAsync(
                                     () -> {
                                         try {
@@ -908,6 +909,7 @@ public class SandboxToolsConfig {
     /**
      * 从 stdout 中提取 JSON 数据
      * 查找最大的完整 JSON 数组（通常是实际数据，而不是列名）
+     * 图表推荐Agent使用
      */
     private static String extractJsonFromStdout(String stdout) {
         if (stdout == null || stdout.isEmpty()) {

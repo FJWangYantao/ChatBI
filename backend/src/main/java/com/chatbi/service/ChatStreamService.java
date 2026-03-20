@@ -14,6 +14,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,6 +37,7 @@ public class ChatStreamService {
     private final ReadSchemaStructureService schemaService;
     private final SQLCorrectionAgent sqlCorrectionAgent;
     private final Text2SQLAgent text2SQLAgent;
+    private final QueryRewriteService queryRewriteService;
 
     public ChatStreamService(
             DynamicChatClientFactory chatClientFactory,
@@ -51,7 +53,8 @@ public class ChatStreamService {
             PlanningHeartbeatManager heartbeatManager,
             ReadSchemaStructureService schemaService,
             SQLCorrectionAgent sqlCorrectionAgent,
-            Text2SQLAgent text2SQLAgent
+            Text2SQLAgent text2SQLAgent,
+            QueryRewriteService queryRewriteService
     ) {
         this.chatClientFactory = chatClientFactory;
         this.conversationService = conversationService;
@@ -67,6 +70,7 @@ public class ChatStreamService {
         this.schemaService = schemaService;
         this.sqlCorrectionAgent = sqlCorrectionAgent;
         this.text2SQLAgent = text2SQLAgent;
+        this.queryRewriteService = queryRewriteService;
     }
 
     /**
@@ -77,6 +81,8 @@ public class ChatStreamService {
         AtomicBoolean completed = new AtomicBoolean(false);
         // 收集步骤结果用于持久化
         List<Map<String, Object>> collectedSteps = new ArrayList<>();
+        // 收集意图信息用于持久化
+        Map<String, Object> collectedIntentInfo = null;
 
         try {
             // 检测 /sql 前缀，进入查数模式
@@ -129,7 +135,26 @@ public class ChatStreamService {
                 return;
             }
 
-            // 3. 意图识别（如果强制指定了agent类型，则跳过意图识别）
+            // 2.5 提前加载对话历史（意图识别和 Prompt 增强都需要）
+            List<MessageDTO> history = conversationService.getMessages(conversationId);
+
+            // 2.6 Query Rewriting：追问场景下改写为自包含查询
+            emitStatus(emitter, "query_rewrite", "正在理解问题...", 1, 7);
+            long rewriteStartTime = System.currentTimeMillis();
+            String rewrittenMessage = queryRewriteService.rewriteIfNeeded(actualMessage, history);
+            boolean isRewritten = !rewrittenMessage.equals(actualMessage);
+
+            // 发送改写步骤结果
+            Map<String, Object> rewriteResult = new LinkedHashMap<>();
+            rewriteResult.put("isRewritten", isRewritten);
+            rewriteResult.put("originalMessage", actualMessage);
+            if (isRewritten) {
+                rewriteResult.put("rewrittenMessage", rewrittenMessage);
+            }
+            emitStepResult(emitter, "query_rewrite", "查询改写",
+                    System.currentTimeMillis() - rewriteStartTime, "success", rewriteResult, collectedSteps);
+
+            // 3. 意图识别（使用改写后的文本）
             IntentType intent;
             IntentRecognitionResponse intentResponse = null;
             long intentStartTime = System.currentTimeMillis();
@@ -141,21 +166,29 @@ public class ChatStreamService {
                     intent = IntentType.valueOf(forceAgentType);
                 } catch (IllegalArgumentException e) {
                     log.warn("[ChatStreamService] 无效的agent类型: {}, 降级为意图识别", forceAgentType);
-                    emitStatus(emitter, "intent_detection", "正在识别意图...", 1, 7);
-                    intentResponse = recognizeIntent(message);
+                    emitStatus(emitter, "intent_detection", "正在识别意图...", 2, 7);
+                    intentResponse = recognizeIntent(rewrittenMessage);
                     intent = IntentType.valueOf(intentResponse.getCategory());
                 }
             } else {
                 // 正常意图识别
-                emitStatus(emitter, "intent_detection", "正在识别意图...", 1, 7);
-                intentResponse = recognizeIntent(message);
+                emitStatus(emitter, "intent_detection", "正在识别意图...", 2, 7);
+                intentResponse = recognizeIntent(rewrittenMessage);
                 intent = IntentType.valueOf(intentResponse.getCategory());
-                log.info("[ChatStreamService] 意图识别结果: {}", intentResponse.getCategory());
+                log.info("[ChatStreamService] 意图识别结果: {} (识别文本: {})", intentResponse.getCategory(), rewrittenMessage);
             }
 
             // 发送意图事件（如果有意图识别结果）
             if (intentResponse != null) {
                 emitIntent(emitter, intentResponse);
+                // 收集意图信息用于持久化
+                collectedIntentInfo = new LinkedHashMap<>();
+                collectedIntentInfo.put("category", intentResponse.getCategory());
+                collectedIntentInfo.put("categoryCn", intentResponse.getCategoryCn());
+                collectedIntentInfo.put("categoryConfidence", intentResponse.getCategoryConfidence());
+                collectedIntentInfo.put("subtype", intentResponse.getSubtype());
+                collectedIntentInfo.put("subtypeCn", intentResponse.getSubtypeCn());
+                collectedIntentInfo.put("subtypeConfidence", intentResponse.getSubtypeConfidence());
                 // 发送意图识别步骤结果
                 Map<String, Object> intentResult = new LinkedHashMap<>();
                 intentResult.put("categoryCn", intentResponse.getCategoryCn());
@@ -165,19 +198,20 @@ public class ChatStreamService {
                         System.currentTimeMillis() - intentStartTime, "success", intentResult, collectedSteps);
             }
 
-            // 4. Prompt 增强
-            emitStatus(emitter, "prompt_enhancement", "正在优化问题...", 2, 7);
+            // 4. Prompt 增强（使用改写后的文本）
+            emitStatus(emitter, "prompt_enhancement", "正在优化问题...", 3, 7);
             long enhanceStartTime = System.currentTimeMillis();
-            String promptToUse = message;
+            String promptToUse = rewrittenMessage;
             boolean isEnhanced = false;
             try {
                 EnhancementContext context = EnhancementContext.builder()
-                        .originalMessage(message)
+                        .originalMessage(rewrittenMessage)
                         .conversationId(conversationId)
+                        .conversationHistory(history)
                         .intentType(intent)
-                        .subtype(intentResponse.getSubtype())
+                        .subtype(intentResponse != null ? intentResponse.getSubtype() : null)
                         .build();
-                EnhancedPrompt enhanced = enhancementManager.enhance(message, context);
+                EnhancedPrompt enhanced = enhancementManager.enhance(rewrittenMessage, context);
                 if (enhanced.isEnhanced()) {
                     promptToUse = enhanced.getEnhancedPrompt();
                     isEnhanced = true;
@@ -222,8 +256,16 @@ public class ChatStreamService {
                     break;
             }
 
-            // 6. 保存助手消息
-            conversationService.saveMessage(conversationId, "assistant", reply, tags.isEmpty() ? null : tags, collectedSteps.isEmpty() ? null : collectedSteps);
+            // 6. 保存助手消息（含完整结构化数据）
+            List<String> finalSuggestions = extractSuggestions(tags);
+            conversationService.saveMessage(
+                conversationId, "assistant", reply,
+                tags.isEmpty() ? null : tags,
+                collectedSteps.isEmpty() ? null : collectedSteps,
+                collectedIntentInfo,
+                finalSuggestions,
+                null  // reasoningSteps 通过 steps 间接保存
+            );
 
             // 7. 发送完成事件
             long duration = System.currentTimeMillis() - startTime;
@@ -294,6 +336,10 @@ public class ChatStreamService {
         String toolResult = null;
         long analysisStartTime = System.currentTimeMillis();
 
+        // 共享状态：PlanningAgent 更新，心跳读取并重发（保持连接活跃）
+        java.util.concurrent.atomic.AtomicReference<String> currentStatus =
+                new java.util.concurrent.atomic.AtomicReference<>("正在分析数据...");
+
         // 设置 ThreadLocal：emitter + 流式 tag 回调
         SseEmitterContext.setEmitter(emitter);
         SseEmitterContext.setTagStreamCallback(event -> {
@@ -304,31 +350,31 @@ public class ChatStreamService {
             }
         });
 
-        // 启动心跳
+        // 启动心跳（读取 currentStatus，定期重发以保持 SSE 连接）
         heartbeatManager.startHeartbeat(sessionId, (message) -> {
             try {
                 emitStatus(emitter, "planning", message, 4, 5);
             } catch (Exception e) {
                 log.debug("心跳发送失败: {}", e.getMessage());
             }
-        });
+        }, currentStatus::get);
 
         // 推理内容实时发送标记
         AtomicBoolean reasoningEmitted = new AtomicBoolean(false);
 
+        // 推理内容过滤器：缓存 REASONING_START 到 REASONING_END 之间的内容，不发送到前端
+        ReasoningFilter reasoningFilter = new ReasoningFilter((reasoningText, round) -> {
+            try {
+                emitReasoningSteps(emitter, reasoningText, round);
+                reasoningEmitted.set(true);
+            } catch (Exception e) {
+                log.warn("实时推理事件发送失败: {}", e.getMessage());
+            }
+        });
+
         try {
             // 调用流式版 PlanningAgent：文本 token 实时转发，SQL 流式通过 tag 回调
             log.info("[handleDataAnalysisStream] 开始调用 planWithToolsStreaming, promptLength={}", promptToUse.length());
-
-            // 推理内容过滤器：缓存 REASONING_START 到 REASONING_END 之间的内容，不发送到前端
-            ReasoningFilter reasoningFilter = new ReasoningFilter(reasoningText -> {
-                try {
-                    emitReasoningSteps(emitter, reasoningText);
-                    reasoningEmitted.set(true);
-                } catch (Exception e) {
-                    log.warn("实时推理事件发送失败: {}", e.getMessage());
-                }
-            });
 
             toolResult = planningAgent.planWithToolsStreaming(
                     promptToUse,
@@ -349,6 +395,15 @@ public class ChatStreamService {
                             case "delta" -> emitTagDelta(emitter, event.id(), event.delta());
                             case "end"   -> emitTagEnd(emitter, event.id(), event.type(), event.title(), event.content());
                         }
+                    },
+                    statusMessage -> {
+                        // 状态回调：更新共享状态 + 立即发送到前端
+                        currentStatus.set(statusMessage);
+                        try {
+                            emitStatus(emitter, "planning", statusMessage, 4, 5);
+                        } catch (Exception e) {
+                            log.debug("状态更新发送失败: {}", e.getMessage());
+                        }
                     }
             );
         } catch (Exception e) {
@@ -359,6 +414,8 @@ public class ChatStreamService {
             // 立即停止心跳，避免在 emitter 完成后继续发送
             heartbeatManager.stopHeartbeat(sessionId);
             tags.addAll(SseEmitterContext.drainCollectedTags());
+            // 刷出未闭合的推理内容（LLM 输出 START 但未输出 END 的情况）
+            reasoningFilter.flush();
         }
 
         // 如果客户端已断开，直接返回
@@ -432,23 +489,44 @@ public class ChatStreamService {
     // ─── DIAGNOSTIC_ANALYSIS ──────────────────────────────────
 
     private String handleDiagnosticStream(SseEmitter emitter, String question, List<MessageTag> tags) throws IOException {
-        emitStatus(emitter, "diagnostic", "正在进行归因分析...", 3, 5);
-
-        ChatResponse diagnosticResult = diagnosticService.analyzeRootCause(question);
-
-        // 发送 tags
-        if (diagnosticResult.getTags() != null) {
-            for (MessageTag tag : diagnosticResult.getTags()) {
-                tags.add(tag);
-                emitTag(emitter, tag);
+        // 启动心跳，防止长时间无 SSE 事件导致连接断开
+        String sessionId = "diagnostic-" + System.currentTimeMillis();
+        heartbeatManager.startHeartbeat(sessionId, (message) -> {
+            try {
+                emitStatus(emitter, "diagnostic", message, 3, 6);
+            } catch (IOException e) {
+                log.warn("[Diagnostic] 心跳发送失败: {}", e.getMessage());
             }
+        }, () -> "正在进行归因分析...");
+
+        try {
+            // Phase 1: 生成 SQL + 执行查询
+            emitStatus(emitter, "sql_generation", "正在生成分析SQL...", 2, 6);
+            DiagnosticService.AnalysisQueryResult phase1 = diagnosticService.generateAndExecuteQueries(question);
+
+            // 立即推送 tags（SQL + 表格 + 图表），用户可以先看到数据
+            emitStatus(emitter, "sql_execution", "查询完成，正在分析结果...", 4, 6);
+            if (phase1.tags() != null) {
+                for (MessageTag tag : phase1.tags()) {
+                    tags.add(tag);
+                    emitTag(emitter, tag);
+                }
+            }
+
+            // Phase 2: 流式生成归因报告（每个 token 实时推送到前端）
+            emitStatus(emitter, "report_generation", "正在生成归因报告...", 5, 6);
+            String report = diagnosticService.generateReportStreaming(question, phase1.dataSummary(), delta -> {
+                try {
+                    emitTextDelta(emitter, delta);
+                } catch (IOException e) {
+                    log.debug("[Diagnostic] 文本 delta 发送失败: {}", e.getMessage());
+                }
+            });
+
+            return report;
+        } finally {
+            heartbeatManager.stopHeartbeat(sessionId);
         }
-
-        // 发送回复文本
-        emitStatus(emitter, "summary", "正在生成总结...", 4, 5);
-        emitTextDeltaFull(emitter, diagnosticResult.getReply());
-
-        return diagnosticResult.getReply();
     }
 
     // ─── 意图识别 ─────────────────────────────────────────────
@@ -641,10 +719,14 @@ public class ChatStreamService {
     }
 
     private void emitReasoning(SseEmitter emitter, String step, String content, int stepIndex) throws IOException {
+        emitReasoning(emitter, step, content, stepIndex, null);
+    }
+
+    private void emitReasoning(SseEmitter emitter, String step, String content, int stepIndex, Integer round) throws IOException {
         if (SseEmitterContext.isDisconnected()) {
             return;
         }
-        StreamEventData.ReasoningEventData data = new StreamEventData.ReasoningEventData(step, content, stepIndex);
+        StreamEventData.ReasoningEventData data = new StreamEventData.ReasoningEventData(step, content, stepIndex, round);
         safeSend(emitter, SseEmitter.event().name("reasoning").data(objectMapper.writeValueAsString(data)));
     }
 
@@ -687,6 +769,10 @@ public class ChatStreamService {
      * 解析推理文本中的【思考】和【观察】步骤，逐步推送 reasoning 事件
      */
     private void emitReasoningSteps(SseEmitter emitter, String reasoningText) {
+        emitReasoningSteps(emitter, reasoningText, null);
+    }
+
+    private void emitReasoningSteps(SseEmitter emitter, String reasoningText, Integer round) {
         // 按【思考】、【观察】、【行动】分割
         Pattern stepPattern = Pattern.compile("【(思考|观察|行动)】");
         Matcher matcher = stepPattern.matcher(reasoningText);
@@ -725,7 +811,7 @@ public class ChatStreamService {
 
         for (int i = 0; i < steps.size(); i++) {
             try {
-                emitReasoning(emitter, steps.get(i)[0], steps.get(i)[1], i);
+                emitReasoning(emitter, steps.get(i)[0], steps.get(i)[1], i, round);
             } catch (IOException e) {
                 log.warn("推送推理步骤失败: {}", e.getMessage());
                 break;
@@ -1003,7 +1089,8 @@ public class ChatStreamService {
     }
 
     /**
-     * 推理内容过滤器：过滤掉 REASONING_START 到 REASONING_END 之间的内容
+     * 推理内容过滤器：过滤掉 REASONING_START 到 REASONING_END 之间的内容，
+     * 并检测 ROUND_N 标记来分割轮次
      */
     private static class ReasoningFilter {
         private final StringBuilder buffer = new StringBuilder();
@@ -1011,11 +1098,14 @@ public class ChatStreamService {
         private final StringBuilder reasoningContent = new StringBuilder();
         private static final Pattern START_PATTERN = Pattern.compile("<!--\\s*REASONING_START\\s*-->");
         private static final Pattern END_PATTERN = Pattern.compile("<!--\\s*REASONING_END\\s*-->");
+        private static final Pattern ROUND_PATTERN = Pattern.compile("<!--\\s*ROUND_(\\d+)\\s*-->");
         private static final String START_TAG = "<!-- REASONING_START -->";
         private static final String END_TAG = "<!-- REASONING_END -->";
-        private final Consumer<String> onReasoningComplete;
+        private static final String ROUND_TAG_PREFIX = "<!-- ROUND_";
+        private final BiConsumer<String, Integer> onReasoningComplete;
+        private int currentRound = 0;
 
-        public ReasoningFilter(Consumer<String> onReasoningComplete) {
+        public ReasoningFilter(BiConsumer<String, Integer> onReasoningComplete) {
             this.onReasoningComplete = onReasoningComplete;
         }
 
@@ -1026,6 +1116,36 @@ public class ChatStreamService {
 
             while (true) {
                 boolean foundTag = false;
+
+                // 优先检测 ROUND 标记（无论在推理块内外）
+                if (insideReasoning) {
+                    Matcher roundMatcher = ROUND_PATTERN.matcher(buffered);
+                    if (roundMatcher.find()) {
+                        log.info("[ReasoningFilter] 推理块内匹配到 ROUND 标记: round={}", roundMatcher.group(1));
+                        // flush 当前轮的推理内容
+                        reasoningContent.append(buffered, 0, roundMatcher.start());
+                        if (onReasoningComplete != null && !reasoningContent.isEmpty()) {
+                            onReasoningComplete.accept(reasoningContent.toString(), currentRound);
+                            reasoningContent.setLength(0);
+                        }
+                        // 更新轮次号
+                        currentRound = Integer.parseInt(roundMatcher.group(1));
+                        buffered = buffered.substring(roundMatcher.end());
+                        foundTag = true;
+                        continue; // 继续检测后续标签
+                    }
+                } else {
+                    Matcher roundMatcher = ROUND_PATTERN.matcher(buffered);
+                    if (roundMatcher.find()) {
+                        log.info("[ReasoningFilter] 推理块外匹配到 ROUND 标记: round={}", roundMatcher.group(1));
+                        // 输出 ROUND 标记之前的内容，吞掉标记本身
+                        output.append(buffered, 0, roundMatcher.start());
+                        currentRound = Integer.parseInt(roundMatcher.group(1));
+                        buffered = buffered.substring(roundMatcher.end());
+                        foundTag = true;
+                        continue;
+                    }
+                }
 
                 // 检测 REASONING_START
                 if (!insideReasoning) {
@@ -1047,9 +1167,9 @@ public class ChatStreamService {
                         log.info("[ReasoningFilter] 匹配到END标签");
                         // 缓存推理内容（不输出）
                         reasoningContent.append(buffered, 0, endMatcher.start());
-                        // 立即发送推理内容
+                        // 立即发送推理内容（携带当前轮次）
                         if (onReasoningComplete != null && !reasoningContent.isEmpty()) {
-                            onReasoningComplete.accept(reasoningContent.toString());
+                            onReasoningComplete.accept(reasoningContent.toString(), currentRound);
                             reasoningContent.setLength(0);
                         }
                         insideReasoning = false;
@@ -1093,13 +1213,37 @@ public class ChatStreamService {
             return output.toString();
         }
 
+        /**
+         * 流结束时调用：如果仍在推理块内（START 已匹配但 END 未出现），强制刷出累积的推理内容
+         */
+        public void flush() {
+            if (insideReasoning && onReasoningComplete != null) {
+                // 将 buffer 中残余内容也加入推理
+                if (!buffer.isEmpty()) {
+                    reasoningContent.append(buffer);
+                    buffer.setLength(0);
+                }
+                if (!reasoningContent.isEmpty()) {
+                    log.info("[ReasoningFilter] flush: 强制刷出未闭合的推理内容，长度={}", reasoningContent.length());
+                    onReasoningComplete.accept(reasoningContent.toString(), currentRound);
+                    reasoningContent.setLength(0);
+                }
+                insideReasoning = false;
+            }
+        }
+
         // 从尾部向前扫描，找到可能是标签开始的位置
         private int findPotentialTagStartIndex(String s) {
             if (s.isEmpty()) return -1;
-            int maxScanLen = Math.max(START_TAG.length(), END_TAG.length());
+            // ROUND 标签可能更长，需要考虑 "<!-- ROUND_99 -->" 这样的长度
+            int maxScanLen = Math.max(
+                    Math.max(START_TAG.length(), END_TAG.length()),
+                    ROUND_TAG_PREFIX.length() + 10 // "<!-- ROUND_" + digits + " -->"
+            );
             for (int i = s.length() - 1; i >= Math.max(0, s.length() - maxScanLen); i--) {
                 String suffix = s.substring(i);
-                if (START_TAG.startsWith(suffix) || END_TAG.startsWith(suffix)) {
+                if (START_TAG.startsWith(suffix) || END_TAG.startsWith(suffix)
+                        || ROUND_TAG_PREFIX.startsWith(suffix) || "<!--".startsWith(suffix)) {
                     return i;
                 }
             }

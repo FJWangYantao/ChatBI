@@ -394,7 +394,8 @@ function TaggedMessage({
   const isStreaming = message.isStreaming;
 
   // 将标签按结果集分组（排除 analysis_result，它单独渲染）
-  const resultGroups = useState(() => {
+  // 使用 useMemo 而非 useState，确保 tags 变化时（如 chart_recommendation 后到达）能重新分组
+  const resultGroups = useMemo(() => {
     if (!message.tags) return [];
 
     // 过滤掉 analysis_result、image、suggestions，它们在气泡外单独渲染
@@ -424,7 +425,7 @@ function TaggedMessage({
       });
     }
     return groups;
-  })[0];
+  }, [message.tags]);
 
   // 如果没有 tags，直接显示内容
   if (!message.tags || message.tags.length === 0) {
@@ -712,6 +713,7 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
                     <ReasoningChain
                       steps={message.reasoningSteps}
                       isStreaming={message.isStreaming && message.streamingStage === "reasoning"}
+                      analysisTags={message.tags?.filter(t => t.type === 'analysis_result')}
                     />
                   </div>
                 )}
@@ -765,16 +767,6 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
                     />
                   </div>
                 )}
-
-                {/* ── analysis_result 独立全宽展示区 ── */}
-                {message.tags
-                  ?.filter(t => t.type === 'analysis_result')
-                  .map((tag, idx) => (
-                    <div key={`analysis-${idx}`} className="w-full mt-4">
-                      <AnalysisResultRenderer content={tag.content} title={tag.title} allTags={message.tags || []} />
-                    </div>
-                  ))
-                }
 
                 {/* ── image 独立全宽展示区 ── */}
                 {message.tags

@@ -38,6 +38,7 @@ export interface StreamCallbacks {
     step: string;
     content: string;
     stepIndex: number;
+    round?: number;
   }) => void;
   onStepResult?: (data: {
     stepName: string;

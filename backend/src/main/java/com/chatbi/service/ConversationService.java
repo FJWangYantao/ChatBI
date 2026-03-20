@@ -105,8 +105,11 @@ public class ConversationService {
      */
     @Transactional
     public void deleteConversation(String conversationId) {
+        // 先删子表，再删主表
+        queryHistoryRepository.deleteByConversationId(conversationId);
+        messageRepository.deleteByConversationId(conversationId);
         conversationRepository.deleteByConversationId(conversationId);
-        log.info("Deleted conversation: {}", conversationId);
+        log.info("Deleted conversation with cascade: {}", conversationId);
     }
 
     /**
@@ -134,6 +137,33 @@ public class ConversationService {
 
         Message saved = messageRepository.save(message);
         log.info("消息已保存: messageId={}, conversationId={}", saved.getMessageId(), conversationId);
+
+        return convertMessageToDTO(saved);
+    }
+
+    /**
+     * 保存消息（完整版，含所有结构化数据）
+     */
+    public MessageDTO saveMessage(String conversationId, String role, String content,
+                                   List<MessageTag> tags, List<Map<String, Object>> steps,
+                                   Map<String, Object> intentInfo, List<String> suggestions,
+                                   List<Map<String, Object>> reasoningSteps) {
+        conversationRepository.findByConversationId(conversationId)
+                .orElseThrow(() -> new RuntimeException("对话不存在: " + conversationId));
+
+        Message message = Message.builder()
+                .conversationId(conversationId)
+                .role(role)
+                .content(content)
+                .tags(tags)
+                .steps(steps)
+                .intentInfo(intentInfo)
+                .suggestions(suggestions)
+                .reasoningSteps(reasoningSteps)
+                .build();
+
+        Message saved = messageRepository.save(message);
+        log.info("消息已保存(完整): messageId={}, conversationId={}", saved.getMessageId(), conversationId);
 
         return convertMessageToDTO(saved);
     }
@@ -174,6 +204,14 @@ public class ConversationService {
         return queryHistoryRepository.findByConversationId(conversationId);
     }
 
+    /**
+     * 更新消息反馈
+     */
+    public void updateMessageFeedback(String messageId, String feedback) {
+        messageRepository.updateFeedback(messageId, feedback);
+        log.info("消息反馈已更新: messageId={}, feedback={}", messageId, feedback);
+    }
+
     private ConversationDTO convertToDTO(Conversation conversation) {
         return ConversationDTO.builder()
                 .conversationId(conversation.getConversationId())
@@ -191,6 +229,10 @@ public class ConversationService {
                 .content(message.getContent())
                 .tags(message.getTags())
                 .steps(message.getSteps())
+                .intentInfo(message.getIntentInfo())
+                .suggestions(message.getSuggestions())
+                .reasoningSteps(message.getReasoningSteps())
+                .feedback(message.getFeedback())
                 .createdAt(message.getCreatedAt())
                 .build();
     }
