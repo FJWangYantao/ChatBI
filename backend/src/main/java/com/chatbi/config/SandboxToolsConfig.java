@@ -3,6 +3,7 @@ package com.chatbi.config;
 import com.chatbi.context.LLMConfigContext;
 import com.chatbi.context.SseEmitterContext;
 import com.chatbi.dto.MessageTag;
+import com.chatbi.dto.SqlFetchResult;
 import com.chatbi.dto.StreamingTagEvent;
 import com.chatbi.service.ChatStreamService;
 import com.chatbi.service.CodeAgent;
@@ -584,7 +585,7 @@ public class SandboxToolsConfig {
                     Map<String, Object> result = new LinkedHashMap<>();
                     try {
                         // 调用流式版本，每个 SQL token 实时转发
-                        List<Map<String, Object>> data = text2SQLAgent.fetchDataWithStreaming(
+                        SqlFetchResult fetchResult = text2SQLAgent.fetchDataWithStreaming(
                                 dataDescription,
                                 delta -> {
                                     if (tagCallback != null) {
@@ -592,9 +593,10 @@ public class SandboxToolsConfig {
                                     }
                                 }
                         );
+                        List<Map<String, Object>> data = fetchResult.getData();
+                        String finalSQL = fetchResult.getSql();
 
                         // 发送 tag_end（附带完整 SQL 用于持久化）
-                        String finalSQL = text2SQLAgent.getLastGeneratedSQL();
                         if (tagCallback != null && finalSQL != null) {
                             tagCallback.accept(StreamingTagEvent.end(tagId, "sql", "SQL 查询", finalSQL));
                         }

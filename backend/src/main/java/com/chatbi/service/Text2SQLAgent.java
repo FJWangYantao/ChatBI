@@ -8,6 +8,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
+import com.chatbi.dto.SqlFetchResult;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -23,9 +25,6 @@ public class Text2SQLAgent {
     private final SQLCorrectionAgent sqlCorrectionAgent;
     private final DynamicJdbcTemplateProvider jdbcTemplateProvider;
     private final MCPKnowledgeService mcpKnowledgeService;
-
-    // 最近一次生成的最终 SQL（纠错后），供外部获取用于 tag_end
-    private volatile String lastGeneratedSQL;
 
     public Text2SQLAgent(DynamicChatClientFactory chatClientFactory,
                          ModelOptionsProvider modelOptions,
@@ -44,7 +43,7 @@ public class Text2SQLAgent {
     /**
      * 获取数据（向后兼容，内部调用流式版本并传入空回调）
      */
-    public List<Map<String, Object>> fetchData(String dataQuery) {
+    public SqlFetchResult fetchData(String dataQuery) {
         return fetchDataWithStreaming(dataQuery, delta -> {});
     }
 
@@ -52,9 +51,9 @@ public class Text2SQLAgent {
      * 流式获取数据：SQL 生成过程中每个 token 实时回调
      * @param dataQuery 自然语言查询描述
      * @param onSqlDelta 每收到一个 SQL token 时的回调
-     * @return 查询结果列表；同时通过 lastGeneratedSQL 可获取最终 SQL
+     * @return SqlFetchResult 包含查询结果和最终 SQL
      */
-    public List<Map<String, Object>> fetchDataWithStreaming(String dataQuery, Consumer<String> onSqlDelta) {
+    public SqlFetchResult fetchDataWithStreaming(String dataQuery, Consumer<String> onSqlDelta) {
         log.info("[Text2SQLAgent] Fetching data (streaming) for query: {}", dataQuery);
 
         // 1. 获取 Schema
@@ -79,19 +78,18 @@ public class Text2SQLAgent {
             }).blockLast();
         } catch (Exception e) {
             log.error("[Text2SQLAgent] Streaming SQL generation failed: {}", e.getMessage(), e);
-            return Collections.emptyList();
+            return new SqlFetchResult(Collections.emptyList(), null);
         }
 
         String sql = sqlBuilder.toString();
         if (sql.trim().isEmpty()) {
             log.warn("[Text2SQLAgent] Failed to generate SQL");
-            return Collections.emptyList();
+            return new SqlFetchResult(Collections.emptyList(), null);
         }
 
         // 4. 纠错
         CorrectionResult correctionResult = sqlCorrectionAgent.correctSQL(sql, dataQuery, null);
         String finalSQL = correctionResult.getCorrectedSQL();
-        this.lastGeneratedSQL = finalSQL;
         log.info("[Text2SQLAgent] Final SQL: {}", finalSQL);
 
         // 5. 执行
@@ -105,19 +103,12 @@ public class Text2SQLAgent {
 
             List<Map<String, Object>> data = jdbcTemplateProvider.getJdbcTemplate().queryForList(cleanSql);
             log.info("[Text2SQLAgent] Fetched {} rows", data.size());
-            return data;
+            return new SqlFetchResult(data, finalSQL);
 
         } catch (Exception e) {
             log.error("[Text2SQLAgent] Execution failed: SQL={}, Error={}", finalSQL, e.getMessage());
-            return Collections.emptyList();
+            return new SqlFetchResult(Collections.emptyList(), finalSQL);
         }
-    }
-
-    /**
-     * 获取最近一次生成的最终 SQL（纠错后）
-     */
-    public String getLastGeneratedSQL() {
-        return lastGeneratedSQL;
     }
 
     private String buildSqlPrompt(String dataQuery, String schemaInfo) {
