@@ -15,7 +15,8 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -41,8 +42,16 @@ public class IntentRecognitionService {
 
     private final RestTemplate restTemplate;
 
-    // 简单的本地缓存（可选）
-    private final Map<String, IntentRecognitionResponse> cache = new HashMap<>();
+    // 线程安全的 LRU 缓存，最多保留 500 条，超出自动淘汰最久未访问的条目
+    private static final int MAX_CACHE_SIZE = 500;
+    private final Map<String, IntentRecognitionResponse> cache = Collections.synchronizedMap(
+            new LinkedHashMap<>(64, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, IntentRecognitionResponse> eldest) {
+                    return size() > MAX_CACHE_SIZE;
+                }
+            }
+    );
 
     // 一级分类中文映射（兜底用）
     private static final Map<String, String> CATEGORY_CN_MAP = Map.of(
@@ -97,10 +106,10 @@ public class IntentRecognitionService {
             return createFallbackResponse(request.getText());
         }
 
-        // 检查缓存
+        // 检查缓存（单次 get 避免 containsKey+get 的 TOCTOU 竞态）
         String cacheKey = request.getText();
-        if (cache.containsKey(cacheKey)) {
-            IntentRecognitionResponse cached = cache.get(cacheKey);
+        IntentRecognitionResponse cached = cache.get(cacheKey);
+        if (cached != null) {
             String traceId = MDC.get("traceId");
             logger.info("[STRUCT] event=intent_recognition source=cache category={} subtype={} traceId={}",
                     cached.getCategory(), cached.getSubtype(), traceId != null ? traceId : "-");
@@ -150,10 +159,8 @@ public class IntentRecognitionService {
                         url, result.getCategory(), result.getSubtype(), result.getCategoryConfidence(), duration,
                         traceId != null ? traceId : "-");
 
-                // 缓存结果
-                if (cache.size() < 1000) {
-                    cache.put(cacheKey, result);
-                }
+                // 缓存结果（超出容量时 LRU 自动淘汰最久未访问的条目）
+                cache.put(cacheKey, result);
 
                 logger.debug("Intent recognition result: {}", result);
                 return result;

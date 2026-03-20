@@ -11,6 +11,7 @@ import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 读取数据库 Schema 结构的服务
@@ -21,6 +22,9 @@ import java.util.*;
 public class ReadSchemaStructureService {
 
     private final DynamicJdbcTemplateProvider jdbcTemplateProvider;
+
+    // 按数据源 ID 缓存 Schema，切换数据源时自动 miss
+    private final ConcurrentHashMap<Long, SchemaResponse> schemaCache = new ConcurrentHashMap<>();
 
     public ReadSchemaStructureService(DynamicJdbcTemplateProvider jdbcTemplateProvider) {
         this.jdbcTemplateProvider = jdbcTemplateProvider;
@@ -34,22 +38,41 @@ public class ReadSchemaStructureService {
     }
 
     /**
-     * 获取数据库所有表的元数据
+     * 获取数据库所有表的元数据（带缓存）
      */
     public SchemaResponse getDatabaseSchema() {
-        String databaseName = getJdbcTemplate().execute((ConnectionCallback<String>) connection -> {
-            try {
-                return connection.getCatalog();
-            } catch (SQLException e) {
-                log.error("获取数据库名失败", e);
-                return "unknown";
-            }
+        Long activeId = jdbcTemplateProvider.getActiveDataSourceId();
+        return schemaCache.computeIfAbsent(activeId, id -> {
+            log.info("Schema 缓存未命中，从数据库读取, dataSourceId={}", id);
+            String databaseName = getJdbcTemplate().execute((ConnectionCallback<String>) connection -> {
+                try {
+                    return connection.getCatalog();
+                } catch (SQLException e) {
+                    log.error("获取数据库名失败", e);
+                    return "unknown";
+                }
+            });
+
+            List<TableMetadata> tables = getAllTables();
+            String formattedForAI = formatSchemaForAI(databaseName, tables);
+            return new SchemaResponse(databaseName, tables, formattedForAI);
         });
+    }
 
-        List<TableMetadata> tables = getAllTables();
-        String formattedForAI = formatSchemaForAI(databaseName, tables);
+    /**
+     * 清除指定数据源的 Schema 缓存
+     */
+    public void invalidateCache(Long dataSourceId) {
+        schemaCache.remove(dataSourceId);
+        log.info("清除数据源 {} 的 Schema 缓存", dataSourceId);
+    }
 
-        return new SchemaResponse(databaseName, tables, formattedForAI);
+    /**
+     * 清除所有 Schema 缓存
+     */
+    public void invalidateAllCache() {
+        schemaCache.clear();
+        log.info("清除所有 Schema 缓存");
     }
 
     /**

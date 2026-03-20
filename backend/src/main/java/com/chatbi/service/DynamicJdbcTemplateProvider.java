@@ -69,6 +69,17 @@ public class DynamicJdbcTemplateProvider {
     }
 
     /**
+     * 获取当前激活数据源的 ID
+     */
+    public Long getActiveDataSourceId() {
+        Optional<DataSourceConfig> activeConfig = dynamicDataSourceService.getActiveDataSourceConfig();
+        if (activeConfig.isEmpty()) {
+            throw new IllegalStateException("没有激活的数据源");
+        }
+        return activeConfig.get().getId();
+    }
+
+    /**
      * 检查是否有激活的数据源
      */
     public boolean hasActiveDataSource() {

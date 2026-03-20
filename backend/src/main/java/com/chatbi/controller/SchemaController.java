@@ -49,6 +49,18 @@ public class SchemaController {
     }
 
     /**
+     * 刷新 Schema 缓存并返回最新 Schema
+     * POST /api/schema/refresh
+     */
+    @PostMapping("/refresh")
+    public ResponseEntity<SchemaResponse> refreshDatabaseSchema() {
+        log.info("手动刷新数据库 Schema 缓存");
+        schemaService.invalidateAllCache();
+        SchemaResponse schema = schemaService.getDatabaseSchema();
+        return ResponseEntity.ok(schema);
+    }
+
+    /**
      * 获取 AI 格式化的 Schema 文本
      * GET /api/schema/ai-format
      */
