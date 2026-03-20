@@ -157,9 +157,12 @@ public class PlanningAgent {
 
         log.info("[PlanningAgent] Planning with tools (streaming) for: {}", question);
 
-        String userPrompt = buildUserPrompt(question);
+        // 分离静态内容（system）和动态内容（user），system message 可命中 prompt caching
+        String systemPrompt = buildSystemPrompt();
+        String userContent = buildUserContent(question);
         List<Message> messages = new ArrayList<>();
-        messages.add(new UserMessage(userPrompt));
+        messages.add(new SystemMessage(systemPrompt));
+        messages.add(new UserMessage(userContent));
 
         // 构建带工具定义的 options（proxyToolCalls=true 阻止自动执行）
         OpenAiChatOptions options = OpenAiChatOptions.builder()
@@ -366,7 +369,11 @@ public class PlanningAgent {
     private ArrayNode convertMessagesToOpenAI(List<Message> messages) {
         ArrayNode arr = objectMapper.createArrayNode();
         for (Message msg : messages) {
-            if (msg instanceof UserMessage um) {
+            if (msg instanceof SystemMessage sm) {
+                arr.add(objectMapper.createObjectNode()
+                        .put("role", "system")
+                        .put("content", sm.getContent()));
+            } else if (msg instanceof UserMessage um) {
                 arr.add(objectMapper.createObjectNode()
                         .put("role", "user")
                         .put("content", um.getContent()));
@@ -786,7 +793,9 @@ public class PlanningAgent {
     private int estimateTokens(List<Message> messages) {
         int totalChars = 0;
         for (Message msg : messages) {
-            if (msg instanceof UserMessage um) {
+            if (msg instanceof SystemMessage sm) {
+                totalChars += sm.getContent().length();
+            } else if (msg instanceof UserMessage um) {
                 totalChars += um.getContent().length();
             } else if (msg instanceof AssistantMessage am) {
                 totalChars += am.getContent() != null ? am.getContent().length() : 0;
@@ -806,7 +815,7 @@ public class PlanningAgent {
 
     /**
      * 发送前检查 token 估算，超限时压缩中间轮次的 tool response。
-     * 保留首条 UserMessage + 最近一轮对话，压缩中间轮次。
+     * 保留 SystemMessage + UserMessage + 最近一轮对话，压缩中间轮次。
      */
     private void trimMessagesIfNeeded(List<Message> messages) {
         int estimated = estimateTokens(messages);
@@ -945,16 +954,12 @@ public class PlanningAgent {
     }
 
     /**
-     * 构建用户 prompt（包含系统指令、工具说明、用户问题）
+     * 构建 System Message（包含静态内容：角色定义、工具说明、规则、Schema）
+     * 这部分内容在多轮对话中保持不变，可命中 provider 的 prompt caching
      */
-    private String buildUserPrompt(String question) {
+    private String buildSystemPrompt() {
         String schemaInfo = schemaService.getDatabaseSchema().getFormattedForAI();
-        NERResponse nerResponse = nerService.extractEntities(question);
-        String entitiesStr = nerResponse.getEntities().stream()
-                .map(e -> e.getText() + "(" + e.getType() + ")")
-                .collect(Collectors.joining(", "));
-
-        return String.format("""
+        return """
             ⚠️ **核心规则（必须严格遵守）**：
             - **严格禁止使用任何模拟数据、硬编码数据、假数据**
             - 所有数据必须通过 query_database 工具从数据库获取
@@ -1165,11 +1170,23 @@ public class PlanningAgent {
             - **重要**：不要在回复中描述"已生成X个图表"或"已生成图表"，图表会自动显示在前端，你只需要分析数据结果即可
             - **禁止**：不要列举图表名称（如"员工留存率柱状图"、"趋势图"等），这些是系统自动生成的，你只需要解读数据洞察
 
+            数据库结构：
+            """ + schemaInfo + "\n";
+    }
+
+    /**
+     * 构建用户 prompt（只包含动态内容：用户问题 + 实体识别结果）
+     */
+    private String buildUserContent(String question) {
+        NERResponse nerResponse = nerService.extractEntities(question);
+        String entitiesStr = nerResponse.getEntities().stream()
+                .map(e -> e.getText() + "(" + e.getType() + ")")
+                .collect(Collectors.joining(", "));
+
+        return String.format("""
             用户问题：%s
             识别到的实体：%s
-            数据库结构：
-            %s
-            """, question, entitiesStr, schemaInfo);
+            """, question, entitiesStr);
     }
 
     private String getDefaultBaseUrl(String provider) {

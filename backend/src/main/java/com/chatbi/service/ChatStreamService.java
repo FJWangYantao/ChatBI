@@ -416,6 +416,8 @@ public class ChatStreamService {
             tags.addAll(SseEmitterContext.drainCollectedTags());
             // 刷出未闭合的推理内容（LLM 输出 START 但未输出 END 的情况）
             reasoningFilter.flush();
+            // 清理 ThreadLocal，避免泄漏
+            SseEmitterContext.clear();
         }
 
         // 如果客户端已断开，直接返回
