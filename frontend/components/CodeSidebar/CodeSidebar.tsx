@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { CodeEntry } from "@/types/code-sidebar";
 import CodeEntryCard from "./CodeEntryCard";
-
-type FilterType = "all" | "sql" | "python" | "execution";
 
 interface CodeSidebarProps {
   entries: CodeEntry[];
@@ -19,128 +17,156 @@ export default function CodeSidebar({
   onToggle,
   activeEntryId,
 }: CodeSidebarProps) {
-  const [filter, setFilter] = useState<FilterType>("all");
-  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
-  const listRef = useRef<HTMLDivElement>(null);
-  const scrollTimeoutRef = useRef<number | null>(null);
+  const [splitRatio, setSplitRatio] = useState(50);
+  const [sidebarWidth, setSidebarWidth] = useState(480);
+  const isDraggingRef = useRef<"split" | "width" | null>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const topPanelRef = useRef<HTMLDivElement>(null);
+  const bottomPanelRef = useRef<HTMLDivElement>(null);
+  const splitRectRef = useRef<{ top: number; height: number } | null>(null);
+  const sidebarStartX = useRef(0);
+  const sidebarStartWidth = useRef(0);
+  // 拖拽期间的实时值（不触发 React 渲染）
+  const liveWidth = useRef(480);
+  const liveRatio = useRef(50);
 
-  // 滚动事件处理：检测用户是否在底部
-  const handleScroll = () => {
-    if (scrollTimeoutRef.current) return;
-
-    scrollTimeoutRef.current = requestAnimationFrame(() => {
-      if (!listRef.current) return;
-      const { scrollTop, scrollHeight, clientHeight } = listRef.current;
-      const isNearBottom = scrollTop + clientHeight >= scrollHeight - 50;
-      setShouldAutoScroll(isNearBottom);
-      scrollTimeoutRef.current = null;
-    });
-  };
-
-  // 内容变化时，如果 shouldAutoScroll 为 true，则自动滚动到底部
-  useEffect(() => {
-    if (shouldAutoScroll && listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
+  const handleDividerMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = "split";
+    if (sidebarRef.current) {
+      const rect = sidebarRef.current.getBoundingClientRect();
+      splitRectRef.current = { top: rect.top, height: rect.height };
     }
-  }, [entries, shouldAutoScroll]);
+    document.body.style.cursor = "ns-resize";
+    document.body.style.userSelect = "none";
+  }, []);
 
-  // 侧栏打开时，自动滚动到底部并启用自动滚动
-  useEffect(() => {
-    if (isOpen && listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
-      setShouldAutoScroll(true);
-    }
-  }, [isOpen]);
+  const handleWidthMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = "width";
+    sidebarStartX.current = e.clientX;
+    sidebarStartWidth.current = liveWidth.current;
+    document.body.style.cursor = "ew-resize";
+    document.body.style.userSelect = "none";
+  }, []);
 
-  // 筛选器切换时，重置为自动滚动状态并滚动到底部
   useEffect(() => {
-    setShouldAutoScroll(true);
-    if (listRef.current) {
-      listRef.current.scrollTop = listRef.current.scrollHeight;
-    }
-  }, [filter]);
-
-  // 组件卸载时清理 requestAnimationFrame
-  useEffect(() => {
-    return () => {
-      if (scrollTimeoutRef.current) {
-        cancelAnimationFrame(scrollTimeoutRef.current);
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingRef.current === "split" && sidebarRef.current) {
+        const rect = splitRectRef.current;
+        if (!rect || rect.height <= 0) return;
+        const y = e.clientY - rect.top;
+        const ratio = Math.min(Math.max((y / rect.height) * 100, 20), 80);
+        liveRatio.current = ratio;
+        if (topPanelRef.current) topPanelRef.current.style.height = `${ratio}%`;
+        if (bottomPanelRef.current) bottomPanelRef.current.style.height = `${100 - ratio}%`;
+      } else if (isDraggingRef.current === "width") {
+        const delta = sidebarStartX.current - e.clientX;
+        const w = Math.min(Math.max(sidebarStartWidth.current + delta, 320), 800);
+        liveWidth.current = w;
+        if (containerRef.current) containerRef.current.style.width = `${w}px`;
       }
+    };
+
+    const handleMouseUp = () => {
+      if (isDraggingRef.current) {
+        splitRectRef.current = null;
+        setSidebarWidth(liveWidth.current);
+        setSplitRatio(liveRatio.current);
+        isDraggingRef.current = null;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      }
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
     };
   }, []);
 
-  const filteredEntries =
-    filter === "all" ? entries : entries.filter((e) => e.type === filter);
-
-  const filterTabs: { key: FilterType; label: string }[] = [
-    { key: "all", label: "全部" },
-    { key: "sql", label: "SQL" },
-    { key: "python", label: "Python" },
-    { key: "execution", label: "执行" },
-  ];
+  // 数据分流：useMemo 缓存，避免每次渲染都重新 filter
+  const pythonEntries = useMemo(() =>
+    entries.filter((e) => e.type === "python" || e.type === "execution"),
+    [entries]
+  );
+  const sqlEntries = useMemo(() =>
+    entries.filter((e) => e.type === "sql"),
+    [entries]
+  );
 
   if (!isOpen) return null;
 
   return (
-    <div className="hidden lg:flex flex-col w-[480px] flex-shrink-0 border-l border-border/50 bg-background/50 backdrop-blur-sm">
-      {/* 头部 */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold font-display">代码</span>
-          <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
-            {entries.length}
-          </span>
-        </div>
-        <button
-          onClick={onToggle}
-          className="p-1.5 rounded-lg hover:bg-accent/10 transition-colors text-muted-foreground hover:text-foreground"
-          title="关闭代码面板"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
-      {/* 筛选栏 */}
-      <div className="flex gap-1 px-4 py-2 border-b border-border/30">
-        {filterTabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setFilter(tab.key)}
-            className={`px-3 py-1 text-xs font-medium rounded-lg transition-all duration-200 ${
-              filter === tab.key
-                ? "bg-accent/20 text-accent border border-accent/30"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* 列表区 */}
+    <div
+      ref={containerRef}
+      className="hidden lg:flex relative flex-col flex-shrink-0 bg-background/95"
+      style={{ width: sidebarWidth }}
+    >
+      {/* 左侧可拖拽调整宽度 */}
       <div
-        ref={listRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin"
+        onMouseDown={handleWidthMouseDown}
+        className="absolute left-0 top-0 bottom-0 cursor-ew-resize z-10 flex items-center justify-center"
+        style={{ width: "12px" }}
       >
-        {filteredEntries.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <svg className="w-12 h-12 mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-            </svg>
-            <span className="text-sm">暂无代码记录</span>
-          </div>
-        ) : (
-          filteredEntries.map((entry) => (
-            <CodeEntryCard
-              key={entry.id}
-              entry={entry}
-              isActive={entry.id === activeEntryId}
-            />
-          ))
-        )}
+        <div className="h-full w-px bg-border/50 hover:bg-border transition-colors" />
+      </div>
+
+      {/* 上下分割区域 */}
+      <div ref={sidebarRef} className="flex-1 flex flex-col overflow-hidden">
+        {/* Python 区域 */}
+        <div
+          ref={topPanelRef}
+          className="overflow-y-auto p-4 divide-y divide-border/20 scrollbar-thin"
+          style={{ height: `${splitRatio}%` }}
+        >
+          {pythonEntries.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <span className="text-sm">暂无 Python 代码记录</span>
+            </div>
+          ) : (
+            pythonEntries.map((entry) => (
+              <CodeEntryCard
+                key={entry.id}
+                entry={entry}
+                isActive={entry.id === activeEntryId}
+              />
+            ))
+          )}
+        </div>
+
+        {/* 可拖拽分割线 */}
+        <div
+          onMouseDown={handleDividerMouseDown}
+          className="group relative flex-shrink-0 cursor-ns-resize flex items-center justify-center"
+          style={{ height: "12px" }}
+        >
+          <div className="h-px w-full bg-border/50 group-hover:bg-border transition-colors" />
+        </div>
+
+        {/* SQL 区域 */}
+        <div
+          ref={bottomPanelRef}
+          className="overflow-y-auto p-4 divide-y divide-border/20 scrollbar-thin flex-1"
+          style={{ height: `${100 - splitRatio}%` }}
+        >
+          {sqlEntries.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <span className="text-sm">暂无 SQL 查询记录</span>
+            </div>
+          ) : (
+            sqlEntries.map((entry) => (
+              <CodeEntryCard
+                key={entry.id}
+                entry={entry}
+                isActive={entry.id === activeEntryId}
+              />
+            ))
+          )}
+        </div>
       </div>
     </div>
   );

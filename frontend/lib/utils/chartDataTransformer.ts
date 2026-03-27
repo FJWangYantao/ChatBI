@@ -14,27 +14,15 @@ export function transformToBarData(
   const { dimensionCol, measureCol } = analysis;
 
   if (!dimensionCol || !measureCol) {
-    console.warn('[transformToBarData] 缺少字段配置:', { dimensionCol, measureCol });
     return [];
   }
 
-  const result = queryResult.rows
+  return queryResult.rows
     .map(row => ({
       name: String(row[dimensionCol] ?? '-'),
       value: Number(row[measureCol]) || 0
     }))
     .filter(item => item.value > 0 || item.name !== '-');
-
-  console.log('[transformToBarData] 转换结果:', {
-    dimensionCol,
-    measureCol,
-    rowCount: queryResult.rows.length,
-    resultCount: result.length,
-    sampleRow: queryResult.rows[0],
-    sampleResult: result[0]
-  });
-
-  return result;
 }
 
 /**
@@ -50,27 +38,39 @@ export function transformToLineData(
     return [];
   }
 
-  return queryResult.rows
-    .map(row => {
-      const dateValue = row[dimensionCol];
-      let formattedDate = String(dateValue);
+  // 第一遍：保留原始时间戳用于排序
+  const withSortKey = queryResult.rows.map(row => {
+    const dateValue = row[dimensionCol];
+    let sortKey: number | null = null;
+    let formattedDate = String(dateValue);
 
-      // 尝试格式化日期
-      if (dateValue instanceof Date) {
-        formattedDate = dateValue.toLocaleDateString('zh-CN');
-      } else if (typeof dateValue === 'string') {
-        const date = new Date(dateValue);
-        if (!isNaN(date.getTime())) {
-          formattedDate = date.toLocaleDateString('zh-CN');
-        }
+    if (dateValue instanceof Date) {
+      sortKey = dateValue.getTime();
+      formattedDate = dateValue.toLocaleDateString('zh-CN');
+    } else if (typeof dateValue === 'string') {
+      const date = new Date(dateValue);
+      if (!isNaN(date.getTime())) {
+        sortKey = date.getTime();
+        formattedDate = date.toLocaleDateString('zh-CN');
       }
+    }
 
-      return {
-        date: formattedDate,
-        value: Number(row[measureCol]) || 0
-      };
-    })
-    .sort((a, b) => a.date.localeCompare(b.date));
+    return {
+      date: formattedDate,
+      value: Number(row[measureCol]) || 0,
+      sortKey,
+    };
+  });
+
+  // 排序后去掉 sortKey
+  withSortKey.sort((a, b) => {
+    if (a.sortKey !== null && b.sortKey !== null) {
+      return a.sortKey - b.sortKey;
+    }
+    return a.date.localeCompare(b.date);
+  });
+
+  return withSortKey.map(({ date, value }) => ({ date, value }));
 }
 
 /**
@@ -83,27 +83,15 @@ export function transformToPieData(
   const { dimensionCol, measureCol } = analysis;
 
   if (!dimensionCol || !measureCol) {
-    console.warn('[transformToPieData] 缺少字段配置:', { dimensionCol, measureCol });
     return [];
   }
 
-  const result = queryResult.rows
+  return queryResult.rows
     .map(row => ({
       name: String(row[dimensionCol] ?? '-'),
       value: Number(row[measureCol]) || 0
     }))
     .filter(item => item.value > 0);
-
-  console.log('[transformToPieData] 转换结果:', {
-    dimensionCol,
-    measureCol,
-    rowCount: queryResult.rows.length,
-    resultCount: result.length,
-    sampleRow: queryResult.rows[0],
-    sampleResult: result[0]
-  });
-
-  return result;
 }
 
 /**

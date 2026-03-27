@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { MessageTag } from "@/app/page";
 import { QueryResult, DatasetAnalysis, analyzeDataset, ChartType } from "@/lib/utils/dataAnalyzer";
-import { fetchPagedData } from "@/lib/api/chat";
+import { PaginatedTable } from "@/components/Table/PaginatedTable";
 import { BarChartView } from "./BarChartView";
 import { LineChartView } from "./LineChartView";
 import { PieChartView } from "./PieChartView";
@@ -11,151 +11,6 @@ import { ScatterChartView } from "./ScatterChartView";
 
 interface AutoChartProps {
   tag: MessageTag;
-}
-
-// 分页表格组件
-function PaginatedTable({ tag, queryResult }: { tag: MessageTag; queryResult: QueryResult }) {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [remoteRows, setRemoteRows] = useState<Record<string, any>[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const pageSize = 10;
-
-  const previewRows = queryResult.rows?.length || 0;
-  const previewPages = Math.ceil(previewRows / pageSize);
-  const totalRows = queryResult.totalRows || previewRows;
-  const totalPages = Math.ceil(totalRows / pageSize);
-  const hasDataRef = !!queryResult.dataRefId;
-
-  useEffect(() => {
-    if (!hasDataRef || currentPage <= previewPages) {
-      setRemoteRows(null);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    const offset = (currentPage - 1) * pageSize;
-    fetchPagedData(queryResult.dataRefId!, offset, pageSize)
-      .then((res) => {
-        if (!cancelled && res.success) {
-          setRemoteRows(res.rows);
-        }
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [currentPage, hasDataRef, previewPages, queryResult.dataRefId]);
-
-  const getCurrentPageData = () => {
-    if (hasDataRef && currentPage > previewPages && remoteRows) {
-      return remoteRows;
-    }
-    if (!queryResult.rows) return [];
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    return queryResult.rows.slice(startIndex, endIndex);
-  };
-
-  return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
-      <div className="border-b border-gray-200 dark:border-gray-800 px-4 py-2">
-        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-          {tag.title || "查询结果"}
-        </span>
-        {queryResult.executionTime && (
-          <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
-            ({queryResult.executionTime}ms)
-          </span>
-        )}
-      </div>
-
-      <div className="max-w-[500px] overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-          <thead className="bg-gray-50 dark:bg-gray-800">
-            <tr>
-              {queryResult.columns?.map((column: string, idx: number) => (
-                <th
-                  key={idx}
-                  className="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap"
-                >
-                  {column}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 dark:divide-gray-800 bg-white dark:bg-gray-900">
-            {loading ? (
-              <tr>
-                <td
-                  colSpan={queryResult.columns?.length || 1}
-                  className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
-                >
-                  加载中...
-                </td>
-              </tr>
-            ) : (
-            <>
-            {getCurrentPageData().map((row: any, idx: number) => (
-              <tr key={idx} className={idx % 2 === 0 ? "bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors" : "bg-gray-50 dark:bg-gray-850 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"}>
-                {queryResult.columns?.map((column: string, colIdx: number) => (
-                  <td
-                    key={colIdx}
-                    className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 whitespace-nowrap"
-                  >
-                    {row[column]?.toString() || "-"}
-                  </td>
-                ))}
-              </tr>
-            ))}
-            {getCurrentPageData().length === 0 && (
-              <tr>
-                <td
-                  colSpan={queryResult.columns?.length || 1}
-                  className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
-                >
-                  暂无数据
-                </td>
-              </tr>
-            )}
-            </>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {totalPages > 1 && (
-        <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between bg-gray-50 dark:bg-gray-800/50">
-          <div className="text-xs font-medium text-gray-700 dark:text-gray-400">
-            共 {queryResult.totalRows || totalRows} 行 ·
-            第 {currentPage} / {totalPages} 页
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className={`px-3 py-1 text-xs rounded-md border font-medium transition-colors ${
-                currentPage === 1
-                  ? "border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-600 bg-gray-50 dark:bg-gray-900/50"
-                  : "border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800"
-              }`}
-            >
-              上一页
-            </button>
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className={`px-3 py-1 text-xs rounded-md border font-medium transition-colors ${
-                currentPage === totalPages
-                  ? "border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-600 bg-gray-50 dark:bg-gray-900/50"
-                  : "border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-800"
-              }`}
-            >
-              下一页
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
 
 export function AutoChart({ tag }: AutoChartProps) {
@@ -211,12 +66,13 @@ export function AutoChart({ tag }: AutoChartProps) {
       });
 
       // 如果推荐的字段不存在，回退到自动分析的结果
+      // 优先使用 baseAnalysis 的智能分析，避免选中 ID 列或类型不匹配的列
       const dimensionCol = xFieldExists
         ? recommendation.xField
-        : (baseAnalysis.dimensionCol || columns[0] || '');
+        : (baseAnalysis.dimensionCol || '');
       const measureCol = yFieldExists
         ? recommendation.yField
-        : (baseAnalysis.measureCol || columns[1] || '');
+        : (baseAnalysis.measureCol || '');
 
       console.log('[AutoChart] 最终使用字段:', {
         dimensionCol,
@@ -232,15 +88,19 @@ export function AutoChart({ tag }: AutoChartProps) {
         measureCol,
       } as DatasetAnalysis;
     }
-    // 如果是 Python 图表数据，直接使用其配置
+    // 如果是 Python 图表数据，基于其 data 字段进行完整分析，再覆盖图表类型
     if (isPythonChart) {
+      const pythonData = queryResult.data || queryResult;
+      // 确保 pythonData 有 columns 和 rows
+      const effectiveData: QueryResult = {
+        columns: pythonData.columns || (pythonData.rows?.length > 0 ? Object.keys(pythonData.rows[0]) : []),
+        rows: pythonData.rows || [],
+        totalRows: pythonData.rows?.length || 0,
+      };
+      const baseAnalysis = analyzeDataset(effectiveData);
       return {
+        ...baseAnalysis,
         recommendedChart: queryResult.type as ChartType,
-        numericColumns: [],
-        categoricalColumns: [],
-        totalRows: queryResult.data?.rows?.length || 0,
-        columns: [],
-        confidence: 1.0
       } as DatasetAnalysis;
     }
     return analyzeDataset(queryResult);
@@ -312,7 +172,19 @@ export function AutoChart({ tag }: AutoChartProps) {
 
       {/* 内容区域 */}
       <div className="p-4">
-        {viewType === 'chart' ? renderChart() : <PaginatedTable tag={tag} queryResult={isPythonChart ? (queryResult.data || queryResult) : queryResult} />}
+        {viewType === 'chart' ? renderChart() : (() => {
+          const chartData = isPythonChart ? (queryResult.data || queryResult) : queryResult;
+          return (
+            <PaginatedTable
+              columns={chartData.columns}
+              rows={chartData.rows}
+              totalRows={chartData.totalRows}
+              dataRefId={chartData.dataRefId}
+              executionTime={chartData.executionTime}
+              title={tag.title}
+            />
+          );
+        })()}
       </div>
     </div>
   );

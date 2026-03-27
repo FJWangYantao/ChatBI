@@ -458,8 +458,8 @@ public class PlanningAgent {
         String model = customConfig.getModelName();
         double temperature = options.getTemperature() != null ? options.getTemperature() : 0.1;
 
-        // log.info("[PlanningAgent] 使用前端配置 - Model: {}, BaseURL: {}, Provider: {}",
-        //         model, effectiveBaseUrl, customConfig.getProvider());
+        log.info("[PlanningAgent] 使用前端配置 - Model: {}, BaseURL: {}, Provider: {}",
+                model, effectiveBaseUrl, customConfig.getProvider());
 
         try {
             // 构建请求体
@@ -542,7 +542,7 @@ public class PlanningAgent {
 
                 // 检查客户端是否已断开连接
                 if (SseEmitterContext.isDisconnected()) {
-                    log.info("[PlanningAgent] 检测到客户端断开，停止 SSE 流解析");
+                    log.warn("[PlanningAgent] ⚠ 检测到客户端断开，停止 SSE 流解析，已累积文本长度={}", textBuffer.length());
                     break;
                 }
 
@@ -558,6 +558,18 @@ public class PlanningAgent {
                 JsonNode chunk = objectMapper.readTree(data);
                 JsonNode choices = chunk.get("choices");
                 if (choices == null || choices.isEmpty()) continue;
+
+                // 检测 finish_reason，诊断截断问题
+                JsonNode finishReasonNode = choices.get(0).get("finish_reason");
+                if (finishReasonNode != null && !finishReasonNode.isNull()) {
+                    String finishReason = finishReasonNode.asText();
+                    if ("length".equals(finishReason)) {
+                        log.warn("[PlanningAgent] ⚠ LLM 输出因 max_tokens 限制被截断！finish_reason=length, 已累积文本长度={}", textBuffer.length());
+                    } else {
+                        log.info("[PlanningAgent] 流结束，finish_reason={}, 文本长度={}", finishReason, textBuffer.length());
+                    }
+                }
+
                 JsonNode delta = choices.get(0).get("delta");
                 if (delta == null) continue;
 
@@ -1169,6 +1181,8 @@ public class PlanningAgent {
             - REASONING_END 之后的内容是最终结论，确保内容完整有价值
             - **重要**：不要在回复中描述"已生成X个图表"或"已生成图表"，图表会自动显示在前端，你只需要分析数据结果即可
             - **禁止**：不要列举图表名称（如"员工留存率柱状图"、"趋势图"等），这些是系统自动生成的，你只需要解读数据洞察
+
+            """ + PlanningAgentSummaryFormatPolicy.instructions() + """
 
             数据库结构：
             """ + schemaInfo + "\n";

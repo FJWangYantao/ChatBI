@@ -11,7 +11,7 @@ spring:
   # AI 配置 - OpenRouter (Gemini)
   ai:
     openai:
-      api-key: ${OPENROUTER_API_KEY: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}
+      api-key: ${OPENROUTER_API_KEY:}
       # OpenRouter API 端点
       base-url: ${OPENROUTER_BASE_URL:https://openrouter.ai/api/v1}
       chat:

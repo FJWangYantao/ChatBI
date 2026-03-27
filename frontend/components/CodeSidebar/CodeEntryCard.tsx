@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useMemo } from "react";
 import { CodeEntry } from "@/types/code-sidebar";
 import StreamingCodeBlock from "./StreamingCodeBlock";
 import SqlResultTable from "./SqlResultTable";
@@ -9,7 +10,7 @@ interface CodeEntryCardProps {
   isActive: boolean;
 }
 
-export default function CodeEntryCard({ entry, isActive }: CodeEntryCardProps) {
+function CodeEntryCardInner({ entry, isActive }: CodeEntryCardProps) {
   const handleCopy = () => {
     navigator.clipboard.writeText(entry.code);
   };
@@ -22,18 +23,19 @@ export default function CodeEntryCard({ entry, isActive }: CodeEntryCardProps) {
       ? "text-blue-400"
       : "text-purple-400";
 
-  const timeStr = new Date(entry.timestamp).toLocaleTimeString("zh-CN", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
+  const timeStr = useMemo(() =>
+    new Date(entry.timestamp).toLocaleTimeString("zh-CN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }),
+    [entry.timestamp]
+  );
 
   return (
     <div
-      className={`glass-card rounded-2xl border p-4 space-y-3 transition-all duration-200 ${
-        isActive
-          ? "glow-border"
-          : "border-border/50 hover:border-border"
+      className={`py-3 space-y-2 transition-colors duration-200 ${
+        isActive ? "bg-accent/5" : ""
       }`}
     >
       {/* 卡片头部 */}
@@ -113,9 +115,9 @@ export default function CodeEntryCard({ entry, isActive }: CodeEntryCardProps) {
 
           {/* stdout */}
           {entry.stdout && (
-            <div className="bg-muted/50 rounded-lg p-3 border border-border/30">
+            <div>
               <div className="text-xs text-muted-foreground mb-1 font-mono">输出：</div>
-              <pre className="text-sm whitespace-pre-wrap font-mono max-h-[200px] overflow-y-auto">
+              <pre className="text-sm whitespace-pre-wrap font-mono">
                 {entry.stdout}
               </pre>
             </div>
@@ -123,7 +125,7 @@ export default function CodeEntryCard({ entry, isActive }: CodeEntryCardProps) {
 
           {/* stderr */}
           {entry.stderr && (
-            <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
+            <div>
               <div className="text-xs text-red-600 dark:text-red-400 mb-1 font-mono">错误：</div>
               <pre className="text-sm text-red-700 dark:text-red-300 whitespace-pre-wrap font-mono max-h-[200px] overflow-y-auto">
                 {entry.stderr}
@@ -135,3 +137,6 @@ export default function CodeEntryCard({ entry, isActive }: CodeEntryCardProps) {
     </div>
   );
 }
+
+// memo 化：避免父组件重渲染时无谓地重渲染所有卡片
+export default memo(CodeEntryCardInner);

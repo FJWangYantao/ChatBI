@@ -385,7 +385,7 @@ public class ChatStreamService {
                                 emitTextDelta(emitter, filtered);
                             }
                         } catch (IOException e) {
-                            log.debug("文本 delta 发送失败: {}", e.getMessage());
+                            log.warn("文本 delta 发送失败: {}", e.getMessage());
                         }
                     },
                     event -> {
@@ -414,8 +414,15 @@ public class ChatStreamService {
             // 立即停止心跳，避免在 emitter 完成后继续发送
             heartbeatManager.stopHeartbeat(sessionId);
             tags.addAll(SseEmitterContext.drainCollectedTags());
-            // 刷出未闭合的推理内容（LLM 输出 START 但未输出 END 的情况）
-            reasoningFilter.flush();
+            // 刷出未闭合的推理内容，以及被 findPotentialTagStartIndex 扣留的尾部文本
+            String remainingText = reasoningFilter.flush();
+            if (remainingText != null && !remainingText.isEmpty()) {
+                try {
+                    emitTextDelta(emitter, remainingText);
+                } catch (Exception e) {
+                    log.warn("刷出残留文本失败: {}", e.getMessage());
+                }
+            }
             // 清理 ThreadLocal，避免泄漏
             SseEmitterContext.clear();
         }
@@ -606,16 +613,19 @@ public class ChatStreamService {
     }
 
     private void emitTextDeltaFull(SseEmitter emitter, String text) throws IOException {
-        // 将完整文本逐字分块发送，加入微延迟确保浏览器逐步接收
+        // 根据文本长度自适应分块，避免长报告被过细粒度的伪流式发送拖慢。
         if (text == null || text.isEmpty()) return;
-        int chunkSize = 4; // 每次 4 字符，配合 30ms 延迟产生流式效果
+        StreamingTextChunker.Plan plan = StreamingTextChunker.plan(text);
+        int chunkSize = plan.chunkSize();
         for (int i = 0; i < text.length(); i += chunkSize) {
             String chunk = text.substring(i, Math.min(i + chunkSize, text.length()));
             emitTextDelta(emitter, chunk);
-            try {
-                Thread.sleep(30);
-            } catch (InterruptedException ignored) {
-                Thread.currentThread().interrupt();
+            if (plan.delayMs() > 0) {
+                try {
+                    Thread.sleep(plan.delayMs());
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
             }
         }
     }
@@ -1216,9 +1226,11 @@ public class ChatStreamService {
         }
 
         /**
-         * 流结束时调用：如果仍在推理块内（START 已匹配但 END 未出现），强制刷出累积的推理内容
+         * 流结束时调用：
+         * - 推理块内：强制刷出累积的推理内容，返回 null
+         * - 推理块外：返回 buffer 中被 findPotentialTagStartIndex 扣留的残留文本
          */
-        public void flush() {
+        public String flush() {
             if (insideReasoning && onReasoningComplete != null) {
                 // 将 buffer 中残余内容也加入推理
                 if (!buffer.isEmpty()) {
@@ -1231,7 +1243,16 @@ public class ChatStreamService {
                     reasoningContent.setLength(0);
                 }
                 insideReasoning = false;
+                return null;
             }
+            // 非推理状态：返回被 findPotentialTagStartIndex 扣留的尾部文本
+            if (!buffer.isEmpty()) {
+                String remaining = buffer.toString();
+                buffer.setLength(0);
+                log.debug("[ReasoningFilter] flush: 刷出非推理残留文本，长度={}", remaining.length());
+                return remaining;
+            }
+            return null;
         }
 
         // 从尾部向前扫描，找到可能是标签开始的位置

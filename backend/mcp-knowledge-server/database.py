@@ -168,13 +168,14 @@ class Database:
         logger.info("数据库表创建成功")
 
     def load_initial_data(self):
-        """加载初始数据"""
+        """加载初始数据（每次启动都重新加载，确保数据最新）"""
         session = self.SessionLocal()
         try:
-            # 检查是否已有数据
-            if session.query(BusinessTerm).count() > 0:
-                logger.info("数据库已有数据，跳过初始化")
-                return
+            # 清空现有数据
+            session.query(ColumnMapping).delete()
+            session.query(BusinessTerm).delete()
+            session.commit()
+            logger.info("已清空旧数据，开始加载最新数据")
 
             # 读取初始数据文件
             with open(INITIAL_DATA_FILE, "r", encoding="utf-8") as f:

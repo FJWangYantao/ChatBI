@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ChatWindow from "@/components/Chat/ChatWindow";
 import InputBox from "@/components/Chat/InputBox";
@@ -194,12 +194,21 @@ export default function Home() {
   const [activeDataSource, setActiveDataSource] = useState<DataSource | null>(null);
 
   // 代码侧栏状态
-  const [codeSidebarOpen, setCodeSidebarOpen] = useState(true);
+  const [codeSidebarOpen, setCodeSidebarOpen] = useState(false);
   const [codeEntries, setCodeEntries] = useState<CodeEntry[]>([]);
   const [activeCodeEntryId, setActiveCodeEntryId] = useState<string | null>(null);
 
   // LLM 配置弹窗状态
   const [llmConfigModalOpen, setLlmConfigModalOpen] = useState(false);
+
+  // ===== 批量更新机制 =====
+  // 文本增量缓冲（每次 flush 后清空）
+  const textBufferRef = useRef<string>("");
+  // 累积式文本缓冲（整个流式会话期间只增不减，作为 content 的权威来源）
+  const fullTextRef = useRef<string>("");
+  // tags 增量缓冲
+  const tagsBufferRef = useRef<MessageTag[]>([]);
+  // ===== 批量更新机制结束 =====
 
   // 同步 conversationId 到 ref，避免闭包捕获过期值
   useEffect(() => {
@@ -210,7 +219,6 @@ export default function Home() {
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
-        console.log('[Cleanup] 组件卸载，中止正在进行的请求');
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
@@ -318,7 +326,7 @@ export default function Home() {
   };
 
   // 新建对话
-  const handleNewConversation = () => {
+  const handleNewConversation = useCallback(() => {
     // 中止进行中的 SSE 流
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
@@ -336,10 +344,14 @@ export default function Home() {
     setCodeEntries([]);
     setActiveCodeEntryId(null);
     setSidebarOpen(false);
-  };
+  }, []);
+
+  // header 中的内联回调
+  const toggleSidebar = useCallback(() => setSidebarOpen(v => !v), []);
+  const toggleCodeSidebar = useCallback(() => setCodeSidebarOpen(v => !v), []);
 
   // 选择对话
-  const handleSelectConversation = (conversationId: string) => {
+  const handleSelectConversation = useCallback((conversationId: string) => {
     // 中止进行中的 SSE 流
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
@@ -348,34 +360,22 @@ export default function Home() {
     setCurrentConversationId(conversationId);
     loadConversationHistory(conversationId);
     setSidebarOpen(false);
-  };
+  }, [loadConversationHistory]);
 
   // 更新消息
-  const handleUpdateMessage = (messageId: string, newTags: MessageTag[]) => {
+  const handleUpdateMessage = useCallback((messageId: string, newTags: MessageTag[]) => {
     setMessages((prevMessages) =>
       prevMessages.map((msg) =>
         msg.id === messageId ? { ...msg, tags: newTags } : msg
       )
     );
-  };
+  }, []);
 
   // 当前流式请求的 AbortController
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const handleSendMessage = async (content: string, agentType?: string) => {
-    // 添加用户消息
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    await sendMessageCore(content, agentType);
-  };
-
   // 核心发送逻辑：创建 assistant 占位消息 + 调用 streamChatMessage
+  // 放在 handleSendMessage 之前，因为 handleSendMessage 依赖它
   const sendMessageCore = async (content: string, agentType?: string) => {
     const assistantId = (Date.now() + 1).toString();
     const assistantMessage: Message = {
@@ -392,11 +392,59 @@ export default function Home() {
 
     setMessages((prev) => [...prev, assistantMessage]);
     setIsSending(true);
+    // 重置累积文本缓冲
+    fullTextRef.current = "";
+    textBufferRef.current = "";
 
     // 创建 AbortController
     const controller = new AbortController();
     abortControllerRef.current = controller;
     const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 分钟超时（复杂分析需要更长时间）
+
+    // 刷新定时器（函数内部普通变量，用于节流）
+    let flushTimeoutId: NodeJS.Timeout | null = null;
+    // tagsAccumulator 脏标记：onTagDelta 修改后置 true，flushBuffers 统一同步
+    let tagsAccumulatorDirty = false;
+
+    // 批量刷新函数：将缓冲合并到 messages
+    const flushBuffers = () => {
+      const hasText = !!textBufferRef.current;
+      const hasNewTags = tagsBufferRef.current.length > 0;
+      const hasDirtyAccumulator = tagsAccumulatorDirty;
+
+      if (!hasText && !hasNewTags && !hasDirtyAccumulator) return;
+
+      setMessages(prev => prev.map(msg => {
+        if (msg.id !== assistantId) return msg;
+
+        let updated = msg;
+        // 用 fullTextRef 作为权威来源，避免 prev.content 过期导致文本丢失
+        if (textBufferRef.current) {
+          updated = { ...updated, content: fullTextRef.current };
+          textBufferRef.current = "";
+        }
+        // tagsAccumulator 是权威来源，脏时直接替换（覆盖 tagsBufferRef 的增量）
+        if (hasDirtyAccumulator) {
+          updated = { ...updated, tags: [...tagsAccumulator] };
+          tagsBufferRef.current = [];
+          tagsAccumulatorDirty = false;
+        } else if (tagsBufferRef.current.length > 0) {
+          updated = { ...updated, tags: [...(updated.tags || []), ...tagsBufferRef.current] };
+          tagsBufferRef.current = [];
+        }
+        return updated;
+      }));
+    };
+
+    // 调度刷新（100ms 节流）
+    const scheduleFlush = () => {
+      if (!flushTimeoutId) {
+        flushTimeoutId = setTimeout(() => {
+          flushBuffers();
+          flushTimeoutId = null;
+        }, 100);
+      }
+    };
 
     // 用于累积 tags 的辅助引用
     const tagsAccumulator: MessageTag[] = [];
@@ -449,13 +497,10 @@ export default function Home() {
           },
 
           onTextDelta: (data) => {
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantId
-                  ? { ...msg, content: msg.content + data.delta }
-                  : msg
-              )
-            );
+            // 使用缓冲机制，减少 setMessages 调用频率
+            textBufferRef.current += data.delta;
+            fullTextRef.current += data.delta;
+            scheduleFlush();
           },
 
           onTag: (data) => {
@@ -493,25 +538,11 @@ export default function Home() {
                 }
               });
 
-              // 自动添加 chart
-              const currentTags = [...tagsAccumulator];
-              if (!currentTags.some(t => t.type === 'chart')) {
-                const chartTag: MessageTag = {
-                  type: 'chart',
-                  content: newTag.content,
-                  title: '数据图表',
-                };
-                tagsAccumulator.push(chartTag);
-              }
             }
 
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantId
-                  ? { ...msg, tags: [...tagsAccumulator] }
-                  : msg
-              )
-            );
+            // 使用缓冲机制批量更新 tags（代码侧栏 setCodeEntries 保持原有频率更新）
+            tagsBufferRef.current.push(newTag);
+            scheduleFlush();
 
             // 将 sql/code 类型追加到代码侧栏
             if (data.type === 'sql' || data.type === 'code') {
@@ -595,7 +626,7 @@ export default function Home() {
               )
             );
 
-            // 更新 analysis_result 流式 Markdown 内容
+            // 更新 analysis_result 流式 Markdown 内容（走缓冲，不直接 setMessages）
             const streamingTagIdx = tagsAccumulator.findIndex(
               t => t.type === 'analysis_result' && t.metadata?.streamingTagId === data.id
             );
@@ -606,13 +637,8 @@ export default function Home() {
                 ...tag,
                 content: { ...tag.content, _streamedText: currentText + data.delta },
               };
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === assistantId
-                    ? { ...msg, tags: [...tagsAccumulator] }
-                    : msg
-                )
-              );
+              tagsAccumulatorDirty = true;
+              scheduleFlush();
             }
           },
 
@@ -657,8 +683,7 @@ export default function Home() {
           },
 
           onChartRecommendation: (data) => {
-            // 收到图表推荐，创建 chart tag
-            console.log("[ChartRecommendation] 收到推荐:", data);
+            // 收到图表推荐，创建 chart tag（替换已有的 chart 标签，避免重复）
             const chartTag: MessageTag = {
               type: 'chart',
               content: {
@@ -668,8 +693,14 @@ export default function Home() {
               title: data.recommendation.title || '数据图表',
               metadata: { source: 'recommendation' },
             };
-            tagsAccumulator.push(chartTag);
-            console.log("[ChartRecommendation] tagsAccumulator 当前长度:", tagsAccumulator.length, "类型:", tagsAccumulator.map(t => t.type));
+
+            // 替换已有的 chart 标签（后端可能已通过 onTag 发送了一个），而非追加
+            const existingChartIdx = tagsAccumulator.findIndex(t => t.type === 'chart');
+            if (existingChartIdx >= 0) {
+              tagsAccumulator[existingChartIdx] = chartTag;
+            } else {
+              tagsAccumulator.push(chartTag);
+            }
 
             setMessages((prev) =>
               prev.map((msg) =>
@@ -731,7 +762,6 @@ export default function Home() {
           },
 
           onCodeExecution: (data) => {
-            console.log('[CodeExecution] 收到事件:', data.executionId, data.stage);
 
             // 同步到代码侧栏
             const execEntryId = `exec-${data.executionId}`;
@@ -810,6 +840,13 @@ export default function Home() {
           },
 
           onDone: (data) => {
+            // 先刷新剩余的缓冲内容
+            if (flushTimeoutId) {
+              clearTimeout(flushTimeoutId);
+              flushTimeoutId = null;
+            }
+            flushBuffers();
+
             // 更新 conversationId（先更新 ref 再更新 state）
             if (data.conversationId && data.conversationId !== conversationIdRef.current) {
               conversationIdRef.current = data.conversationId;
@@ -898,37 +935,50 @@ export default function Home() {
     }
   };
 
+  // 发送消息：添加用户消息后调用 sendMessageCore
+  const handleSendMessage = useCallback(async (content: string, agentType?: string) => {
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content,
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    await sendMessageCore(content, agentType);
+  }, []);
+
   // 停止流式输出
-  const handleStop = () => {
+  const handleStop = useCallback(() => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     setIsSending(false);
-  };
+  }, []);
 
   // 编辑用户消息后重新发送
-  const handleEditAndResend = async (messageId: string, newContent: string) => {
+  const handleEditAndResend = useCallback(async (messageId: string, newContent: string) => {
     const msgIndex = messages.findIndex(m => m.id === messageId);
     if (msgIndex === -1) return;
     setMessages(prev => prev.slice(0, msgIndex));
     await handleSendMessage(newContent);
-  };
+  }, [messages, handleSendMessage]);
 
   // 重新生成 AI 回复
-  const handleRegenerateMessage = async (messageId: string) => {
+  const handleRegenerateMessage = useCallback(async (messageId: string) => {
     const msgIndex = messages.findIndex(m => m.id === messageId);
     if (msgIndex === -1) return;
     const userMsg = messages.slice(0, msgIndex).reverse().find(m => m.role === 'user');
     if (!userMsg) return;
     setMessages(prev => prev.slice(0, msgIndex));
     await sendMessageCore(userMsg.content);
-  };
+  }, [messages, sendMessageCore]);
 
   // 消息反馈
-  const handleFeedback = (messageId: string, feedback: 'like' | 'dislike' | null) => {
+  const handleFeedback = useCallback((messageId: string, feedback: 'like' | 'dislike' | null) => {
     setMessages(prev => prev.map(msg =>
       msg.id === messageId ? { ...msg, feedback } : msg
     ));
-  };
+  }, []);
 
   // 初始加载欢迎消息
   useEffect(() => {
@@ -1030,13 +1080,13 @@ export default function Home() {
                 新建对话
               </button>
               <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
+                onClick={toggleSidebar}
                 className="hidden lg:flex px-4 py-2 text-sm font-medium rounded-xl border border-border/50 hover:border-accent/50 hover:bg-accent/10 transition-all duration-200"
               >
                 历史记录
               </button>
               <button
-                onClick={() => setCodeSidebarOpen(!codeSidebarOpen)}
+                onClick={toggleCodeSidebar}
                 className={`hidden lg:flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-xl border transition-all duration-200 ${
                   codeSidebarOpen
                     ? "border-accent/50 bg-accent/10 text-accent"
@@ -1066,12 +1116,12 @@ export default function Home() {
             onConversationSelect={handleSelectConversation}
             onNewConversation={handleNewConversation}
             isOpen={sidebarOpen}
-            onToggle={() => setSidebarOpen(!sidebarOpen)}
+            onToggle={toggleSidebar}
             triggerRefresh={refreshTrigger}
           />
 
           {/* 聊天区域 */}
-          <div className="flex flex-1 flex-col overflow-hidden relative z-10">
+          <div className="flex flex-1 flex-col overflow-hidden relative z-10" style={{ contain: 'layout style' }}>
             {loading && (
               <div className="glass-card border-b border-border/50 px-6 py-3 text-sm">
                 <div className="flex items-center gap-2">

@@ -128,7 +128,11 @@ class TermService:
         start_month = rule.get("start_month", 1)
 
         start_date = date(year, start_month, 1)
-        end_date = date(year, 12, 31)
+        # 财年结束日期：次年起始月前一天（如4月开始 → 次年3月31日）
+        if start_month == 1:
+            end_date = date(year, 12, 31)
+        else:
+            end_date = date(year + 1, start_month, 1) - relativedelta(days=1)
 
         return {
             "expression": expression,

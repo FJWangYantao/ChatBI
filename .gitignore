@@ -47,5 +47,10 @@ target/
 # Model files
 *.pt
 
+# Local tool caches
+.playwright-cli/
+.tmp-chrome-profile/
+backend/.m2/
+
 # Sandbox 运行生成的图片
 backend/sandbox-service/*.png

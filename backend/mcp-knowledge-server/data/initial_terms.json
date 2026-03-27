@@ -356,28 +356,28 @@
     {
       "term": "GEO",
       "category": "地理区域",
-      "definition": "Geographic Region，地理销售区域，联想按GEO划分全球市场",
+      "definition": "Geographic Region，地理销售区域。联想按GEO划分全球市场，主要包括：NA（北美）、EMEA（欧洲中东非洲）、AP（亚太）、PRC（中国大陆）。数据库中存储的是具体国家名（country字段），查询GEO时需要用CASE语句映射：CASE WHEN country IN ('US','Canada','Mexico') THEN 'NA' WHEN country IN ('UK','Germany','France','Italy','Spain','Netherlands','Poland','Russia','UAE','Saudi Arabia','South Africa') THEN 'EMEA' WHEN country IN ('Japan','Korea','India','Australia','Singapore','Thailand','Vietnam','Indonesia','Malaysia','Philippines','Taiwan','Hong Kong') THEN 'AP' WHEN country IN ('China','PRC') THEN 'PRC' ELSE 'Other' END AS GEO",
       "aliases": ["地区", "区域", "Geo", "geo"],
       "examples": ["FY23各个Geo的出货情况"]
     },
     {
       "term": "NA",
       "category": "地理区域",
-      "definition": "North America，北美区域，包含美国、加拿大等",
+      "definition": "North America，北美区域。包括：US（美国）、Canada（加拿大）、Mexico（墨西哥）",
       "aliases": ["North America", "北美"],
       "examples": ["FY22&23 NA出货量"]
     },
     {
       "term": "EMEA",
       "category": "地理区域",
-      "definition": "Europe, Middle East and Africa，欧洲、中东和非洲区域",
+      "definition": "Europe, Middle East and Africa，欧洲、中东和非洲区域。包括：UK（英国）、Germany（德国）、France（法国）、Italy（意大利）、Spain（西班牙）、Netherlands（荷兰）、Poland（波兰）、Russia（俄罗斯）、UAE（阿联酋）、Saudi Arabia（沙特）、South Africa（南非）等",
       "aliases": ["Europe Middle East Africa", "欧洲中东非洲"],
       "examples": ["EMEA在2024年CQ1的出货情况如何"]
     },
     {
       "term": "AP",
       "category": "地理区域",
-      "definition": "Asia Pacific，亚太区域，包含日本、韩国、印度、东南亚等",
+      "definition": "Asia Pacific，亚太区域（不含中国大陆PRC）。包括：Japan（日本）、Korea（韩国）、India（印度）、Australia（澳大利亚）、Singapore（新加坡）、Thailand（泰国）、Vietnam（越南）、Indonesia（印尼）、Malaysia（马来西亚）、Philippines（菲律宾）、Taiwan（台湾）、Hong Kong（香港）等",
       "aliases": ["Asia Pacific", "亚太"],
       "examples": ["AP地区FY23全年的出货多少"]
     },

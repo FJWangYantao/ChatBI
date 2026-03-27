@@ -1,14 +1,15 @@
 ﻿import { Message, MessageTag } from "@/app/page";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, memo, useCallback } from "react";
 import LoadingSpinner from "./LoadingSpinner";
 import StepTimeline from "./StepTimeline";
 import SubtaskPanel from "./SubtaskPanel";
 import ReasoningChain from "./ReasoningChain";
 import { AutoChart } from "@/components/Charts";
+import { PaginatedTable } from "@/components/Table/PaginatedTable";
 import IntentBadge from "./IntentBadge";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { executeSql, fetchPagedData } from "@/lib/api/chat";
+import { executeSql } from "@/lib/api/chat";
 import AnalysisResultRenderer from "./AnalysisResultRenderer";
 import MessageToolbar from "./MessageToolbar";
 import EditableSqlBlock from "./EditableSqlBlock";
@@ -21,153 +22,6 @@ interface ChatWindowProps {
   onEditAndResend?: (messageId: string, newContent: string) => void;
   onRegenerateMessage?: (messageId: string) => void;
   onFeedback?: (messageId: string, feedback: 'like' | 'dislike' | null) => void;
-}
-
-function PaginatedTable({ tag }: { tag: MessageTag }) {
-  const tableData = tag.content;
-  const [currentPage, setCurrentPage] = useState(1);
-  const [remoteRows, setRemoteRows] = useState<Record<string, any>[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const pageSize = 10;
-
-  // 预览数据能覆盖的页数（SSE 推送的前 50 行）
-  const previewRows = tableData.rows?.length || 0;
-  const previewPages = Math.ceil(previewRows / pageSize);
-  const totalRows = tableData.totalRows || previewRows;
-  const totalPages = Math.ceil(totalRows / pageSize);
-  const hasDataRef = !!tableData.dataRefId;
-
-  // 当翻页超出预览范围时，从服务端获取数据
-  useEffect(() => {
-    if (!hasDataRef || currentPage <= previewPages) {
-      setRemoteRows(null);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    const offset = (currentPage - 1) * pageSize;
-    fetchPagedData(tableData.dataRefId, offset, pageSize)
-      .then((res) => {
-        if (!cancelled && res.success) {
-          setRemoteRows(res.rows);
-        }
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [currentPage, hasDataRef, previewPages, tableData.dataRefId]);
-
-  const getCurrentPageData = () => {
-    if (hasDataRef && currentPage > previewPages && remoteRows) {
-      return remoteRows;
-    }
-    if (!tableData.rows) return [];
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    return tableData.rows.slice(startIndex, endIndex);
-  };
-
-  return (
-    <div className="glass-card border border-border/50 rounded-2xl overflow-hidden hover:border-accent/30 transition-border-color duration-200">
-      <div className="border-b border-border/50 px-5 py-3 bg-gradient-to-r from-muted/50 to-background">
-        <span className="text-sm font-semibold font-display flex items-center gap-2">
-          <span className="text-accent">📊</span>
-          {tag.title || "查询结果"}
-        </span>
-        {!!tableData.executionTime && (
-          <span className="ml-2 text-xs opacity-60 font-mono">
-            ({tableData.executionTime}ms)
-          </span>
-        )}
-      </div>
-
-      <div className="max-w-[500px] overflow-x-auto scrollbar-thin">
-        <table className="min-w-full divide-y divide-border/30">
-          <thead className="bg-gradient-to-r from-muted/50 to-background">
-            <tr>
-              {tableData.columns?.map((column: string, idx: number) => (
-                <th
-                  key={idx}
-                  className="px-5 py-3 text-left text-xs font-semibold font-display uppercase tracking-wider whitespace-nowrap"
-                >
-                  {column}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/20">
-            {loading ? (
-              <tr>
-                <td
-                  colSpan={tableData.columns?.length || 1}
-                  className="px-5 py-10 text-center text-sm opacity-50"
-                >
-                  加载中...
-                </td>
-              </tr>
-            ) : (
-            <>
-            {getCurrentPageData().map((row: any, idx: number) => (
-              <tr key={idx} className="hover:bg-accent/5 transition-colors duration-150">
-                {tableData.columns?.map((column: string, colIdx: number) => (
-                  <td
-                    key={colIdx}
-                    className="px-5 py-3 text-sm whitespace-nowrap font-mono"
-                  >
-                    {row[column]?.toString() || "-"}
-                  </td>
-                ))}
-              </tr>
-            ))}
-            {getCurrentPageData().length === 0 && (
-              <tr>
-                <td
-                  colSpan={tableData.columns?.length || 1}
-                  className="px-5 py-10 text-center text-sm opacity-50"
-                >
-                  暂无数据
-                </td>
-              </tr>
-            )}
-            </>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* 分页控件 */}
-      {totalPages > 1 && (
-        <div className="border-t border-border/50 px-5 py-3 flex items-center justify-between bg-gradient-to-r from-muted/30 to-background">
-          <div className="text-xs opacity-70 font-mono">
-            共 {tableData.totalRows || totalRows} 行 ·
-            第 {currentPage} / {totalPages} 页
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              disabled={currentPage === 1}
-              className={`px-4 py-1.5 text-xs font-medium rounded-xl transition-colors duration-200 ${currentPage === 1
-                ? "glass-card border border-border/30 opacity-30 cursor-not-allowed"
-                : "glass-card border border-border/50 hover:border-accent/50 hover:bg-accent/10"
-                }`}
-            >
-              上一页
-            </button>
-            <button
-              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              disabled={currentPage === totalPages}
-              className={`px-4 py-1.5 text-xs font-medium rounded-xl transition-colors duration-200 ${currentPage === totalPages
-                ? "glass-card border border-border/30 opacity-30 cursor-not-allowed"
-                : "glass-card border border-border/50 hover:border-accent/50 hover:bg-accent/10"
-                }`}
-            >
-              下一页
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
 
 // 标签渲染组件
@@ -309,7 +163,16 @@ function MessageTagRenderer({
       );
 
     case "table":
-      return <PaginatedTable tag={tag} />;
+      return (
+        <PaginatedTable
+          columns={tag.content.columns}
+          rows={tag.content.rows}
+          totalRows={tag.content.totalRows}
+          dataRefId={tag.content.dataRefId}
+          executionTime={tag.content.executionTime}
+          title={tag.title}
+        />
+      );
 
     case "chart":
       return <AutoChart tag={tag} />;
@@ -481,14 +344,7 @@ function TaggedMessage({
 
       {/* 内容区域 */}
       {activeGroupIndex === -1 ? (
-        <div className="prose prose-sm dark:prose-invert max-w-none break-words leading-relaxed">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {message.content}
-          </ReactMarkdown>
-          {isStreaming && message.content && (
-            <span className="inline-block w-2 h-5 bg-accent animate-pulse ml-0.5 align-middle rounded-full" />
-          )}
-        </div>
+        <SummaryContent content={message.content} isStreaming={isStreaming} />
       ) : (
         <div>
           {/* 二级导航：视图选择（仅当该组有多个标签时显示） */}
@@ -580,7 +436,272 @@ function renderSuggestions(
   );
 }
 
-export default function ChatWindow({ messages, isSending, onUpdateMessage, onSendMessage, onEditAndResend, onRegenerateMessage, onFeedback }: ChatWindowProps) {
+function normalizeSummaryText(content: string): string {
+  const withListBreaks = content
+    .replace(/\r\n/g, "\n")
+    .replace(/([^\n])\s+([1-9]\.)\s+/g, "$1\n\n$2 ");
+
+  return withListBreaks
+    .split("\n")
+    .map((line) => {
+      const trimmed = line.trim();
+      const pipeCount = (trimmed.match(/\|/g) || []).length;
+      const isMarkdownSeparator = /^\|?[-:\s|]+\|?$/.test(trimmed);
+
+      if (pipeCount >= 3 && !isMarkdownSeparator) {
+        const parts = trimmed.split("|").map((part) => part.trim()).filter(Boolean);
+        if (parts.length > 1) {
+          return `- ${parts.join(" / ")}`;
+        }
+      }
+
+      return line;
+    })
+    .join("\n");
+}
+
+const SummaryContent = memo(function SummaryContent({ content, isStreaming }: { content: string; isStreaming?: boolean }) {
+  const normalizedContent = useMemo(() => normalizeSummaryText(content), [content]);
+
+  if (isStreaming) {
+    return (
+      <div className="whitespace-pre-wrap break-words text-sm leading-7 text-foreground/90">
+        {normalizedContent}
+        {normalizedContent && (
+          <span className="inline-block w-2 h-5 bg-accent animate-pulse ml-1 align-middle rounded-full" />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="prose prose-sm dark:prose-invert max-w-none break-words leading-relaxed">
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        {normalizedContent}
+      </ReactMarkdown>
+    </div>
+  );
+});
+
+// 单条消息渲染组件 — 用 memo 包裹避免不必要的重渲染
+interface MessageItemProps {
+  message: Message;
+  editingMessageId: string | null;
+  editContent: string;
+  setEditingMessageId: (id: string | null) => void;
+  setEditContent: (content: string) => void;
+  onEditAndResend?: (messageId: string, newContent: string) => void;
+  onRegenerateMessage?: (messageId: string) => void;
+  onFeedback?: (messageId: string, feedback: 'like' | 'dislike' | null) => void;
+  onUpdateMessage?: (messageId: string, newTags: MessageTag[]) => void;
+  onSendMessage?: (content: string) => void;
+}
+
+const MessageItem = memo(function MessageItem({
+  message,
+  editingMessageId,
+  editContent,
+  setEditingMessageId,
+  setEditContent,
+  onEditAndResend,
+  onRegenerateMessage,
+  onFeedback,
+  onUpdateMessage,
+  onSendMessage,
+}: MessageItemProps) {
+  // 缓存 image 和 analysis_result 标签的过滤结果
+  const imageTags = useMemo(() =>
+    message.tags?.filter(t => t.type === 'image') ?? [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [message.tags]
+  );
+  const standaloneAnalysisTags = useMemo(() =>
+    message.reasoningSteps && message.reasoningSteps.length > 0
+      ? []
+      : message.tags?.filter(t => t.type === 'analysis_result') ?? [],
+    [message.reasoningSteps, message.tags]
+  );
+  const primaryTags = useMemo(() =>
+    message.tags?.filter(t => t.type !== 'analysis_result' && t.type !== 'image' && t.type !== 'suggestions') ?? [],
+    [message.tags]
+  );
+
+  const isEditing = editingMessageId === message.id;
+
+  // 用 useCallback 稳定回调，避免每次渲染都创建新函数引用传给 MessageToolbar
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(message.content);
+  }, [message.content]);
+
+  const handleEditStart = useCallback(() => {
+    setEditingMessageId(message.id);
+    setEditContent(message.content);
+  }, [message.id, message.content, setEditingMessageId, setEditContent]);
+
+  const handleRegenerate = useCallback(() => {
+    onRegenerateMessage?.(message.id);
+  }, [message.id, onRegenerateMessage]);
+
+  const handleFeedback = useCallback((fb: 'like' | 'dislike' | null) => {
+    onFeedback?.(message.id, fb);
+  }, [message.id, onFeedback]);
+
+  return (
+    <div className={`group ${message.role === "user" ? "flex justify-end" : ""}`}>
+      {message.role === "user" ? (
+        /* ── 用户消息 ── */
+        <div className="max-w-[75%] flex flex-col items-end">
+          {isEditing ? (
+            <div className="w-full rounded-2xl bg-accent/8 px-4 py-3">
+              <textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="w-full min-h-[80px] bg-transparent text-foreground text-sm p-2 rounded-lg border border-accent/20 focus:border-accent focus:ring-1 focus:ring-accent/20 outline-none resize-y"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2 mt-2">
+                <button
+                  onClick={() => setEditingMessageId(null)}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg hover:bg-foreground/5 transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={() => {
+                    if (onEditAndResend && editContent.trim()) {
+                      onEditAndResend(message.id, editContent.trim());
+                      setEditingMessageId(null);
+                    }
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium gradient-btn text-white rounded-lg transition-all duration-200"
+                >
+                  发送
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-accent/8 px-4 py-3">
+              <div className="prose prose-sm max-w-none break-words leading-relaxed">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {message.content}
+                </ReactMarkdown>
+              </div>
+            </div>
+          )}
+          {!message.isStreaming && !isEditing && (
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 mt-1">
+              <MessageToolbar
+                message={message}
+                onCopy={handleCopy}
+                onEdit={handleEditStart}
+              />
+            </div>
+          )}
+        </div>
+      ) : (
+        /* ── AI 消息 ── */
+        <div className="w-full flex flex-col items-start">
+          {message.intentInfo && (
+            <div className="mb-2">
+              <IntentBadge intentInfo={message.intentInfo} />
+            </div>
+          )}
+
+          {(message.isStreaming || (message.completedSteps && message.completedSteps.length > 0)) && (
+            <div className="w-full mb-3">
+              <StepTimeline
+                completedSteps={message.completedSteps}
+                currentStage={message.streamingStage}
+                currentMessage={message.streamingMessage}
+                isStreaming={message.isStreaming}
+              />
+            </div>
+          )}
+
+          {message.reasoningSteps && message.reasoningSteps.length > 0 && (
+            <div className="w-full mb-3">
+              <ReasoningChain
+                steps={message.reasoningSteps}
+                isStreaming={message.isStreaming && message.streamingStage === "reasoning"}
+                analysisTags={message.tags?.filter(t => t.type === 'analysis_result')}
+              />
+            </div>
+          )}
+
+          <div className="w-full">
+            {primaryTags.length > 0 ? (
+              primaryTags.length === 1 && primaryTags[0].type === 'sql_editable' ? (
+                <EditableSqlBlock
+                  tag={primaryTags[0]}
+                  onExecuteResult={(resultTag) => {
+                    if (onUpdateMessage) {
+                      const newTags = [...(message.tags || []), resultTag];
+                      onUpdateMessage(message.id, newTags);
+                    }
+                  }}
+                />
+              ) : (
+                <TaggedMessage
+                  message={{ ...message, tags: primaryTags }}
+                  onUpdateMessage={onUpdateMessage}
+                />
+              )
+            ) : (
+              <SummaryContent content={message.content} isStreaming={message.isStreaming} />
+            )}
+          </div>
+
+          {standaloneAnalysisTags.map((tag, idx) => (
+            <div key={`analysis-${idx}`} className="w-full mt-4">
+              <AnalysisResultRenderer
+                content={tag.content}
+                title={tag.title}
+                allTags={message.tags}
+              />
+            </div>
+          ))}
+
+          {!message.isStreaming && !isEditing && (
+            <div className="flex items-center gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <span className="text-xs opacity-50 font-mono">
+                {message.timestamp.toLocaleTimeString()}
+              </span>
+              <MessageToolbar
+                message={message}
+                onCopy={handleCopy}
+                onRegenerate={onRegenerateMessage ? handleRegenerate : undefined}
+                onFeedback={onFeedback ? handleFeedback : undefined}
+              />
+            </div>
+          )}
+
+          {/* ── image 独立全宽展示区 ── */}
+          {imageTags.map((tag, idx) => (
+            <div key={`image-${idx}`} className="w-full mt-4 rounded-xl border border-border/40 overflow-hidden">
+              <div className="px-4 py-2.5 border-b border-border/30 bg-muted/30 flex items-center gap-2">
+                <span className="text-sm">🖼️</span>
+                <span className="text-sm font-medium">{tag.title || '分析图表'}</span>
+              </div>
+              <div className="p-3">
+                <img
+                  src={tag.content}
+                  alt="Analysis Chart"
+                  className="w-full h-auto rounded-lg"
+                  style={{ maxHeight: '500px', objectFit: 'contain' }}
+                />
+              </div>
+            </div>
+          ))}
+
+          {/* ── 推荐后续问题 ── */}
+          {renderSuggestions(message.suggestions, message.tags, onSendMessage)}
+        </div>
+      )}
+    </div>
+  );
+});
+
+export default memo(function ChatWindow({ messages, isSending, onUpdateMessage, onSendMessage, onEditAndResend, onRegenerateMessage, onFeedback }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevMessagesLengthRef = useRef(0);
   const isNearBottomRef = useRef(true);
@@ -617,186 +738,29 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
     if (isNearBottomRef.current && (hasNewMessage || isSending || isStreaming)) {
       scrollRef.current?.scrollTo({
         top: scrollRef.current.scrollHeight,
-        behavior: "smooth"
+        behavior: "auto"
       });
     }
     prevMessagesLengthRef.current = messages.length;
   }, [messages, isSending]);
 
   return (
-    <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
+    <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin" style={{ contain: 'layout paint' }}>
       <div className="mx-auto max-w-3xl w-full px-6 py-8 space-y-6">
         {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`group ${message.role === "user" ? "flex justify-end" : ""}`}
-          >
-            {message.role === "user" ? (
-              /* ── 用户消息：右对齐气泡 ── */
-              <div className="max-w-[75%] flex flex-col items-end">
-                {editingMessageId === message.id ? (
-                  <div className="w-full rounded-2xl bg-accent/8 px-4 py-3">
-                    <textarea
-                      value={editContent}
-                      onChange={(e) => setEditContent(e.target.value)}
-                      className="w-full min-h-[80px] bg-transparent text-foreground text-sm p-2 rounded-lg border border-accent/20 focus:border-accent focus:ring-1 focus:ring-accent/20 outline-none resize-y"
-                      autoFocus
-                    />
-                    <div className="flex justify-end gap-2 mt-2">
-                      <button
-                        onClick={() => setEditingMessageId(null)}
-                        className="px-3 py-1.5 text-xs font-medium rounded-lg hover:bg-foreground/5 transition-colors"
-                      >
-                        取消
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (onEditAndResend && editContent.trim()) {
-                            onEditAndResend(message.id, editContent.trim());
-                            setEditingMessageId(null);
-                          }
-                        }}
-                        className="px-3 py-1.5 text-xs font-medium gradient-btn text-white rounded-lg transition-all duration-200"
-                      >
-                        发送
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-2xl bg-accent/8 px-4 py-3">
-                    <div className="prose prose-sm max-w-none break-words leading-relaxed">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {message.content}
-                      </ReactMarkdown>
-                    </div>
-                  </div>
-                )}
-                {/* 用户消息工具栏 */}
-                {!message.isStreaming && editingMessageId !== message.id && (
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 mt-1">
-                    <MessageToolbar
-                      message={message}
-                      onCopy={() => navigator.clipboard.writeText(message.content)}
-                      onEdit={() => {
-                        setEditingMessageId(message.id);
-                        setEditContent(message.content);
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-            ) : (
-              /* ── AI 消息：左对齐，无外层气泡 ── */
-              <div className="w-full flex flex-col items-start">
-                {/* 意图标签 */}
-                {message.intentInfo && (
-                  <div className="mb-2">
-                    <IntentBadge intentInfo={message.intentInfo} />
-                  </div>
-                )}
-
-                {/* 步骤时间线 */}
-                {(message.isStreaming || (message.completedSteps && message.completedSteps.length > 0)) && (
-                  <div className="w-full mb-3">
-                    <StepTimeline
-                      completedSteps={message.completedSteps}
-                      currentStage={message.streamingStage}
-                      currentMessage={message.streamingMessage}
-                      isStreaming={message.isStreaming}
-                    />
-                  </div>
-                )}
-
-                {/* 推理过程展示 */}
-                {message.reasoningSteps && message.reasoningSteps.length > 0 && (
-                  <div className="w-full mb-3">
-                    <ReasoningChain
-                      steps={message.reasoningSteps}
-                      isStreaming={message.isStreaming && message.streamingStage === "reasoning"}
-                      analysisTags={message.tags?.filter(t => t.type === 'analysis_result')}
-                    />
-                  </div>
-                )}
-
-                {/* 主内容区 - 无气泡包裹 */}
-                <div className="w-full">
-                  {message.tags && message.tags.length > 0 ? (
-                    message.tags.length === 1 && message.tags[0].type === 'sql_editable' ? (
-                      <EditableSqlBlock
-                        tag={message.tags[0]}
-                        onExecuteResult={(resultTag) => {
-                          if (onUpdateMessage) {
-                            const newTags = [...(message.tags || []), resultTag];
-                            onUpdateMessage(message.id, newTags);
-                          }
-                        }}
-                      />
-                    ) : (
-                      <TaggedMessage
-                        message={message}
-                        onUpdateMessage={onUpdateMessage}
-                      />
-                    )
-                  ) : (
-                    <div className="prose prose-sm dark:prose-invert max-w-none break-words leading-relaxed">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {message.content}
-                      </ReactMarkdown>
-                      {message.isStreaming && message.content && (
-                        <span className="inline-block w-1.5 h-4 bg-accent/70 animate-pulse ml-0.5 align-middle rounded-sm" />
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* 时间戳 + 工具栏 */}
-                {!message.isStreaming && editingMessageId !== message.id && (
-                  <div className="flex items-center gap-3 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                    <span className="text-xs opacity-50 font-mono">
-                      {message.timestamp.toLocaleTimeString()}
-                    </span>
-                    <MessageToolbar
-                      message={message}
-                      onCopy={() => navigator.clipboard.writeText(message.content)}
-                      onRegenerate={onRegenerateMessage
-                        ? () => onRegenerateMessage(message.id)
-                        : undefined}
-                      onFeedback={onFeedback
-                        ? (fb) => onFeedback(message.id, fb)
-                        : undefined}
-                    />
-                  </div>
-                )}
-
-                {/* ── image 独立全宽展示区 ── */}
-                {message.tags
-                  ?.filter(t => t.type === 'image')
-                  .map((tag, idx) => (
-                    <div key={`image-${idx}`} className="w-full mt-4 rounded-xl border border-border/40 overflow-hidden">
-                      <div className="px-4 py-2.5 border-b border-border/30 bg-muted/30 flex items-center gap-2">
-                        <span className="text-sm">🖼️</span>
-                        <span className="text-sm font-medium">{tag.title || '分析图表'}</span>
-                      </div>
-                      <div className="p-3">
-                        <img
-                          src={tag.content}
-                          alt="Analysis Chart"
-                          className="w-full h-auto rounded-lg"
-                          style={{ maxHeight: '500px', objectFit: 'contain' }}
-                        />
-                      </div>
-                    </div>
-                  ))
-                }
-
-                {/* ── 推荐后续问题 ── */}
-                {renderSuggestions(
-                  message.suggestions,
-                  message.tags,
-                  onSendMessage
-                )}
-              </div>
-            )}
+          <div key={message.id}>
+            <MessageItem
+              message={message}
+              editingMessageId={editingMessageId}
+              editContent={editContent}
+              setEditingMessageId={setEditingMessageId}
+              setEditContent={setEditContent}
+              onEditAndResend={onEditAndResend}
+              onRegenerateMessage={onRegenerateMessage}
+              onFeedback={onFeedback}
+              onUpdateMessage={onUpdateMessage}
+              onSendMessage={onSendMessage}
+            />
           </div>
         ))}
 
@@ -809,5 +773,5 @@ export default function ChatWindow({ messages, isSending, onUpdateMessage, onSen
       </div>
     </div>
   );
-}
+});
 
