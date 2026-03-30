@@ -134,6 +134,8 @@ public class PlanningAgent {
 
         log.info("[PlanningAgent] Planning with tools (streaming) for: {}", question);
 
+        String schemaInfo = schemaService.getDatabaseSchema().getFormattedForAI();
+        String systemPrompt = buildSystemPrompt(schemaInfo);
         String userPrompt = buildUserPrompt(question);
         List<Message> messages = new ArrayList<>();
         messages.add(new UserMessage(userPrompt));
@@ -145,6 +147,8 @@ public class PlanningAgent {
                 queryDatabaseFunction, executeCodeFunction, fixCodeFunction,
                 validateCodeFunction, sandboxInfoFunction, dispatchParallelTasksFunction));
         options.setProxyToolCalls(true);
+
+        int systemTokens = (int) (systemPrompt.length() / CHARS_PER_TOKEN);
 
         int maxRounds = 10;
         try {
@@ -158,10 +162,10 @@ public class PlanningAgent {
                 log.info("[PlanningAgent] Round {} starting", round + 1);
 
                 // 发送前检查 token 估算，必要时压缩历史消息
-                trimMessagesIfNeeded(messages);
+                trimMessagesIfNeeded(messages, systemTokens);
 
                 // 流式调用 LLM（同时拦截 execute_code 的代码参数进行流式发送）
-                RoundResult result = streamOneRound(messages, options, onTextDelta, onTagEvent);
+                RoundResult result = streamOneRound(systemPrompt, messages, options, onTextDelta, onTagEvent);
 
                 if (!result.hasToolCalls) {
                     // 最终文本回复，已通过 onTextDelta 实时转发
@@ -400,6 +404,7 @@ public class PlanningAgent {
      * 这样可以拿到逐 token 的工具调用参数，实现 Python 代码的真正流式输出。
      */
     private RoundResult streamOneRound(
+            String systemPrompt,
             List<Message> messages,
             OpenAiChatOptions options,
             Consumer<String> onTextDelta,
@@ -421,12 +426,17 @@ public class PlanningAgent {
                 model, effectiveBaseUrl, customConfig.getProvider());
 
         try {
-            // 构建请求体
+            // 构建请求体：system message 作为 messages 数组第一条
             ObjectNode body = objectMapper.createObjectNode();
             body.put("model", model);
             body.put("temperature", temperature);
             body.put("stream", true);
-            body.set("messages", convertMessagesToOpenAI(messages));
+            ArrayNode messagesArr = objectMapper.createArrayNode();
+            messagesArr.add(objectMapper.createObjectNode()
+                    .put("role", "system")
+                    .put("content", systemPrompt));
+            convertMessagesToOpenAI(messages).forEach(messagesArr::add);
+            body.set("messages", messagesArr);
             body.set("tools", buildToolsArray());
 
             String requestBody = objectMapper.writeValueAsString(body);
@@ -902,15 +912,9 @@ public class PlanningAgent {
     }
 
     /**
-     * 构建用户 prompt（包含系统指令、工具说明、用户问题）
+     * 构建系统 prompt（静态内容：工具说明 + 工作流程 + 重要规则 + Schema）
      */
-    private String buildUserPrompt(String question) {
-        String schemaInfo = schemaService.getDatabaseSchema().getFormattedForAI();
-        NERResponse nerResponse = nerService.extractEntities(question);
-        String entitiesStr = nerResponse.getEntities().stream()
-                .map(e -> e.getText() + "(" + e.getType() + ")")
-                .collect(Collectors.joining(", "));
-
+    private String buildSystemPrompt(String schemaInfo) {
         return String.format("""
             你是一个数据分析专家，拥有以下工具：
 
@@ -1034,11 +1038,24 @@ public class PlanningAgent {
             - **重要**：不要在回复中描述"已生成X个图表"或"已生成图表"，图表会自动显示在前端，你只需要分析数据结果即可
             - **禁止**：不要列举图表名称（如"员工留存率柱状图"、"趋势图"等），这些是系统自动生成的，你只需要解读数据洞察
 
-            用户问题：%s
-            识别到的实体：%s
             数据库结构：
             %s
-            """, question, entitiesStr, schemaInfo);
+            """, schemaInfo);
+    }
+
+    /**
+     * 构建用户 prompt（动态内容：用户问题 + NER 实体）
+     */
+    private String buildUserPrompt(String question) {
+        NERResponse nerResponse = nerService.extractEntities(question);
+        String entitiesStr = nerResponse.getEntities().stream()
+                .map(e -> e.getText() + "(" + e.getType() + ")")
+                .collect(Collectors.joining(", "));
+
+        return String.format("""
+            用户问题：%s
+            识别到的实体：%s
+            """, question, entitiesStr);
     }
 
     /**
