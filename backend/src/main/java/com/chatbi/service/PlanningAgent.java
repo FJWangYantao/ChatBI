@@ -1,11 +1,16 @@
 package com.chatbi.service;
 
+import com.chatbi.agent.model.ActionResult;
+import com.chatbi.agent.model.NextAction;
 import com.chatbi.config.ModelOptionsProvider;
 import com.chatbi.context.LLMConfigContext;
 import com.chatbi.context.SseEmitterContext;
 import com.chatbi.dto.NERResponse;
 import com.chatbi.dto.StreamingTagEvent;
 import com.chatbi.factory.DynamicChatClientFactory;
+import com.chatbi.service.planning.PlanningActionMapper;
+import com.chatbi.service.planning.PlanningRoundRunner;
+import com.chatbi.service.planning.PlanningToolExecutor;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -54,6 +59,9 @@ public class PlanningAgent {
     private final FunctionCallback dispatchParallelTasksFunction;
     private final Map<String, FunctionCallback> toolMap;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final PlanningActionMapper planningActionMapper = new PlanningActionMapper(objectMapper);
+    private final PlanningToolExecutor planningToolExecutor;
+    private final PlanningRoundRunner planningRoundRunner;
     private final HttpClient httpClient = buildHttpClient();
 
     private static HttpClient buildHttpClient() {
@@ -76,8 +84,22 @@ public class PlanningAgent {
     private static final int TARGET_TOKEN_LIMIT = MAX_CONTEXT_TOKENS - TOKEN_SAFETY_MARGIN;
     private static final double CHARS_PER_TOKEN = 2.0; // 保守估算（中文约1.5-2字符/token）
 
+    private static class RoundResult {
+        final String fullText;
+        final List<AssistantMessage.ToolCall> toolCalls;
+        final boolean hasToolCalls;
+
+        RoundResult(String fullText, List<AssistantMessage.ToolCall> toolCalls) {
+            this.fullText = fullText;
+            this.toolCalls = toolCalls;
+            this.hasToolCalls = toolCalls != null && !toolCalls.isEmpty();
+        }
+    }
+
     private static class TokenLimitExceededException extends RuntimeException {
-        TokenLimitExceededException(String msg) { super(msg); }
+        TokenLimitExceededException(String message) {
+            super(message);
+        }
     }
 
     public PlanningAgent(DynamicChatClientFactory chatClientFactory,
@@ -111,6 +133,21 @@ public class PlanningAgent {
         toolMap.put("validate_code", validateCodeFunction);
         toolMap.put("sandbox_info", sandboxInfoFunction);
         toolMap.put("dispatch_parallel_tasks", dispatchParallelTasksFunction);
+        this.planningToolExecutor = new PlanningToolExecutor(toolMap);
+        this.planningRoundRunner = new PlanningRoundRunner(
+                chatClientFactory,
+                objectMapper,
+                httpClient,
+                List.of(
+                        queryDatabaseFunction,
+                        executeCodeFunction,
+                        fixCodeFunction,
+                        validateCodeFunction,
+                        sandboxInfoFunction,
+                        dispatchParallelTasksFunction
+                ),
+                PlanningAgent::getGeneratingStatus
+        );
         log.info("[PlanningAgent] 已注册工具: {}", toolMap.keySet());
     }
 
@@ -193,24 +230,26 @@ public class PlanningAgent {
                 trimMessagesIfNeeded(messages);
 
                 // 流式调用 LLM（同时拦截 execute_code 的代码参数进行流式发送）
-                RoundResult result = streamOneRound(messages, options, onTextDelta, onTagEvent, onStatusChange);
+                PlanningRoundRunner.RoundResult result = planningRoundRunner.streamOneRound(
+                        messages, options, onTextDelta, onTagEvent, onStatusChange);
 
-                if (!result.hasToolCalls) {
+                if (!result.hasToolCalls()) {
                     // 最终文本回复，已通过 onTextDelta 实时转发
                     log.info("[PlanningAgent] Streaming complete, response length: {}",
-                            result.fullText.length());
-                    return result.fullText;
+                            result.getFullText().length());
+                    return result.getFullText();
                 }
 
                 // 将 assistant 消息（含 tool calls）加入历史
                 messages.add(new AssistantMessage(
-                        result.fullText,
+                        result.getFullText(),
                         Map.of(),
-                        result.toolCalls));
+                        result.getToolCalls()));
 
                 // 手动执行工具，并瘦身响应再加入历史
                 List<ToolResponseMessage.ToolResponse> toolResponses = new ArrayList<>();
-                for (AssistantMessage.ToolCall toolCall : result.toolCalls) {
+                for (AssistantMessage.ToolCall toolCall : result.getToolCalls()) {
+                    NextAction action = planningActionMapper.toNextAction(toolCall);
                     // 检查客户端是否已断开
                     if (SseEmitterContext.isDisconnected()) {
                         log.info("[PlanningAgent] 客户端已断开，停止工具执行");
@@ -218,18 +257,21 @@ public class PlanningAgent {
                     }
 
                     // 发送工具执行状态
-                    onStatusChange.accept(getExecutingStatus(toolCall.name()));
+                    onStatusChange.accept(getExecutingStatus(action.getTarget()));
 
-                    String toolResult = executeToolManually(toolCall);
-                    String slimResult = slimToolResponse(toolCall.name(), toolResult);
+                    String toolResult = planningToolExecutor.execute(action, toolCall.arguments());
+                    ActionResult actionResult = planningActionMapper.toActionResult(action, toolResult);
+                    log.info("[PlanningAgent] Tool action completed: target={}, success={}, resultType={}",
+                            action.getTarget(), actionResult.isSuccess(), actionResult.getResultType());
+                    String slimResult = slimToolResponse(action.getTarget(), toolResult);
                     toolResponses.add(new ToolResponseMessage.ToolResponse(
-                            toolCall.id(), toolCall.name(), slimResult));
+                            toolCall.id(), action.getTarget(), slimResult));
                 }
                 messages.add(new ToolResponseMessage(toolResponses));
                 log.info("[PlanningAgent] Round {} completed,  tools executed",
-                        round + 1, result.toolCalls.size());
+                        round + 1, result.getToolCalls().size());
             }
-        } catch (TokenLimitExceededException e) {
+        } catch (PlanningRoundRunner.TokenLimitExceededException e) {
             log.warn("[PlanningAgent] Token 超限，返回友好提示: {}", e.getMessage());
             String hint = "抱歉，本次分析过程中产生的上下文信息过多，超出了模型处理能力。请尝试：\n"
                     + "1. 简化您的问题，减少分析步骤\n"
@@ -248,17 +290,6 @@ public class PlanningAgent {
     /**
      * 单轮流式 LLM 调用结果
      */
-    private static class RoundResult {
-        final String fullText;
-        final List<AssistantMessage.ToolCall> toolCalls;
-        final boolean hasToolCalls;
-
-        RoundResult(String fullText, List<AssistantMessage.ToolCall> toolCalls) {
-            this.fullText = fullText;
-            this.toolCalls = toolCalls;
-            this.hasToolCalls = toolCalls != null && !toolCalls.isEmpty();
-        }
-    }
 
     /**
      * 从工具调用的 JSON 参数流中实时提取 "code" 字段内容。
@@ -773,30 +804,6 @@ public class PlanningAgent {
         List<AssistantMessage.ToolCall> toolCalls = msg.hasToolCalls()
                 ? msg.getToolCalls() : List.of();
         return new RoundResult(text, toolCalls);
-    }
-
-    /**
-     * 手动执行工具调用
-     */
-    private String executeToolManually(AssistantMessage.ToolCall toolCall) {
-        String name = toolCall.name();
-        String args = toolCall.arguments();
-        log.info("[PlanningAgent] 调用工具: {} with args length: {}",
-                name, args != null ? args.length() : 0);
-
-        FunctionCallback callback = toolMap.get(name);
-        if (callback == null) {
-            log.warn("[PlanningAgent] Unknown tool: {}", name);
-            return "{\"error\": \"未知工具: " + name + "\"}";
-        }
-
-        try {
-            return callback.call(args);
-        } catch (Exception e) {
-            log.error("[PlanningAgent] Tool {} failed: {}",
-                    name, e.getMessage(), e);
-            return "{\"error\": \"工具执行失败: " + e.getMessage() + "\"}";
-        }
     }
 
     /**
