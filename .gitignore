@@ -48,6 +48,7 @@ target/
 *.pt
 
 # Local tool caches
+.worktrees/
 .playwright-cli/
 .tmp-chrome-profile/
 backend/.m2/
